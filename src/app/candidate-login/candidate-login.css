@@ -1,0 +1,292 @@
+* {
+  box-sizing: border-box;
+}
+
+.candidate-login-page {
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 40px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(7, 38, 77, 0.96),
+      rgba(20, 91, 170, 0.92)
+    ),
+    url("https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=2000&q=90");
+
+  background-size: cover;
+  background-position: center;
+
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Login card */
+
+.login-card {
+  width: 450px;
+
+  padding: 45px;
+
+  background: rgba(255, 255, 255, 0.97);
+
+  border-radius: 22px;
+
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.30);
+
+  backdrop-filter: blur(10px);
+}
+
+/* Logo */
+
+.brand {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 35px;
+
+  color: #0b3d78;
+
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background: #1466d8;
+
+  color: white;
+
+  font-weight: bold;
+
+  box-shadow: 0 8px 20px rgba(20, 102, 216, 0.3);
+}
+
+/* Heading */
+
+.heading h1 {
+  margin: 0;
+
+  color: #14213d;
+
+  font-size: 32px;
+}
+
+.heading p {
+  margin-top: 10px;
+  margin-bottom: 30px;
+
+  color: #718096;
+
+  font-size: 15px;
+}
+
+/* Error */
+
+.error-message {
+  margin-bottom: 20px;
+
+  padding: 13px 15px;
+
+  border-radius: 10px;
+
+  background: #fff0f0;
+
+  border: 1px solid #ffcccc;
+
+  color: #d93025;
+
+  font-size: 14px;
+}
+
+/* Form */
+
+.form-group {
+  margin-bottom: 22px;
+}
+
+.form-group label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #26364d;
+
+  font-size: 14px;
+
+  font-weight: 600;
+}
+
+.form-group input {
+  width: 100%;
+
+  height: 52px;
+
+  padding: 0 16px;
+
+  border: 1px solid #d7dee8;
+
+  border-radius: 10px;
+
+  outline: none;
+
+  font-size: 15px;
+
+  transition: 0.25s;
+}
+
+.form-group input:focus {
+  border-color: #1466d8;
+
+  box-shadow:
+    0 0 0 3px rgba(20, 102, 216, 0.12);
+}
+
+/* Password label */
+
+.password-label {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+}
+
+.password-label a {
+  color: #1466d8;
+
+  text-decoration: none;
+
+  font-size: 13px;
+}
+
+/* Login button */
+
+.login-btn {
+  width: 100%;
+
+  height: 52px;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: #1466d8;
+
+  color: white;
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.25s;
+}
+
+.login-btn:hover {
+  background: #0d55b8;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 8px 20px rgba(20, 102, 216, 0.3);
+}
+
+/* Register */
+
+.register-section {
+  margin-top: 28px;
+
+  text-align: center;
+
+  color: #667085;
+
+  font-size: 14px;
+}
+
+.register-btn {
+  display: block;
+
+  width: 100%;
+
+  margin-top: 12px;
+
+  height: 48px;
+
+  border: 1px solid #1466d8;
+
+  border-radius: 10px;
+
+  background: white;
+
+  color: #1466d8;
+
+  font-size: 15px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.25s;
+}
+
+.register-btn:hover {
+  background: #edf5ff;
+}
+
+/* Back */
+
+.back-btn {
+  display: block;
+
+  margin: 25px auto 0;
+
+  border: none;
+
+  background: transparent;
+
+  color: #667085;
+
+  cursor: pointer;
+
+  font-size: 14px;
+}
+
+.back-btn:hover {
+  color: #1466d8;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+  .candidate-login-page {
+    padding: 20px;
+  }
+
+  .login-card {
+    width: 100%;
+
+    padding: 30px 25px;
+  }
+
+  .heading h1 {
+    font-size: 27px;
+  }
+}

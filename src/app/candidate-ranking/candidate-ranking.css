@@ -1,0 +1,63 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 40px;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #172b4d;
+}
+
+.subtitle {
+  color: #718096;
+}
+
+.card {
+  background: white;
+  margin-top: 30px;
+  border-radius: 12px;
+  padding: 10px 25px;
+}
+
+.candidate {
+  display: grid;
+  grid-template-columns: 70px 1fr 80px 250px;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.rank {
+  font-weight: bold;
+  color: #1769e0;
+}
+
+.name {
+  color: #344054;
+}
+
+.score {
+  color: #15945b;
+  font-weight: bold;
+}
+
+.progress {
+  height: 7px;
+  background: #e7edf4;
+  border-radius: 10px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #3fbe8a;
+  border-radius: 10px;
+}
+
+.back-btn {
+  margin-top: 25px;
+  border: none;
+  background: none;
+  color: #1769e0;
+}

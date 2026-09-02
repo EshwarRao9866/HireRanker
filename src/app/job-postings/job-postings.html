@@ -1,0 +1,92 @@
+<div class="page">
+
+  <header class="page-header">
+
+    <div>
+      <h1>Job Postings</h1>
+      <p>Create and manage your organization's job openings.</p>
+    </div>
+
+    <button class="primary-btn" (click)="createJob()">
+      + Create Job
+    </button>
+
+  </header>
+
+  <div class="stats">
+
+    <div class="stat-card">
+      <span>Total Jobs</span>
+      <strong>12</strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Active Jobs</span>
+      <strong>8</strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Total Applicants</span>
+      <strong>248</strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Closed Jobs</span>
+      <strong>4</strong>
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <div class="card-header">
+      <h2>All Job Postings</h2>
+    </div>
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>Job Title</th>
+          <th>Department</th>
+          <th>Location</th>
+          <th>Applicants</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <tr *ngFor="let job of jobs">
+
+          <td>
+            <strong>{{ job.title }}</strong>
+          </td>
+
+          <td>{{ job.department }}</td>
+
+          <td>{{ job.location }}</td>
+
+          <td>{{ job.applicants }}</td>
+
+          <td>
+            <span
+              class="status"
+              [class.closed]="job.status === 'Closed'">
+              {{ job.status }}
+            </span>
+          </td>
+
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+  <button class="back-btn" (click)="goBack()">
+    ← Back to Dashboard
+  </button>
+
+</div>

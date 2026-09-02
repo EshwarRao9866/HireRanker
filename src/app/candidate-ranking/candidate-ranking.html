@@ -1,0 +1,42 @@
+<div class="page">
+
+  <h1>Candidate Ranking</h1>
+
+  <p class="subtitle">
+    Candidates ranked according to AI-generated match scores.
+  </p>
+
+  <div class="card">
+
+    <div
+      class="candidate"
+      *ngFor="let candidate of candidates">
+
+      <div class="rank">
+        #{{ candidate.rank }}
+      </div>
+
+      <div class="name">
+        <strong>{{ candidate.name }}</strong>
+      </div>
+
+      <div class="score">
+        {{ candidate.score }}%
+      </div>
+
+      <div class="progress">
+        <div
+          class="progress-bar"
+          [style.width.%]="candidate.score">
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <button class="back-btn" (click)="goBack()">
+    ← Back to Dashboard
+  </button>
+
+</div>

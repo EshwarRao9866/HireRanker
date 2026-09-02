@@ -1,0 +1,61 @@
+<div class="page">
+
+  <header>
+    <h1>Job Applicants</h1>
+    <p>View and manage candidates who applied for your jobs.</p>
+  </header>
+
+  <div class="card">
+
+    <table>
+
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Applied Job</th>
+          <th>Match Score</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <tr *ngFor="let applicant of applicants">
+
+          <td>
+            <strong>{{ applicant.name }}</strong>
+            <small>{{ applicant.email }}</small>
+          </td>
+
+          <td>{{ applicant.job }}</td>
+
+          <td>
+            <strong class="score">
+              {{ applicant.score }}%
+            </strong>
+          </td>
+
+          <td>
+            <span class="status">
+              {{ applicant.status }}
+            </span>
+          </td>
+
+          <td>
+            <button class="view-btn">View</button>
+          </td>
+
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+  <button class="back-btn" (click)="goBack()">
+    ← Back to Dashboard
+  </button>
+
+</div>

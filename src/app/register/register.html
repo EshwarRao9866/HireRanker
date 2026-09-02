@@ -1,0 +1,252 @@
+<div class="register-page">
+
+  <!-- Background decoration -->
+  <div class="background-shape shape-one"></div>
+  <div class="background-shape shape-two"></div>
+
+  <div class="register-container">
+
+    <!-- Left Side -->
+    <div class="register-info">
+
+      <div class="brand">
+        <div class="brand-icon">HR</div>
+        <span>HireRanker</span>
+      </div>
+
+      <div class="info-content">
+        <span class="tagline">SMART RECRUITMENT PLATFORM</span>
+
+        <h1>
+          Find the right
+          <span>talent faster.</span>
+        </h1>
+
+        <p>
+          Build your recruiter account and discover qualified candidates
+          using intelligent resume screening and candidate ranking.
+        </p>
+
+        <div class="features">
+
+          <div class="feature">
+            <div class="feature-icon">✓</div>
+            <div>
+              <strong>Smart Candidate Ranking</strong>
+              <p>Find the most suitable candidates quickly.</p>
+            </div>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">✓</div>
+            <div>
+              <strong>Resume Screening</strong>
+              <p>Automatically analyze and compare resumes.</p>
+            </div>
+          </div>
+
+          <div class="feature">
+            <div class="feature-icon">✓</div>
+            <div>
+              <strong>Interview Assistance</strong>
+              <p>Generate relevant interview questions.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+
+    <!-- Right Side -->
+    <div class="register-card">
+
+      <div class="form-header">
+        <h2>Create Account</h2>
+
+        <p>
+          Create your recruiter account
+        </p>
+      </div>
+
+
+      <form (ngSubmit)="createAccount()">
+
+        <!-- Full Name -->
+        <div class="input-group">
+
+          <label>Full Name</label>
+
+          <div class="input-wrapper">
+            <span class="input-icon">👤</span>
+
+            <input
+              type="text"
+              [(ngModel)]="fullName"
+              name="fullName"
+              placeholder="Enter your full name"
+              required>
+          </div>
+
+        </div>
+
+
+        <!-- Email -->
+        <div class="input-group">
+
+          <label>Email Address</label>
+
+          <div class="input-wrapper">
+            <span class="input-icon">✉</span>
+
+            <input
+              type="email"
+              [(ngModel)]="email"
+              name="email"
+              placeholder="Enter your email"
+              required>
+          </div>
+
+        </div>
+
+
+        <!-- Mobile -->
+        <div class="input-group">
+
+          <label>Mobile Number</label>
+
+          <div class="input-wrapper">
+            <span class="input-icon">📱</span>
+
+            <input
+              type="tel"
+              [(ngModel)]="mobile"
+              name="mobile"
+              placeholder="Enter mobile number"
+              required>
+          </div>
+
+        </div>
+
+
+        <!-- Password -->
+        <div class="input-group">
+
+          <label>Password</label>
+
+          <div class="input-wrapper">
+
+            <span class="input-icon">🔒</span>
+
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Create a password"
+              required>
+
+            <button
+              type="button"
+              class="password-button"
+              (click)="togglePassword()">
+
+              {{ showPassword ? 'Hide' : 'Show' }}
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- Confirm Password -->
+        <div class="input-group">
+
+          <label>Confirm Password</label>
+
+          <div class="input-wrapper">
+
+            <span class="input-icon">🔒</span>
+
+            <input
+              [type]="showConfirmPassword ? 'text' : 'password'"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              placeholder="Confirm your password"
+              required>
+
+            <button
+              type="button"
+              class="password-button"
+              (click)="toggleConfirmPassword()">
+
+              {{ showConfirmPassword ? 'Hide' : 'Show' }}
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <!-- Password Error -->
+        <p
+          class="error-message"
+          *ngIf="password && confirmPassword && password !== confirmPassword">
+
+          Passwords do not match.
+
+        </p>
+
+
+        <!-- Terms -->
+        <div class="terms">
+
+          <input
+            type="checkbox"
+            [(ngModel)]="acceptTerms"
+            name="acceptTerms">
+
+          <span>
+            I agree to the
+            <a href="#">Terms & Conditions</a>
+            and
+            <a href="#">Privacy Policy</a>
+          </span>
+
+        </div>
+
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          class="create-button"
+          [disabled]="password !== confirmPassword || !acceptTerms">
+
+          Create Account
+
+          <span class="arrow">→</span>
+
+        </button>
+
+
+      </form>
+
+
+      <!-- Login -->
+      <div class="login-link">
+
+        Already have an account?
+
+        <a href="#">
+          Login
+        </a>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

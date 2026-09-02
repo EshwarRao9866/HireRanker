@@ -1,0 +1,68 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 40px;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #172b4d;
+}
+
+.subtitle {
+  color: #718096;
+}
+
+.message-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: white;
+  padding: 22px;
+  margin-top: 20px;
+  border-radius: 12px;
+  border: 1px solid #e5eaf1;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e5efff;
+  color: #1769e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.content {
+  flex: 1;
+}
+
+.content strong {
+  color: #172b4d;
+}
+
+.content p {
+  color: #667085;
+}
+
+.content small {
+  color: #98a2b3;
+}
+
+.message-card button {
+  border: 1px solid #1769e0;
+  background: white;
+  color: #1769e0;
+  padding: 8px 16px;
+  border-radius: 7px;
+}
+
+.back-btn {
+  margin-top: 25px;
+  border: none;
+  background: none;
+  color: #1769e0;
+}

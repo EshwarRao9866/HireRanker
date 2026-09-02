@@ -1,0 +1,530 @@
+* {
+  box-sizing: border-box;
+}
+/* body {
+  margin: 0;
+  padding: 0;
+} */
+
+.register-page {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      135deg,
+      #07111f 0%,
+      #0b1b32 45%,
+      #102c4c 100%
+    );
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 40px 20px;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+
+/* Background Shapes */
+
+.background-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: 0.25;
+}
+
+.shape-one {
+  width: 450px;
+  height: 450px;
+
+  background: #2878ff;
+
+  top: -200px;
+  left: -150px;
+}
+
+.shape-two {
+  width: 400px;
+  height: 400px;
+
+  background: #00b8d9;
+
+  right: -150px;
+  bottom: -200px;
+}
+
+
+/* Main Container */
+
+.register-container {
+  width: 1100px;
+  max-width: 100%;
+
+  min-height: 650px;
+
+  display: grid;
+  grid-template-columns: 1fr 0.9fr;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border-radius: 24px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.35);
+
+  position: relative;
+
+  z-index: 2;
+}
+
+
+/* LEFT SIDE */
+
+.register-info {
+  padding: 55px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #0b1d34,
+      #123b63
+    );
+
+  color: white;
+
+  position: relative;
+}
+
+
+/* Brand */
+
+.brand {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.brand-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #123b63;
+
+  font-size: 15px;
+  font-weight: 800;
+}
+
+
+/* Info Content */
+
+.info-content {
+  margin-top: 100px;
+
+  max-width: 480px;
+}
+
+.tagline {
+  font-size: 12px;
+
+  letter-spacing: 2px;
+
+  color: #65c7ff;
+
+  font-weight: 700;
+}
+
+.info-content h1 {
+  font-size: 48px;
+
+  line-height: 1.1;
+
+  margin: 18px 0;
+
+  font-weight: 700;
+}
+
+.info-content h1 span {
+  color: #58c7ff;
+}
+
+.info-content > p {
+  color: #c5d4e5;
+
+  line-height: 1.7;
+
+  font-size: 16px;
+
+  margin-bottom: 40px;
+}
+
+
+/* Features */
+
+.features {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 22px;
+}
+
+.feature {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 14px;
+}
+
+.feature-icon {
+  width: 30px;
+  height: 30px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: rgba(88, 199, 255, 0.15);
+
+  color: #58c7ff;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-weight: bold;
+}
+
+.feature strong {
+  font-size: 14px;
+}
+
+.feature p {
+  margin: 5px 0 0;
+
+  color: #aebfd1;
+
+  font-size: 13px;
+}
+
+
+/* RIGHT SIDE */
+
+.register-card {
+  padding: 50px 60px;
+
+  background: #ffffff;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+}
+
+
+/* Header */
+
+.form-header h2 {
+  font-size: 32px;
+
+  margin: 0 0 8px;
+
+  color: #142238;
+}
+
+.form-header p {
+  margin: 0 0 30px;
+
+  color: #718096;
+
+  font-size: 14px;
+}
+
+
+/* Input */
+
+.input-group {
+  margin-bottom: 18px;
+}
+
+.input-group label {
+  display: block;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  color: #344054;
+
+  margin-bottom: 7px;
+}
+
+.input-wrapper {
+  position: relative;
+
+  display: flex;
+
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+
+  left: 14px;
+
+  font-size: 15px;
+
+  opacity: 0.7;
+}
+
+.input-wrapper input {
+  width: 100%;
+
+  height: 48px;
+
+  border: 1px solid #d9e0e8;
+
+  border-radius: 9px;
+
+  padding: 0 45px;
+
+  outline: none;
+
+  font-size: 14px;
+
+  transition: 0.25s;
+
+  background: #fafbfc;
+}
+
+.input-wrapper input:focus {
+  border-color: #288cff;
+
+  background: white;
+
+  box-shadow:
+    0 0 0 3px rgba(40, 140, 255, 0.1);
+}
+
+.input-wrapper input::placeholder {
+  color: #9aa5b1;
+}
+
+
+/* Password Button */
+
+.password-button {
+  position: absolute;
+
+  right: 10px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #2878ff;
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  font-weight: 600;
+}
+
+.password-button:hover {
+  color: #0b58c7;
+}
+
+
+/* Error */
+
+.error-message {
+  margin-top: -8px;
+
+  margin-bottom: 15px;
+
+  color: #e53935;
+
+  font-size: 12px;
+}
+
+
+/* Terms */
+
+.terms {
+  display: flex;
+
+  gap: 9px;
+
+  align-items: flex-start;
+
+  margin: 5px 0 22px;
+
+  font-size: 12px;
+
+  color: #667085;
+
+  line-height: 1.5;
+}
+
+.terms input {
+  margin-top: 3px;
+
+  accent-color: #2878ff;
+}
+
+.terms a {
+  color: #2878ff;
+
+  text-decoration: none;
+
+  font-weight: 600;
+}
+
+.terms a:hover {
+  text-decoration: underline;
+}
+
+
+/* Create Account */
+
+.create-button {
+  width: 100%;
+
+  height: 50px;
+
+  border: none;
+
+  border-radius: 9px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #1769e0,
+      #329cff
+    );
+
+  color: white;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.25s;
+
+  box-shadow:
+    0 8px 20px rgba(40, 120, 255, 0.25);
+}
+
+.create-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 12px 25px rgba(40, 120, 255, 0.35);
+}
+
+.create-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.create-button:disabled {
+  background: #b8c2cc;
+
+  cursor: not-allowed;
+
+  box-shadow: none;
+}
+
+.arrow {
+  margin-left: 8px;
+
+  font-size: 18px;
+}
+
+
+/* Login */
+
+.login-link {
+  text-align: center;
+
+  margin-top: 22px;
+
+  color: #667085;
+
+  font-size: 13px;
+}
+
+.login-link a {
+  color: #1769e0;
+
+  font-weight: 700;
+
+  text-decoration: none;
+
+  margin-left: 4px;
+}
+
+.login-link a:hover {
+  text-decoration: underline;
+}
+
+
+/* Responsive */
+
+@media (max-width: 900px) {
+
+  .register-container {
+    grid-template-columns: 1fr;
+  }
+
+  .register-info {
+    display: none;
+  }
+
+  .register-card {
+    padding: 45px 35px;
+  }
+
+}
+
+@media (max-width: 500px) {
+
+  .register-page {
+    padding: 15px;
+  }
+
+  .register-card {
+    padding: 35px 22px;
+  }
+
+  .form-header h2 {
+    font-size: 27px;
+  }
+
+}

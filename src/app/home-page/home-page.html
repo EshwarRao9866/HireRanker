@@ -1,0 +1,86 @@
+<div class="login-page">
+
+  <div class="login-card">
+
+    <!-- Logo -->
+    <div class="brand">
+      <img src={{imageUrl}} alt="HireRanker Logo" style="width: 70px; height: 70px;">
+      <span style="color: rgba(8, 0, 255, 0.755);">HireRanker</span>
+    </div>
+
+    <!-- Heading -->
+    <!-- <h1>Welcome Back</h1> -->
+    <p class="subtitle">Sign in to continue to HireRanker</p>
+
+    <!-- Email -->
+    <div class="input-group">
+      <label>Email Address</label>
+
+      <input
+        type="email"
+        [(ngModel)]="email"
+        placeholder="Enter your email"
+      >
+    </div>
+
+    <!-- Password -->
+    <div class="input-group">
+      <div class="password-label">
+        <label>Password</label>
+        
+        
+      </div>
+
+      <input
+        type="password"
+        [(ngModel)]="password"
+        placeholder="Enter your password" >
+        @if (errorMessage) {
+  <div class="login-error">
+    {{ errorMessage }}
+  </div>
+}
+      <a href="#" class="forgot">Forgot Password</a>
+    </div>
+
+    <!-- Remember Me -->
+    <div class="remember">
+      <label>
+        <input type="checkbox">
+        <span>Remember me</span>
+      </label>
+    </div>
+
+    <!-- Login -->
+    <button class="login-btn" (click)="login()">
+      Login
+    </button>
+
+    <!-- Divider -->
+    <div class="divider">
+      <span>OR</span>
+    </div>
+
+    <!-- Google -->
+    <button
+  class="candidate-login-btn"
+  (click)="goToCandidateLogin()">
+
+  👤 Candidate Login
+
+</button>
+
+    <!-- Register -->
+    <div class="register-section">
+      <p>Don't have an account?</p>
+
+      <button
+        class="create-btn"
+        (click)="goToRegister()">
+        Create Account
+      </button>
+    </div>
+
+  </div>
+
+</div>

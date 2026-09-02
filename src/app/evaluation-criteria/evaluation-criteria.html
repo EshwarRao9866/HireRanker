@@ -1,0 +1,31 @@
+<div class="page">
+
+  <h1>Evaluation Criteria</h1>
+
+  <p class="subtitle">
+    Configure how candidates are evaluated and ranked.
+  </p>
+
+  <div class="card">
+
+    <div
+      class="criteria"
+      *ngFor="let item of criteria">
+
+      <div>
+        <strong>{{ item.name }}</strong>
+      </div>
+
+      <div class="weight">
+        {{ item.weight }}%
+      </div>
+
+    </div>
+
+  </div>
+
+  <button class="back-btn" (click)="goBack()">
+    ← Back to Dashboard
+  </button>
+
+</div>

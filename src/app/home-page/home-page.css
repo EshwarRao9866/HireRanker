@@ -1,0 +1,454 @@
+/* Full Page */
+/* body{
+    background-image: url("https://img.freepik.com/premium-vector/woman-seated-wearing-headphones-is-focused-working-laptop-customer-girl-mobile-phone-communicating-with-client-technical-support-simple-minimalist-flat-vector-illustration_538213-119591.jpg?w=2000");
+} */
+.login-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: linear-gradient(
+    135deg,
+    #f5f8fc,
+    #e9f0f8
+  );
+
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+
+/* Login Card */
+
+.login-card {
+  width: 430px;
+  max-width: 100%;
+
+  background: white;
+
+  padding: 45px 50px;
+
+  border-radius: 18px;
+
+  box-shadow:
+    0 15px 45px rgba(20, 50, 90, 0.12);
+
+  box-sizing: border-box;
+}
+
+
+/* Logo */
+
+.brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 30px;
+}
+
+.brand img {
+  width: 48px;
+  height: 48px;
+
+  object-fit: contain;
+}
+
+.brand span {
+  font-size: 28px;
+  font-weight: 700;
+
+  color: #1557a6;
+
+  letter-spacing: -0.5px;
+}
+
+
+/* Heading */
+
+h1 {
+  text-align: center;
+
+  margin: 0;
+
+  font-size: 32px;
+  font-weight: 700;
+
+  color: rgba(0, 0, 255, 0.715);
+}
+
+.subtitle {
+  text-align: center;
+
+  margin: 10px 0 32px;
+
+  color: #718096;
+
+  font-size: 15px;
+}
+
+
+/* Input */
+
+.input-group {
+  margin-bottom: 22px;
+}
+
+.input-group label {
+  display: block;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #27364b;
+
+  margin-bottom: 8px;
+}
+
+
+/* Password Label */
+
+.password-label {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+}
+
+.password-label a {
+  font-size: 13px;
+
+  color: #1557a6;
+
+  text-decoration: none;
+}
+
+.password-label a:hover {
+  text-decoration: underline;
+}
+
+
+/* Input Box */
+
+.input-group input[type="email"],
+.input-group input[type="password"] {
+  width: 100%;
+
+  height: 50px;
+
+  padding: 0 15px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d7dee8;
+
+  border-radius: 8px;
+
+  outline: none;
+
+  font-size: 15px;
+
+  color: #27364b;
+
+  background: #ffffff;
+
+  transition: 0.2s;
+}
+
+.input-group input:focus {
+  border-color: #1557a6;
+
+  box-shadow:
+    0 0 0 3px rgba(21, 87, 166, 0.10);
+}
+
+.input-group input::placeholder {
+  color: #a0aab8;
+}
+.forgot {
+  /* font-size: 13px; */
+
+  color: #1557a6;
+
+  text-decoration: none;
+  padding-left: 215px;
+  /* margin-top: 100px; */
+
+}
+
+
+/* Remember */
+
+.remember {
+  margin: -5px 0 20px;
+}
+
+.remember label {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  font-size: 14px;
+
+  color: #596579;
+
+  cursor: pointer;
+}
+
+.remember input {
+  width: 16px;
+  height: 16px;
+
+  cursor: pointer;
+}
+
+
+/* Login Button */
+
+.login-btn {
+  width: 100%;
+
+  height: 52px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: #1557a6;
+
+  color: white;
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.login-btn:hover {
+  background: #0f4382;
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 7px 18px rgba(21, 87, 166, 0.25);
+}
+
+
+/* Divider */
+
+.divider {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  margin: 25px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+
+  flex: 1;
+
+  height: 1px;
+
+  background: #e1e6ed;
+}
+
+.divider span {
+  font-size: 12px;
+
+  color: #9aa4b2;
+}
+
+
+/* Google */
+
+.google-btn {
+  width: 100%;
+
+  height: 50px;
+
+  background: white;
+
+  border: 1px solid #d7dee8;
+
+  border-radius: 8px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  gap: 10px;
+
+  font-size: 15px;
+
+  font-weight: 500;
+
+  color: #27364b;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.google-btn:hover {
+  background: #f7f9fc;
+
+  border-color: #b9c4d2;
+}
+
+
+/* Google Icon */
+
+.google-icon {
+  width: 23px;
+  height: 23px;
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  font-size: 18px;
+
+  font-weight: 700;
+
+  color: #4285f4;
+}
+
+
+/* Register */
+
+.register-section {
+  text-align: center;
+
+  margin-top: 28px;
+
+  padding-top: 22px;
+
+  border-top: 1px solid #edf0f4;
+}
+
+.register-section p {
+  margin: 0 0 12px;
+
+  color: #718096;
+
+  font-size: 14px;
+}
+
+.create-btn {
+  width: 100%;
+
+  height: 48px;
+
+  background: white;
+
+  border: 1px solid #1557a6;
+
+  border-radius: 8px;
+
+  color: #1557a6;
+
+  font-size: 15px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+}
+
+.create-btn:hover {
+  background: #1557a6;
+
+  color: white;
+}
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+  .login-page {
+    padding: 20px;
+  }
+
+  .login-card {
+    padding: 35px 25px;
+  }
+
+  .brand span {
+    font-size: 25px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}
+.error-message {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff1f1;
+  border: 1px solid #ffcaca;
+  border-radius: 7px;
+  color: #d93025;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.login-error {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid #f5b5b5;
+  border-radius: 8px;
+  background: #fff4f4;
+  color: #d93025;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.candidate-login-btn {
+  width: 100%;
+  height: 50px;
+
+  margin-top: 14px;
+
+  border: 1px solid #1466d8;
+
+  border-radius: 10px;
+
+  background: white;
+
+  color: #1466d8;
+
+  font-size: 16px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.25s;
+}
+
+.candidate-login-btn:hover {
+  background: #edf5ff;
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 6px 18px rgba(20, 102, 216, 0.15);
+}

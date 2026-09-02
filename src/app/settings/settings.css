@@ -1,0 +1,65 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 40px;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #172b4d;
+}
+
+.subtitle {
+  color: #718096;
+}
+
+.settings-card {
+  max-width: 650px;
+  background: white;
+  padding: 30px;
+  margin-top: 30px;
+  border-radius: 12px;
+  border: 1px solid #e5eaf1;
+}
+
+.settings-card h2 {
+  color: #172b4d;
+}
+
+.settings-card label {
+  display: block;
+  margin-top: 20px;
+  margin-bottom: 7px;
+  color: #344054;
+}
+
+.settings-card input[type="text"],
+.settings-card input[type="email"] {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid #d9e0e8;
+  border-radius: 7px;
+}
+
+.notification label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.save-btn {
+  margin-top: 25px;
+  background: #1769e0;
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 7px;
+}
+
+.back-btn {
+  margin-top: 25px;
+  border: none;
+  background: none;
+  color: #1769e0;
+}

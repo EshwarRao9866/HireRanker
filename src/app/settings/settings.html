@@ -1,0 +1,52 @@
+<div class="page">
+
+  <h1>Settings</h1>
+
+  <p class="subtitle">
+    Manage your HireRanker account and platform preferences.
+  </p>
+
+  <div class="settings-card">
+
+    <h2>Company Information</h2>
+
+    <label>Company Name</label>
+
+    <input
+      type="text"
+      [(ngModel)]="companyName">
+
+    <label>Admin Email</label>
+
+    <input
+      type="email"
+      [(ngModel)]="email">
+
+    <div class="notification">
+
+      <label>
+        <input
+          type="checkbox"
+          [(ngModel)]="notifications">
+
+        Enable email notifications
+
+      </label>
+
+    </div>
+
+    <button
+      class="save-btn"
+      (click)="saveSettings()">
+
+      Save Changes
+
+    </button>
+
+  </div>
+
+  <button class="back-btn" (click)="goBack()">
+    ← Back to Dashboard
+  </button>
+
+</div>

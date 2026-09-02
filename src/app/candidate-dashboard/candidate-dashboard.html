@@ -1,0 +1,651 @@
+<div class="candidate-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+
+  <aside class="sidebar">
+
+    <div class="brand">
+
+      <img
+        src="assets/images/logo.png"
+        alt="HireRanker Logo">
+
+      <span>HireRanker</span>
+
+    </div>
+
+    <div class="candidate-info">
+
+      <div class="avatar">
+        {{ candidateName.charAt(0) }}
+      </div>
+
+      <div>
+        <strong>{{ candidateName }}</strong>
+        <small>Candidate</small>
+      </div>
+
+    </div>
+
+    <nav>
+
+      <button
+        class="menu-item active">
+
+        <span>⌂</span>
+        Dashboard
+
+      </button>
+
+      <button
+        class="menu-item"
+        (click)="openJobs()">
+
+        <span>💼</span>
+        Find Jobs
+
+      </button>
+
+      <button
+        class="menu-item"
+        (click)="openResume()">
+
+        <span>📄</span>
+        My Resume
+
+      </button>
+
+      <button
+        class="menu-item"
+        (click)="openApplications()">
+
+        <span>📋</span>
+        My Applications
+
+      </button>
+
+      <button
+        class="menu-item"
+        (click)="openInterviews()">
+
+        <span>🎤</span>
+        Interviews
+
+      </button>
+
+      <button
+        class="menu-item"
+        (click)="openProfile()">
+
+        <span>👤</span>
+        My Profile
+
+      </button>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+
+      <button
+        class="menu-item logout"
+        (click)="logout()">
+
+        <span>↪</span>
+        Logout
+
+      </button>
+
+    </div>
+
+  </aside>
+
+
+  <!-- ================= MAIN CONTENT ================= -->
+
+  <main class="main-content">
+
+    <!-- HEADER -->
+
+    <header class="topbar">
+
+      <div class="page-title">
+
+        <h1>Candidate Dashboard</h1>
+
+        <p>
+          Manage your job applications and career opportunities.
+        </p>
+
+      </div>
+
+      <div class="top-actions">
+
+        <button class="notification">
+          🔔
+          <span></span>
+        </button>
+
+        <div class="profile-mini">
+
+          <div class="mini-avatar">
+            {{ candidateName.charAt(0) }}
+          </div>
+
+          <div>
+            <strong>{{ candidateName }}</strong>
+            <small>Candidate</small>
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+
+    <!-- WELCOME -->
+
+    <section class="welcome">
+
+      <div>
+
+        <h2>
+          Welcome back, {{ candidateName }} 👋
+        </h2>
+
+        <p>
+          Here's what's happening with your job search today.
+        </p>
+
+      </div>
+
+      <button
+        class="find-job-btn"
+        (click)="openJobs()">
+
+        + Find Jobs
+
+      </button>
+
+    </section>
+
+
+    <!-- ================= STAT CARDS ================= -->
+
+    <section class="stats-grid">
+
+      <div class="stat-card">
+
+        <div class="stat-icon blue">
+          💼
+        </div>
+
+        <div>
+
+          <span>Applied Jobs</span>
+
+          <strong>{{ appliedJobs }}</strong>
+
+          <small>
+            Total applications
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon purple">
+          📄
+        </div>
+
+        <div>
+
+          <span>Resume Screened</span>
+
+          <strong>{{ screenedJobs }}</strong>
+
+          <small>
+            Successfully analyzed
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon green">
+          ⭐
+        </div>
+
+        <div>
+
+          <span>Shortlisted</span>
+
+          <strong>{{ shortlistedJobs }}</strong>
+
+          <small>
+            Selected by employers
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div class="stat-icon orange">
+          🎤
+        </div>
+
+        <div>
+
+          <span>Interviews</span>
+
+          <strong>{{ interviews }}</strong>
+
+          <small>
+            Upcoming interviews
+          </small>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= MAIN GRID ================= -->
+
+    <section class="dashboard-grid">
+
+
+      <!-- RECOMMENDED JOBS -->
+
+      <div class="content-card jobs-card">
+
+        <div class="card-header">
+
+          <div>
+
+            <h3>Recommended Jobs</h3>
+
+            <p>
+              Jobs matching your profile and skills
+            </p>
+
+          </div>
+
+          <button
+            class="view-all"
+            (click)="openJobs()">
+
+            View All →
+
+          </button>
+
+        </div>
+
+
+        <div class="job-item">
+
+          <div class="company-logo">
+            A
+          </div>
+
+          <div class="job-info">
+
+            <h4>
+              Java Full Stack Developer
+            </h4>
+
+            <p>
+              ABC Technologies
+            </p>
+
+            <div class="job-meta">
+
+              <span>📍 Hyderabad</span>
+
+              <span>💰 6 - 10 LPA</span>
+
+              <span>Full Time</span>
+
+            </div>
+
+          </div>
+
+          <div class="match">
+
+            <strong>94%</strong>
+
+            <small>Match</small>
+
+          </div>
+
+        </div>
+
+
+        <div class="job-item">
+
+          <div class="company-logo">
+            T
+          </div>
+
+          <div class="job-info">
+
+            <h4>
+              Angular Developer
+            </h4>
+
+            <p>
+              Tech Solutions Pvt Ltd
+            </p>
+
+            <div class="job-meta">
+
+              <span>📍 Bangalore</span>
+
+              <span>💰 5 - 9 LPA</span>
+
+              <span>Full Time</span>
+
+            </div>
+
+          </div>
+
+          <div class="match">
+
+            <strong>89%</strong>
+
+            <small>Match</small>
+
+          </div>
+
+        </div>
+
+
+        <div class="job-item">
+
+          <div class="company-logo">
+            I
+          </div>
+
+          <div class="job-info">
+
+            <h4>
+              Software Engineer
+            </h4>
+
+            <p>
+              Innovate Systems
+            </p>
+
+            <div class="job-meta">
+
+              <span>📍 Pune</span>
+
+              <span>💰 7 - 12 LPA</span>
+
+              <span>Full Time</span>
+
+            </div>
+
+          </div>
+
+          <div class="match">
+
+            <strong>86%</strong>
+
+            <small>Match</small>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- APPLICATION STATUS -->
+
+      <div class="content-card application-card">
+
+        <div class="card-header">
+
+          <div>
+
+            <h3>Application Status</h3>
+
+            <p>
+              Your recent application
+            </p>
+
+          </div>
+
+          <button
+            class="view-all"
+            (click)="openApplications()">
+
+            View All
+
+          </button>
+
+        </div>
+
+
+        <div class="application">
+
+          <div class="application-icon">
+            J
+          </div>
+
+          <div class="application-info">
+
+            <h4>
+              Java Full Stack Developer
+            </h4>
+
+            <p>
+              ABC Technologies
+            </p>
+
+          </div>
+
+          <span class="status shortlisted">
+            Shortlisted
+          </span>
+
+        </div>
+
+
+        <div class="timeline">
+
+          <div class="timeline-item completed">
+
+            <div class="dot"></div>
+
+            <div>
+
+              <strong>
+                Application Submitted
+              </strong>
+
+              <small>
+                22 Aug 2026
+              </small>
+
+            </div>
+
+          </div>
+
+
+          <div class="timeline-item completed">
+
+            <div class="dot"></div>
+
+            <div>
+
+              <strong>
+                Resume Screened
+              </strong>
+
+              <small>
+                23 Aug 2026
+              </small>
+
+            </div>
+
+          </div>
+
+
+          <div class="timeline-item completed">
+
+            <div class="dot"></div>
+
+            <div>
+
+              <strong>
+                Shortlisted
+              </strong>
+
+              <small>
+                24 Aug 2026
+              </small>
+
+            </div>
+
+          </div>
+
+
+          <div class="timeline-item">
+
+            <div class="dot"></div>
+
+            <div>
+
+              <strong>
+                Interview
+              </strong>
+
+              <small>
+                Upcoming
+              </small>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= INTERVIEW ================= -->
+
+    <section class="interview-banner">
+
+      <div class="interview-icon">
+        🎤
+      </div>
+
+      <div class="interview-details">
+
+        <span>UPCOMING INTERVIEW</span>
+
+        <h3>
+          AI-Powered Online Interview
+        </h3>
+
+        <p>
+          Java Full Stack Developer • Tomorrow at 10:30 AM
+        </p>
+
+      </div>
+
+      <button
+        class="join-btn"
+        (click)="openInterviews()">
+
+        View Interview →
+
+      </button>
+
+    </section>
+
+
+    <!-- ================= PROFILE COMPLETION ================= -->
+
+    <section class="profile-section">
+
+      <div class="profile-card">
+
+        <div class="card-header">
+
+          <div>
+
+            <h3>Complete Your Profile</h3>
+
+            <p>
+              A complete profile increases your chances of getting shortlisted.
+            </p>
+
+          </div>
+
+          <strong>75%</strong>
+
+        </div>
+
+        <div class="progress">
+
+          <div class="progress-value"></div>
+
+        </div>
+
+        <button
+          class="complete-btn"
+          (click)="openProfile()">
+
+          Complete Profile →
+
+        </button>
+
+      </div>
+
+
+      <div class="resume-card">
+
+        <div class="resume-icon">
+          📄
+        </div>
+
+        <div>
+
+          <h3>Resume</h3>
+
+          <p>
+            Your resume was last updated recently.
+          </p>
+
+          <button
+            (click)="openResume()">
+
+            Manage Resume →
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>

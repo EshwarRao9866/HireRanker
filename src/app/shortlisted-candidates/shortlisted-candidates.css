@@ -1,0 +1,76 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 40px;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #172b4d;
+}
+
+.subtitle {
+  color: #718096;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.candidate-card {
+  background: white;
+  padding: 30px;
+  text-align: center;
+  border-radius: 14px;
+  border: 1px solid #e5eaf1;
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  margin: auto;
+  border-radius: 50%;
+  background: #e5efff;
+  color: #1769e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.candidate-card h2 {
+  color: #172b4d;
+}
+
+.candidate-card p {
+  color: #718096;
+}
+
+.score {
+  color: #15945b;
+  font-size: 25px;
+}
+
+.interview {
+  margin: 20px 0;
+  color: #667085;
+}
+
+.candidate-card button {
+  background: #1769e0;
+  color: white;
+  border: none;
+  padding: 11px 18px;
+  border-radius: 7px;
+}
+
+.back-btn {
+  margin-top: 25px;
+  border: none;
+  background: none;
+  color: #1769e0;
+}

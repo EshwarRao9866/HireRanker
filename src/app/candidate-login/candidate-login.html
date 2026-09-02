@@ -1,0 +1,87 @@
+<div class="candidate-login-page">
+
+  <div class="login-card">
+
+    <!-- Logo -->
+    <div class="brand">
+      <div class="brand-icon">HR</div>
+      <span>HireRanker</span>
+    </div>
+
+    <!-- Heading -->
+    <div class="heading">
+      <h1>Candidate Login</h1>
+      <p>Login to track your applications and interviews</p>
+    </div>
+
+    <!-- Error message -->
+    <div class="error-message" *ngIf="errorMessage">
+      ⚠ {{ errorMessage }}
+    </div>
+
+    <!-- Email -->
+    <div class="form-group">
+
+      <label>Email Address</label>
+
+      <input
+        type="email"
+        [(ngModel)]="email"
+        placeholder="Enter your email"
+      />
+
+    </div>
+
+    <!-- Password -->
+    <div class="form-group">
+
+      <div class="password-label">
+        <label>Password</label>
+
+        <a href="#">Forgot Password?</a>
+      </div>
+
+      <input
+        type="password"
+        [(ngModel)]="password"
+        placeholder="Enter your password"
+      />
+
+    </div>
+
+    <!-- Login -->
+    <button
+      class="login-btn"
+      (click)="login()">
+
+      Login as Candidate
+
+    </button>
+
+    <!-- Register -->
+    <div class="register-section">
+
+      <span>Don't have a candidate account?</span>
+
+      <button
+        class="register-btn"
+        (click)="goToRegister()">
+
+        Create Candidate Account
+
+      </button>
+
+    </div>
+
+    <!-- Back -->
+    <button
+      class="back-btn"
+      (click)="goToMainLogin()">
+
+      ← Back to Login
+
+    </button>
+
+  </div>
+
+</div>

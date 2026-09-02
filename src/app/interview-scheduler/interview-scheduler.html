@@ -1,0 +1,65 @@
+<div class="page">
+
+  <header>
+    <h1>Interview Scheduler</h1>
+
+    <p>
+      Schedule and conduct AI-powered online interviews.
+    </p>
+  </header>
+
+  <div class="interview-info">
+
+    <div>
+      <span>Upcoming Interviews</span>
+      <strong>8</strong>
+    </div>
+
+    <div>
+      <span>Completed</span>
+      <strong>24</strong>
+    </div>
+
+    <div>
+      <span>AI Interviews</span>
+      <strong>18</strong>
+    </div>
+
+  </div>
+
+  <div class="card">
+
+    <h2>Upcoming Interviews</h2>
+
+    <div
+      class="interview"
+      *ngFor="let interview of interviews">
+
+      <div>
+        <strong>{{ interview.candidate }}</strong>
+
+        <p>{{ interview.job }}</p>
+      </div>
+
+      <div>
+        <strong>{{ interview.date }}</strong>
+        <p>{{ interview.time }}</p>
+      </div>
+
+      <span class="status">
+        {{ interview.status }}
+      </span>
+
+      <button (click)="startInterview()">
+        Start
+      </button>
+
+    </div>
+
+  </div>
+
+  <button class="back-btn" (click)="goBack()">
+    ← Back to Dashboard
+  </button>
+
+</div>

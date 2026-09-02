@@ -1,0 +1,50 @@
+.page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 40px;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: #172b4d;
+}
+
+.subtitle {
+  color: #718096;
+}
+
+.reports {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.report-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  border: 1px solid #e5eaf1;
+}
+
+.report-card span {
+  color: #718096;
+}
+
+.report-card strong {
+  display: block;
+  margin: 10px 0;
+  font-size: 30px;
+  color: #172b4d;
+}
+
+.report-card small {
+  color: #15945b;
+}
+
+.back-btn {
+  margin-top: 30px;
+  border: none;
+  background: none;
+  color: #1769e0;
+}

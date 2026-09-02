@@ -1,0 +1,590 @@
+<div class="dashboard-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+<aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        HR
+      </div>
+      <span>HireRanker</span>
+    </div>
+
+    <div class="menu-section">
+
+      <p class="section-title">MAIN</p>
+
+      <a class="menu-item active">
+        <span class="menu-icon">▦</span>
+        <span>Dashboard</span>
+      </a>
+
+      <p class="section-title">JOB MANAGEMENT</p>
+
+      <a class="menu-item" (click)="openSection('jobs')">
+        <span class="menu-icon">▣</span>
+        <span>Job Postings</span>
+      </a>
+
+      <a class="menu-item" (click)="openSection('applicants')">
+        <span class="menu-icon">♙</span>
+        <span>Job Applicants</span>
+      </a>
+
+      <p class="section-title">RESUME SCREENING</p>
+
+      <a class="menu-item" (click)="openSection('resume')">
+        <span class="menu-icon">▤</span>
+        <span>Resume Screening</span>
+      </a>
+
+      <a class="menu-item" (click)="openSection('criteria')">
+        <span class="menu-icon">⚙</span>
+        <span>Evaluation Criteria</span>
+      </a>
+
+      <p class="section-title">RANKING & SHORTLIST</p>
+
+      <a class="menu-item" (click)="openSection('ranking')">
+        <span class="menu-icon">☆</span>
+        <span>Candidate Ranking</span>
+      </a>
+
+      <a class="menu-item" (click)="openSection('shortlisted')">
+        <span class="menu-icon">▱</span>
+        <span>Shortlisted Candidates</span>
+      </a>
+
+      <p class="section-title">COMMUNICATION</p>
+
+      <a class="menu-item" (click)="openSection('messages')">
+        <span class="menu-icon">◌</span>
+        <span>Messages</span>
+      </a>
+
+      <a class="menu-item" (click)="openSection('interview')">
+        <span class="menu-icon">▣</span>
+        <span>Interview Scheduler</span>
+      </a>
+
+      <p class="section-title">ANALYTICS</p>
+
+      <a class="menu-item" (click)="openSection('analytics')">
+        <span class="menu-icon">▥</span>
+        <span>Reports & Analytics</span>
+      </a>
+
+      <p class="section-title">SETTINGS</p>
+
+      <a class="menu-item" (click)="openSection('settings')">
+        <span class="menu-icon">⚙</span>
+        <span>Settings</span>
+      </a>
+
+    </div>
+
+    <button class="logout-btn" (click)="logout()">
+      <span>↪</span>
+      Logout
+    </button>
+
+  </aside>
+
+
+  <!-- ================= MAIN CONTENT ================= -->
+
+  <main class="main-content">
+
+    <!-- TOP HEADER -->
+
+    <header class="top-header">
+
+      <div>
+        <h1>Dashboard</h1>
+        <p>Welcome back, Eshwar 👋</p>
+      </div>
+
+      <div class="header-right">
+
+        <div class="search-box">
+          <span>⌕</span>
+          <label for="searchInput" class="visually-hidden">.</label>
+
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search candidates, jobs..."
+            [(ngModel)]="searchText">
+        </div>
+
+        <button class="notification-btn">
+          🔔
+          <span class="notification-dot"></span>
+        </button>
+
+        <div class="profile">
+
+          <div class="profile-avatar">
+            E
+          </div>
+
+          <div class="profile-info">
+            <strong>Eshwar Gorai</strong>
+            <span>Recruiter</span>
+          </div>
+
+          <span class="dropdown">⌄</span>
+
+        </div>
+
+      </div>
+
+    </header>
+
+
+    <!-- ================= STAT CARDS ================= -->
+
+    <section class="stats-grid">
+
+      <div class="stat-card">
+
+        <div>
+          <span class="stat-title">Total Applicants</span>
+          <h2>248</h2>
+
+          <p class="positive">
+            ↑ 18.4%
+            <span>from last week</span>
+          </p>
+        </div>
+
+        <div class="stat-icon blue">
+          ♧
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div>
+          <span class="stat-title">Screened Resumes</span>
+          <h2>186</h2>
+
+          <p class="positive">
+            ↑ 12.7%
+            <span>from last week</span>
+          </p>
+        </div>
+
+        <div class="stat-icon green">
+          ▤
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div>
+          <span class="stat-title">Shortlisted Candidates</span>
+          <h2>32</h2>
+
+          <p class="positive">
+            ↑ 8.3%
+            <span>from last week</span>
+          </p>
+        </div>
+
+        <div class="stat-icon purple">
+          ☆
+        </div>
+
+      </div>
+
+
+      <div class="stat-card">
+
+        <div>
+          <span class="stat-title">Avg. Match Score</span>
+          <h2>78%</h2>
+
+          <p class="positive">
+            ↑ 5.6%
+            <span>from last week</span>
+          </p>
+        </div>
+
+        <div class="stat-icon orange">
+          ↗
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= CHARTS ================= -->
+
+    <section class="charts-grid">
+
+      <!-- Applicant Chart -->
+
+      <div class="chart-card applicant-chart">
+
+        <div class="card-header">
+          <h3>Applicants Overview</h3>
+
+          <label for="applicants-period" style="position:absolute;left:-9999px;">Applicants time range</label>
+          <select id="applicants-period" aria-label="Applicants time range">
+            <option>This Week</option>
+            <option>This Month</option>
+            <option>This Year</option>
+          </select>
+        </div>
+
+        <div class="chart">
+
+          <div class="y-axis">
+            <span>100</span>
+            <span>80</span>
+            <span>60</span>
+            <span>40</span>
+            <span>20</span>
+            <span>0</span>
+          </div>
+
+          <div class="chart-area">
+
+            <div class="grid-lines">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+
+            <svg
+              class="line-chart"
+              viewBox="0 0 700 250"
+              preserveAspectRatio="none">
+
+              <polyline
+                points="0,160 100,125 200,75 300,105 400,40 500,110 600,115 700,60"
+                fill="none"
+                stroke="#3478e5"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+              </polyline>
+
+              <polyline
+                points="0,205 100,180 200,135 300,160 400,115 500,150 600,195 700,150"
+                fill="none"
+                stroke="#4fbe8a"
+                stroke-width="4"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+              </polyline>
+
+            </svg>
+
+            <div class="x-axis">
+              <span>Mon</span>
+              <span>Tue</span>
+              <span>Wed</span>
+              <span>Thu</span>
+              <span>Fri</span>
+              <span>Sat</span>
+              <span>Sun</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="chart-legend">
+          <span>
+            <i class="legend-blue"></i>
+            Applied
+          </span>
+
+          <span>
+            <i class="legend-green"></i>
+            Screened
+          </span>
+        </div>
+
+      </div>
+
+
+      <!-- Skills -->
+
+      <div class="chart-card skills-card">
+
+        <div class="card-header">
+          <h3>Top Skills in Applications</h3>
+        </div>
+
+        <div class="skills-content">
+
+          <div class="donut skills-donut">
+            <div class="donut-center">
+              <strong>100%</strong>
+              <span>Skills</span>
+            </div>
+          </div>
+
+          <div class="skills-list">
+
+            <div>
+              <span class="skill-dot java"></span>
+              <span>Java</span>
+              <b>32%</b>
+            </div>
+
+            <div>
+              <span class="skill-dot spring"></span>
+              <span>Spring Boot</span>
+              <b>24%</b>
+            </div>
+
+            <div>
+              <span class="skill-dot sql"></span>
+              <span>SQL</span>
+              <b>18%</b>
+            </div>
+
+            <div>
+              <span class="skill-dot js"></span>
+              <span>JavaScript</span>
+              <b>12%</b>
+            </div>
+
+            <div>
+              <span class="skill-dot react"></span>
+              <span>React</span>
+              <b>8%</b>
+            </div>
+
+            <div>
+              <span class="skill-dot other"></span>
+              <span>Others</span>
+              <b>6%</b>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- Application Status -->
+
+      <div class="chart-card status-card">
+
+        <div class="card-header">
+          <h3>Application Status</h3>
+        </div>
+
+        <div class="status-content">
+
+          <div class="donut status-donut">
+
+            <div class="donut-center">
+              <strong>248</strong>
+              <span>Total</span>
+            </div>
+
+          </div>
+
+          <div class="status-list">
+
+            <div>
+              <span class="status-dot new"></span>
+              <span>New</span>
+              <b>28%</b>
+            </div>
+
+            <div>
+              <span class="status-dot screened"></span>
+              <span>Screened</span>
+              <b>50%</b>
+            </div>
+
+            <div>
+              <span class="status-dot shortlisted"></span>
+              <span>Shortlisted</span>
+              <b>13%</b>
+            </div>
+
+            <div>
+              <span class="status-dot rejected"></span>
+              <span>Rejected</span>
+              <b>9%</b>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ================= CANDIDATES TABLE ================= -->
+
+    <section class="candidates-card">
+
+      <div class="candidates-header">
+
+        <h3>Top Ranked Candidates</h3>
+
+        <button class="view-all" (click)="openSection('applicants')">
+          View All Candidates →
+        </button>
+
+      </div>
+
+
+      <div class="table-container">
+
+        <table>
+
+          <thead>
+
+            <tr>
+              <th>RANK</th>
+              <th>CANDIDATE</th>
+              <th>MATCH SCORE</th>
+              <th>SKILLS MATCH</th>
+              <th>EXPERIENCE</th>
+              <th>EDUCATION</th>
+              <th>RESUME</th>
+              <th>STATUS</th>
+              <th>ACTION</th>
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            <tr *ngFor="let candidate of candidates; let i = index">
+
+              <td>
+                <div class="rank">
+                  <span
+                    *ngIf="i < 3"
+                    class="medal">
+                    {{ i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉' }}
+                  </span>
+
+                  <span *ngIf="i >= 3">
+                    {{ i + 1 }}
+                  </span>
+                </div>
+              </td>
+
+
+              <td>
+
+                <div class="candidate">
+
+                  <div class="candidate-avatar">
+                    {{ candidate.name.charAt(0) }}
+                  </div>
+
+                  <div>
+                    <strong>{{ candidate.name }}</strong>
+                    <span>{{ candidate.email }}</span>
+                  </div>
+
+                </div>
+
+              </td>
+
+
+              <td>
+
+                <div class="match-score">
+
+                  <strong>{{ candidate.matchScore }}%</strong>
+
+                  <div class="progress">
+                    <div
+                      [style.width.%]="candidate.matchScore">
+                    </div>
+                  </div>
+
+                </div>
+
+              </td>
+
+
+              <td>
+                <strong>{{ candidate.skills }}%</strong>
+              </td>
+
+
+              <td>
+                {{ candidate.experience }} yrs
+              </td>
+
+
+              <td>
+                {{ candidate.education }}%
+              </td>
+
+
+              <td>
+                <button class="resume-btn">
+                  PDF
+                </button>
+              </td>
+
+
+              <td>
+
+                <span
+                  class="status-badge"
+                  [class.shortlisted]="candidate.status === 'Shortlisted'"
+                  [class.review]="candidate.status === 'Under Review'">
+
+                  {{ candidate.status }}
+
+                </span>
+
+              </td>
+
+
+              <td>
+
+                <div class="action-buttons">
+
+                  <button title="View">
+                    ◉
+                  </button>
+
+                  <button title="More">
+                    ⋮
+                  </button>
+
+                </div>
+
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
+</div>
