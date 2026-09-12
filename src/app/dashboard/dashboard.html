@@ -1,590 +1,630 @@
-<div class="dashboard-layout">
+<div class="admin-layout">
 
   <!-- ================= SIDEBAR ================= -->
-<aside class="sidebar">
-    <div class="brand">
-      <div class="brand-icon">
-        HR
+  <aside class="admin-sidebar">
+    <div class="brand" (click)="openSection('dashboard')">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#818cf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
-      <span>HireRanker</span>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Recruiter SaaS</span>
+      </div>
     </div>
 
-    <div class="menu-section">
+    <!-- Navigation Menu -->
+    <nav class="nav-menu">
+      <button class="menu-item active" (click)="openSection('dashboard')">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
 
-      <p class="section-title">MAIN</p>
+      <button class="menu-item" (click)="openSection('jobs')">
+        <span class="icon">💼</span>
+        <span class="label">Job Postings</span>
+      </button>
 
-      <a class="menu-item active">
-        <span class="menu-icon">▦</span>
-        <span>Dashboard</span>
-      </a>
+      <button class="menu-item" (click)="openSection('applicants')">
+        <span class="icon">👥</span>
+        <span class="label">Job Applicants</span>
+      </button>
 
-      <p class="section-title">JOB MANAGEMENT</p>
+      <button class="menu-item" (click)="openSection('resume')">
+        <span class="icon">📄</span>
+        <span class="label">Resume Screening</span>
+      </button>
 
-      <a class="menu-item" (click)="openSection('jobs')">
-        <span class="menu-icon">▣</span>
-        <span>Job Postings</span>
-      </a>
+      <button class="menu-item" (click)="openSection('criteria')">
+        <span class="icon">⚙️</span>
+        <span class="label">Evaluation Criteria</span>
+      </button>
 
-      <a class="menu-item" (click)="openSection('applicants')">
-        <span class="menu-icon">♙</span>
-        <span>Job Applicants</span>
-      </a>
+      <button class="menu-item" (click)="openSection('ranking')">
+        <span class="icon">🏆</span>
+        <span class="label">Candidate Ranking</span>
+      </button>
 
-      <p class="section-title">RESUME SCREENING</p>
+      <button class="menu-item" (click)="openSection('shortlisted')">
+        <span class="icon">⭐</span>
+        <span class="label">Shortlisted</span>
+      </button>
 
-      <a class="menu-item" (click)="openSection('resume')">
-        <span class="menu-icon">▤</span>
-        <span>Resume Screening</span>
-      </a>
+      <button class="menu-item" (click)="openSection('messages')">
+        <span class="icon">💬</span>
+        <span class="label">Messages</span>
+      </button>
 
-      <a class="menu-item" (click)="openSection('criteria')">
-        <span class="menu-icon">⚙</span>
-        <span>Evaluation Criteria</span>
-      </a>
+      <button class="menu-item" (click)="openSection('interview')">
+        <span class="icon">📅</span>
+        <span class="label">Interview Scheduler</span>
+      </button>
 
-      <p class="section-title">RANKING & SHORTLIST</p>
+      <button class="menu-item" (click)="openSection('analytics')">
+        <span class="icon">📊</span>
+        <span class="label">Reports & Analytics</span>
+      </button>
 
-      <a class="menu-item" (click)="openSection('ranking')">
-        <span class="menu-icon">☆</span>
-        <span>Candidate Ranking</span>
-      </a>
+      <button class="menu-item" (click)="openSection('settings')">
+        <span class="icon">🛠️</span>
+        <span class="label">Settings</span>
+      </button>
 
-      <a class="menu-item" (click)="openSection('shortlisted')">
-        <span class="menu-icon">▱</span>
-        <span>Shortlisted Candidates</span>
-      </a>
+      <button class="menu-item ai-admin-menu-item" (click)="openAiAssistant()">
+        <span class="icon">🤖</span>
+        <span class="label">AI Recruiter</span>
+        <span class="ai-badge-tag">AI</span>
+      </button>
+    </nav>
 
-      <p class="section-title">COMMUNICATION</p>
-
-      <a class="menu-item" (click)="openSection('messages')">
-        <span class="menu-icon">◌</span>
-        <span>Messages</span>
-      </a>
-
-      <a class="menu-item" (click)="openSection('interview')">
-        <span class="menu-icon">▣</span>
-        <span>Interview Scheduler</span>
-      </a>
-
-      <p class="section-title">ANALYTICS</p>
-
-      <a class="menu-item" (click)="openSection('analytics')">
-        <span class="menu-icon">▥</span>
-        <span>Reports & Analytics</span>
-      </a>
-
-      <p class="section-title">SETTINGS</p>
-
-      <a class="menu-item" (click)="openSection('settings')">
-        <span class="menu-icon">⚙</span>
-        <span>Settings</span>
-      </a>
-
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
     </div>
-
-    <button class="logout-btn" (click)="logout()">
-      <span>↪</span>
-      Logout
-    </button>
-
   </aside>
 
-
   <!-- ================= MAIN CONTENT ================= -->
-
-  <main class="main-content">
-
-    <!-- TOP HEADER -->
-
-    <header class="top-header">
-
-      <div>
-        <h1>Dashboard</h1>
-        <p>Welcome back, Eshwar 👋</p>
+  <main class="admin-main">
+    <header class="admin-topbar">
+      <div class="page-title">
+        <h1>Recruiter Command Center</h1>
+        <p>Real-time AI resume screening, pipeline analytics, and candidate ranking metrics.</p>
       </div>
 
-      <div class="header-right">
-
-        <div class="search-box">
-          <span>⌕</span>
-          <label for="searchInput" class="visually-hidden">.</label>
-
-          <input
-            id="searchInput"
-            type="text"
-            placeholder="Search candidates, jobs..."
-            [(ngModel)]="searchText">
-        </div>
-
-        <button class="notification-btn">
-          🔔
-          <span class="notification-dot"></span>
+      <div class="top-actions">
+        <button class="btn btn-create" (click)="createJob()">
+          + Create Job
         </button>
 
-        <div class="profile">
+        <button class="btn btn-screen" (click)="openSection('resume')">
+          ⚡ Screen Resumes
+        </button>
 
-          <div class="profile-avatar">
-            E
-          </div>
+        <!-- Recruiter Notification Center -->
+        <div class="notification-wrapper">
+          <button class="notification-btn" (click)="toggleNotificationDropdown($event)" title="Notifications & Candidate Applications">
+            <span class="bell-icon">🔔</span>
+            @if (unreadNotificationsCount > 0) {
+              <span class="unread-badge">{{ unreadNotificationsCount }}</span>
+              <span class="pulse-dot"></span>
+            }
+          </button>
 
-          <div class="profile-info">
-            <strong>Eshwar Gorai</strong>
-            <span>Recruiter</span>
-          </div>
+          @if (showNotificationsDropdown) {
+            <div class="notification-dropdown" (click)="$event.stopPropagation()">
+              <div class="notif-header">
+                <div class="notif-header-left">
+                  <h4>Recruiter Alerts</h4>
+                  <span class="notif-count-pill">{{ unreadNotificationsCount }} new</span>
+                </div>
+                <div class="notif-header-actions">
+                  @if (unreadNotificationsCount > 0) {
+                    <button class="notif-text-btn" (click)="markAllAsRead()">Mark all as read</button>
+                  }
+                  @if (notifications.length > 0) {
+                    <button class="notif-text-btn text-muted" (click)="clearAllNotifications()">Clear</button>
+                  }
+                </div>
+              </div>
 
-          <span class="dropdown">⌄</span>
-
+              <div class="notif-list">
+                @if (notifications.length === 0) {
+                  <div class="notif-empty">
+                    <span class="empty-icon">🎉</span>
+                    <p>No new notifications right now</p>
+                    <small>Candidate applications and alerts will appear here in real time.</small>
+                  </div>
+                } @else {
+                  @for (notif of notifications; track (notif.id + '_' + $index)) {
+                    <div class="notif-item" [class.unread]="!notif.read" (click)="handleNotificationClick(notif)">
+                      <div class="notif-icon-bubble" [class.bubble-app]="notif.type === 'application'" [class.bubble-job]="notif.type === 'job'">
+                        @if (notif.type === 'application') {
+                          👤
+                        } @else {
+                          💼
+                        }
+                      </div>
+                      <div class="notif-content">
+                        <div class="notif-top-line">
+                          <span class="notif-title">{{ notif.title }}</span>
+                          <span class="notif-time">{{ notif.timestamp }}</span>
+                        </div>
+                        <p class="notif-msg">{{ notif.message }}</p>
+                        <div class="notif-actions">
+                          <span class="notif-link-btn">Review in Applicants →</span>
+                          @if (!notif.read) {
+                            <button class="btn-check-read" (click)="markOneAsRead(notif.id, $event)" title="Mark as read">✓ Mark read</button>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
         </div>
 
-      </div>
+        <div class="backend-status-pill" [class.connected]="backendLive" [class.offline]="!backendLive" [title]="backendLive ? 'Spring Boot REST API is connected' : 'Running in Offline / Local Storage mode'">
+          <span class="status-dot"></span>
+          <span>{{ backendLive ? 'API Connected' : 'Local Storage' }}</span>
+        </div>
 
+        <div class="admin-pill" (click)="openSection('settings')">
+          @if (adminAvatar) {
+            <img [src]="adminAvatar" alt="Admin Avatar" class="admin-avatar-img" />
+          } @else {
+            <div class="admin-avatar">{{ adminName.charAt(0).toUpperCase() || 'A' }}</div>
+          }
+          <div class="admin-meta">
+            <strong>{{ adminName }}</strong>
+            <small>Administrator</small>
+          </div>
+        </div>
+      </div>
     </header>
 
+    <div class="admin-scrollable">
 
-    <!-- ================= STAT CARDS ================= -->
-
-    <section class="stats-grid">
-
-      <div class="stat-card">
-
-        <div>
-          <span class="stat-title">Total Applicants</span>
-          <h2>248</h2>
-
-          <p class="positive">
-            ↑ 18.4%
-            <span>from last week</span>
-          </p>
+      <!-- 3D STATS ROW -->
+      <section class="stats-row">
+        <div class="stat-3d-card" (click)="openSection('applicants')">
+          <div class="stat-header">
+            <span class="label">Total Applicants</span>
+            <div class="stat-icon icon-blue">👥</div>
+          </div>
+          <strong class="value">{{ stats.totalApplicants }}</strong>
+          <div class="stat-footer">
+            <span class="trend-up">↑ 18.4%</span>
+            <small>vs last month</small>
+          </div>
         </div>
 
-        <div class="stat-icon blue">
-          ♧
+        <div class="stat-3d-card" (click)="openSection('resume')">
+          <div class="stat-header">
+            <span class="label">AI Screened Resumes</span>
+            <div class="stat-icon icon-purple">📄</div>
+          </div>
+          <strong class="value">{{ stats.screenedResumes }}</strong>
+          <div class="stat-footer">
+            <span class="trend-up">↑ 12.7%</span>
+            <small>75% automation rate</small>
+          </div>
         </div>
 
-      </div>
-
-
-      <div class="stat-card">
-
-        <div>
-          <span class="stat-title">Screened Resumes</span>
-          <h2>186</h2>
-
-          <p class="positive">
-            ↑ 12.7%
-            <span>from last week</span>
-          </p>
+        <div class="stat-3d-card" (click)="openSection('shortlisted')">
+          <div class="stat-header">
+            <span class="label">Shortlisted Candidates</span>
+            <div class="stat-icon icon-green">⭐</div>
+          </div>
+          <strong class="value">{{ stats.shortlisted }}</strong>
+          <div class="stat-footer">
+            <span class="trend-up">↑ 8.3%</span>
+            <small>Top percentile</small>
+          </div>
         </div>
 
-        <div class="stat-icon green">
-          ▤
+        <div class="stat-3d-card" (click)="openSection('interview')">
+          <div class="stat-header">
+            <span class="label">Interviews Scheduled</span>
+            <div class="stat-icon icon-orange">📅</div>
+          </div>
+          <strong class="value">{{ stats.interviewsScheduled }}</strong>
+          <div class="stat-footer">
+            <span class="trend-highlight">8 This Week</span>
+            <small>AI & Live rounds</small>
+          </div>
         </div>
+      </section>
 
-      </div>
+      <!-- ================= APPLICATION GRAPHS SECTION ================= -->
+      <section class="charts-grid">
 
-
-      <div class="stat-card">
-
-        <div>
-          <span class="stat-title">Shortlisted Candidates</span>
-          <h2>32</h2>
-
-          <p class="positive">
-            ↑ 8.3%
-            <span>from last week</span>
-          </p>
-        </div>
-
-        <div class="stat-icon purple">
-          ☆
-        </div>
-
-      </div>
-
-
-      <div class="stat-card">
-
-        <div>
-          <span class="stat-title">Avg. Match Score</span>
-          <h2>78%</h2>
-
-          <p class="positive">
-            ↑ 5.6%
-            <span>from last week</span>
-          </p>
-        </div>
-
-        <div class="stat-icon orange">
-          ↗
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- ================= CHARTS ================= -->
-
-    <section class="charts-grid">
-
-      <!-- Applicant Chart -->
-
-      <div class="chart-card applicant-chart">
-
-        <div class="card-header">
-          <h3>Applicants Overview</h3>
-
-          <label for="applicants-period" style="position:absolute;left:-9999px;">Applicants time range</label>
-          <select id="applicants-period" aria-label="Applicants time range">
-            <option>This Week</option>
-            <option>This Month</option>
-            <option>This Year</option>
-          </select>
-        </div>
-
-        <div class="chart">
-
-          <div class="y-axis">
-            <span>100</span>
-            <span>80</span>
-            <span>60</span>
-            <span>40</span>
-            <span>20</span>
-            <span>0</span>
+        <!-- 1. Applicants Overview Line Chart -->
+        <div class="content-card chart-card applicant-chart">
+          <div class="card-toolbar">
+            <div>
+              <h3>Applicants & Screening Velocity</h3>
+              <p>Comparison between submitted applications vs AI-screened profiles</p>
+            </div>
+            <select [(ngModel)]="selectedPeriod" class="period-select">
+              <option value="This Week">This Week</option>
+              <option value="This Month">This Month</option>
+              <option value="This Year">This Year</option>
+            </select>
           </div>
 
-          <div class="chart-area">
-
-            <div class="grid-lines">
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
-              <span></span>
+          <div class="chart-wrapper">
+            <div class="y-axis">
+              <span>100</span>
+              <span>80</span>
+              <span>60</span>
+              <span>40</span>
+              <span>20</span>
+              <span>0</span>
             </div>
 
-            <svg
-              class="line-chart"
-              viewBox="0 0 700 250"
-              preserveAspectRatio="none">
+            <div class="chart-canvas-area">
+              <div class="grid-lines">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
 
-              <polyline
-                points="0,160 100,125 200,75 300,105 400,40 500,110 600,115 700,60"
-                fill="none"
-                stroke="#3478e5"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round">
-              </polyline>
+              <svg class="line-chart-svg" viewBox="0 0 700 220" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="appliedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.25" />
+                    <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="screenedGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#10b981" stop-opacity="0.2" />
+                    <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
+                  </linearGradient>
+                </defs>
 
-              <polyline
-                points="0,205 100,180 200,135 300,160 400,115 500,150 600,195 700,150"
-                fill="none"
-                stroke="#4fbe8a"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round">
-              </polyline>
+                <!-- Applied Area & Line -->
+                <polygon
+                  points="0,220 0,140 100,110 200,65 300,90 400,35 500,95 600,100 700,50 700,220"
+                  fill="url(#appliedGrad)"
+                />
+                <polyline
+                  points="0,140 100,110 200,65 300,90 400,35 500,95 600,100 700,50"
+                  fill="none"
+                  stroke="#4f46e5"
+                  stroke-width="3.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
 
-            </svg>
+                <!-- Screened Area & Line -->
+                <polygon
+                  points="0,220 0,180 100,160 200,120 300,140 400,100 500,130 600,170 700,130 700,220"
+                  fill="url(#screenedGrad)"
+                />
+                <polyline
+                  points="0,180 100,160 200,120 300,140 400,100 500,130 600,170 700,130"
+                  fill="none"
+                  stroke="#10b981"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
 
-            <div class="x-axis">
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
-              <span>Sun</span>
-            </div>
-
-          </div>
-
-        </div>
-
-        <div class="chart-legend">
-          <span>
-            <i class="legend-blue"></i>
-            Applied
-          </span>
-
-          <span>
-            <i class="legend-green"></i>
-            Screened
-          </span>
-        </div>
-
-      </div>
-
-
-      <!-- Skills -->
-
-      <div class="chart-card skills-card">
-
-        <div class="card-header">
-          <h3>Top Skills in Applications</h3>
-        </div>
-
-        <div class="skills-content">
-
-          <div class="donut skills-donut">
-            <div class="donut-center">
-              <strong>100%</strong>
-              <span>Skills</span>
+              <div class="x-axis">
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+                <span>Sun</span>
+              </div>
             </div>
           </div>
 
-          <div class="skills-list">
-
-            <div>
-              <span class="skill-dot java"></span>
-              <span>Java</span>
-              <b>32%</b>
-            </div>
-
-            <div>
-              <span class="skill-dot spring"></span>
-              <span>Spring Boot</span>
-              <b>24%</b>
-            </div>
-
-            <div>
-              <span class="skill-dot sql"></span>
-              <span>SQL</span>
-              <b>18%</b>
-            </div>
-
-            <div>
-              <span class="skill-dot js"></span>
-              <span>JavaScript</span>
-              <b>12%</b>
-            </div>
-
-            <div>
-              <span class="skill-dot react"></span>
-              <span>React</span>
-              <b>8%</b>
-            </div>
-
-            <div>
-              <span class="skill-dot other"></span>
-              <span>Others</span>
-              <b>6%</b>
-            </div>
-
+          <div class="chart-legend">
+            <span class="legend-item">
+              <i class="legend-dot dot-applied"></i>
+              Applications Submitted (Total: 248)
+            </span>
+            <span class="legend-item">
+              <i class="legend-dot dot-screened"></i>
+              AI Screened Resumes (Total: 186)
+            </span>
           </div>
-
         </div>
 
-      </div>
-
-
-      <!-- Application Status -->
-
-      <div class="chart-card status-card">
-
-        <div class="card-header">
-          <h3>Application Status</h3>
-        </div>
-
-        <div class="status-content">
-
-          <div class="donut status-donut">
-
-            <div class="donut-center">
-              <strong>248</strong>
-              <span>Total</span>
+        <!-- 2. Top Skills in Applications Donut Card -->
+        <div class="content-card skills-donut-card">
+          <div class="card-toolbar">
+            <div>
+              <h3>Top Skills in Applications</h3>
+              <p>Key technologies in resumes</p>
             </div>
-
           </div>
 
-          <div class="status-list">
-
-            <div>
-              <span class="status-dot new"></span>
-              <span>New</span>
-              <b>28%</b>
+          <div class="donut-content">
+            <div class="donut-graphic skills-donut">
+              <div class="donut-inner">
+                <strong>100%</strong>
+                <small>Skills</small>
+              </div>
             </div>
 
-            <div>
-              <span class="status-dot screened"></span>
-              <span>Screened</span>
-              <b>50%</b>
-            </div>
-
-            <div>
-              <span class="status-dot shortlisted"></span>
-              <span>Shortlisted</span>
-              <b>13%</b>
-            </div>
-
-            <div>
-              <span class="status-dot rejected"></span>
-              <span>Rejected</span>
-              <b>9%</b>
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- ================= CANDIDATES TABLE ================= -->
-
-    <section class="candidates-card">
-
-      <div class="candidates-header">
-
-        <h3>Top Ranked Candidates</h3>
-
-        <button class="view-all" (click)="openSection('applicants')">
-          View All Candidates →
-        </button>
-
-      </div>
-
-
-      <div class="table-container">
-
-        <table>
-
-          <thead>
-
-            <tr>
-              <th>RANK</th>
-              <th>CANDIDATE</th>
-              <th>MATCH SCORE</th>
-              <th>SKILLS MATCH</th>
-              <th>EXPERIENCE</th>
-              <th>EDUCATION</th>
-              <th>RESUME</th>
-              <th>STATUS</th>
-              <th>ACTION</th>
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            <tr *ngFor="let candidate of candidates; let i = index">
-
-              <td>
-                <div class="rank">
-                  <span
-                    *ngIf="i < 3"
-                    class="medal">
-                    {{ i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉' }}
-                  </span>
-
-                  <span *ngIf="i >= 3">
-                    {{ i + 1 }}
-                  </span>
+            <div class="skills-metrics-list">
+              @for (s of topSkills; track s.name) {
+                <div class="skill-stat-row">
+                  <span class="skill-dot" [class]="s.class"></span>
+                  <span class="skill-name">{{ s.name }}</span>
+                  <strong class="skill-val">{{ s.percent }}%</strong>
                 </div>
-              </td>
+              }
+            </div>
+          </div>
+        </div>
 
+        <!-- 3. Application Pipeline Status Donut Card -->
+        <div class="content-card status-donut-card">
+          <div class="card-toolbar">
+            <div>
+              <h3>Application Status</h3>
+              <p>Pipeline breakdown</p>
+            </div>
+          </div>
 
-              <td>
+          <div class="donut-content">
+            <div class="donut-graphic status-donut">
+              <div class="donut-inner">
+                <strong>248</strong>
+                <small>Total Apps</small>
+              </div>
+            </div>
 
-                <div class="candidate">
+            <div class="skills-metrics-list">
+              @for (st of statusBreakdown; track st.label) {
+                <div class="skill-stat-row">
+                  <span class="status-dot" [class]="st.class"></span>
+                  <span class="skill-name">{{ st.label }} ({{ st.count }})</span>
+                  <strong class="skill-val">{{ st.percent }}%</strong>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
 
-                  <div class="candidate-avatar">
-                    {{ candidate.name.charAt(0) }}
-                  </div>
+      </section>
 
-                  <div>
-                    <strong>{{ candidate.name }}</strong>
-                    <span>{{ candidate.email }}</span>
-                  </div>
+      <!-- ================= TOP LISTED CANDIDATES SPOTLIGHT ================= -->
+      <section class="top-spotlight-section">
+        <div class="spotlight-header">
+          <div>
+            <div class="spotlight-badge">⭐ AI MATCH SPOTLIGHT</div>
+            <h2>Top Listed Candidates</h2>
+            <p>Highest-scoring applicants recommended for immediate interview scheduling.</p>
+          </div>
+          <button class="btn btn-view-ranking" (click)="openSection('ranking')">
+            View Full Leaderboard 🏆 →
+          </button>
+        </div>
 
+        <div class="top-cards-grid">
+          @for (tc of topThreeCandidates; track (tc.id + '_' + $index); let i = $index) {
+            <div class="top-candidate-card" [class.rank-gold]="i === 0" [class.rank-silver]="i === 1" [class.rank-bronze]="i === 2">
+              <div class="top-card-rank">
+                @if (i === 0) { 🥇 1st Place • Top Match }
+                @else if (i === 1) { 🥈 2nd Place • Shortlisted }
+                @else { 🥉 3rd Place • Qualified }
+              </div>
+
+              <div class="top-card-body">
+                <div class="top-avatar" [class.gold-avatar]="i === 0">{{ tc.name.charAt(0) }}</div>
+                
+                <div class="top-details">
+                  <h3>{{ tc.name }}</h3>
+                  <p class="role-title">{{ tc.appliedRole }}</p>
+                  <small class="email-sub">{{ tc.email }}</small>
                 </div>
 
-              </td>
-
-
-              <td>
-
-                <div class="match-score">
-
-                  <strong>{{ candidate.matchScore }}%</strong>
-
-                  <div class="progress">
-                    <div
-                      [style.width.%]="candidate.matchScore">
-                    </div>
-                  </div>
-
+                <div class="match-score-badge">
+                  <span class="score-percent">{{ tc.matchScore }}%</span>
+                  <span class="score-sub">AI Match</span>
                 </div>
+              </div>
 
-              </td>
+              <div class="top-metrics-row">
+                <div class="metric-box">
+                  <span class="metric-lbl">Skills Match</span>
+                  <strong>{{ tc.skills }}%</strong>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-lbl">Experience</span>
+                  <strong>{{ tc.experience }}</strong>
+                </div>
+                <div class="metric-box">
+                  <span class="metric-lbl">Education</span>
+                  <strong>{{ tc.education }}%</strong>
+                </div>
+              </div>
 
-
-              <td>
-                <strong>{{ candidate.skills }}%</strong>
-              </td>
-
-
-              <td>
-                {{ candidate.experience }} yrs
-              </td>
-
-
-              <td>
-                {{ candidate.education }}%
-              </td>
-
-
-              <td>
-                <button class="resume-btn">
-                  PDF
+              <div class="top-card-footer">
+                <button class="btn-card-resume" (click)="viewResume(tc)">
+                  📄 View Resume
                 </button>
-              </td>
+                <button class="btn-card-schedule" (click)="scheduleInterview(tc)">
+                  📅 Schedule Interview
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
 
+      <!-- CANDIDATE PIPELINE TABLE CARD -->
+      <section class="content-card">
+        <div class="card-toolbar">
+          <div>
+            <h3>Candidate Assessment Leaderboard</h3>
+            <p>Ranked according to AI match score, technical skills, and job compatibility.</p>
+          </div>
 
-              <td>
+          <div class="toolbar-actions">
+            <!-- Filter Tabs -->
+            <div class="tab-pill-group">
+              <button
+                class="tab-pill"
+                [class.active]="selectedCandidateTab === 'all'"
+                (click)="setCandidateTab('all')"
+              >
+                All Applicants ({{ candidates.length }})
+              </button>
+              <button
+                class="tab-pill"
+                [class.active]="selectedCandidateTab === 'topListed'"
+                (click)="setCandidateTab('topListed')"
+              >
+                ⭐ Top Listed Only
+              </button>
+            </div>
 
-                <span
-                  class="status-badge"
-                  [class.shortlisted]="candidate.status === 'Shortlisted'"
-                  [class.review]="candidate.status === 'Under Review'">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input
+                type="text"
+                [(ngModel)]="searchText"
+                placeholder="Search candidates or roles..."
+              />
+            </div>
 
-                  {{ candidate.status }}
+            <select [(ngModel)]="selectedStatusFilter" class="status-select">
+              <option value="All">All Statuses</option>
+              <option value="Shortlisted">Shortlisted</option>
+              <option value="Interview Scheduled">Interview Scheduled</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
 
-                </span>
+        <div class="table-container">
+          <table class="saas-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Candidate</th>
+                <th>Applied Role</th>
+                <th>Overall Match</th>
+                <th>Skills Match</th>
+                <th>Experience</th>
+                <th>Education</th>
+                <th>Resume</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of filteredCandidates; track (c.id + '_' + $index); let i = $index) {
+                <tr>
+                  <td>
+                    <div class="rank-indicator" [class.gold-rank]="i === 0" [class.silver-rank]="i === 1" [class.bronze-rank]="i === 2">
+                      @if (i === 0) { 🥇 #1 }
+                      @else if (i === 1) { 🥈 #2 }
+                      @else if (i === 2) { 🥉 #3 }
+                      @else { #{{ i + 1 }} }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="candidate-cell">
+                      <div class="avatar-cell">{{ c.name.charAt(0) }}</div>
+                      <div>
+                        <strong>{{ c.name }}</strong>
+                        <small>{{ c.email }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ c.appliedRole }}</td>
+                  <td>
+                    <div class="score-pill-wrap">
+                      <span class="score-badge-high">{{ c.matchScore }}%</span>
+                      <div class="mini-bar">
+                        <div class="mini-bar-fill" [style.width.%]="c.matchScore"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td><strong>{{ c.skills }}%</strong></td>
+                  <td>{{ c.experience }}</td>
+                  <td>{{ c.education }}%</td>
+                  <td>
+                    <button class="resume-btn" (click)="viewResume(c)" title="View Resume">
+                      📄 PDF
+                    </button>
+                  </td>
+                  <td>
+                    @if (c.status === 'Shortlisted') {
+                      <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                    } @else if (c.status === 'Interview Scheduled') {
+                      <span class="status-badge badge-purple">🎤 Scheduled</span>
+                    } @else if (c.status === 'Under Review') {
+                      <span class="status-badge badge-blue">⏳ In Review</span>
+                    } @else {
+                      <span class="status-badge badge-rose">✕ Rejected</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="table-actions">
+                      <button class="btn-sm btn-primary-sm" (click)="shortlistCandidate(c)" title="Shortlist Candidate">
+                        ⭐ Shortlist
+                      </button>
+                      <button class="btn-sm btn-outline-sm" (click)="scheduleInterview(c)" title="Schedule Interview">
+                        📅 Schedule
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-              </td>
+      <!-- QUICK SHORTCUTS ROW -->
+      <section class="shortcuts-row">
+        <div class="shortcut-card" (click)="openSection('ranking')">
+          <div class="shortcut-icon">🏆</div>
+          <div>
+            <h4>AI Ranking Board</h4>
+            <p>View podium rankings with weighted skill metrics</p>
+          </div>
+          <span class="arrow">→</span>
+        </div>
 
+        <div class="shortcut-card" (click)="openSection('criteria')">
+          <div class="shortcut-icon">⚙️</div>
+          <div>
+            <h4>Evaluation Weights</h4>
+            <p>Tune skill vs experience percentage distribution</p>
+          </div>
+          <span class="arrow">→</span>
+        </div>
 
-              <td>
+        <div class="shortcut-card" (click)="openSection('analytics')">
+          <div class="shortcut-icon">📊</div>
+          <div>
+            <h4>Recruitment Reports</h4>
+            <p>Hiring funnel conversion and source analytics</p>
+          </div>
+          <span class="arrow">→</span>
+        </div>
+      </section>
 
-                <div class="action-buttons">
-
-                  <button title="View">
-                    ◉
-                  </button>
-
-                  <button title="More">
-                    ⋮
-                  </button>
-
-                </div>
-
-              </td>
-
-            </tr>
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
+    </div>
   </main>
 
 </div>

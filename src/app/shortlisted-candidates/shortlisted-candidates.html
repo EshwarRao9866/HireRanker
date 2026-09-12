@@ -1,43 +1,67 @@
-<div class="page">
+<div class="page-container">
 
-  <h1>Shortlisted Candidates</h1>
-
-  <p class="subtitle">
-    Candidates selected for the next stage of recruitment.
-  </p>
-
-  <div class="cards">
-
-    <div
-      class="candidate-card"
-      *ngFor="let candidate of candidates">
-
-      <div class="avatar">
-        {{ candidate.name.charAt(0) }}
-      </div>
-
-      <h2>{{ candidate.name }}</h2>
-
-      <p>AI Match Score</p>
-
-      <strong class="score">
-        {{ candidate.score }}%
-      </strong>
-
-      <div class="interview">
-        Interview: {{ candidate.interview }}
-      </div>
-
-      <button>
-        Schedule Interview
-      </button>
-
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Shortlisted Talent Pool</h1>
+      <p>Qualified candidates approved for interview scheduling and recruiter outreach.</p>
     </div>
+  </header>
 
+  <!-- CANDIDATE CARDS GRID -->
+  <div class="shortlisted-grid">
+    @for (c of candidates; track (c.id + '_' + $index)) {
+      <div class="candidate-3d-card">
+        
+        <div class="card-head-row">
+          <div class="avatar">{{ c.name.charAt(0) }}</div>
+          <div class="cand-meta">
+            <h3>{{ c.name }}</h3>
+            <p class="role-text">{{ c.appliedRole }}</p>
+            <small class="email-text">✉ {{ c.email }}</small>
+          </div>
+          <div class="score-badge">
+            <strong>{{ c.matchScore }}%</strong>
+            <small>AI Match</small>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <span>💼 {{ c.experience }}</span>
+          <span>📄 {{ c.resumeFileName }}</span>
+        </div>
+
+        <div class="skills-chips">
+          @for (skill of c.skills; track skill) {
+            <span class="skill-tag">{{ skill }}</span>
+          }
+        </div>
+
+        <div class="interview-status-row">
+          <span class="status-label">Interview Status:</span>
+          @if (c.interviewStatus === 'Scheduled') {
+            <span class="status-badge badge-purple">🎤 Scheduled</span>
+          } @else {
+            <span class="status-badge badge-amber">⏳ Pending Schedule</span>
+          }
+        </div>
+
+        <div class="card-action-buttons">
+          <button class="btn btn-contact" (click)="contactCandidate(c)">
+            💬 Message
+          </button>
+
+          <button class="btn btn-schedule" (click)="scheduleInterview(c)">
+            📅 Schedule Interview
+          </button>
+
+          <button class="btn-remove" (click)="removeFromShortlist(c.id)" title="Remove from shortlist">
+            ×
+          </button>
+        </div>
+
+      </div>
+    }
   </div>
-
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
 
 </div>

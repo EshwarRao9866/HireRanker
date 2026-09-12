@@ -1,1 +1,232 @@
-<p>my-applications works!</p>
+<div class="candidate-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand" (click)="goDashboard()">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Candidate Portal</span>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button class="menu-item" (click)="goDashboard()">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
+
+      <button class="menu-item" (click)="openJobs()">
+        <span class="icon">💼</span>
+        <span class="label">Find Jobs</span>
+      </button>
+
+      <button class="menu-item" (click)="openResume()">
+        <span class="icon">📄</span>
+        <span class="label">My Resume</span>
+      </button>
+
+      <button class="menu-item active">
+        <span class="icon">📋</span>
+        <span class="label">My Applications</span>
+      </button>
+
+      <button class="menu-item" (click)="openInterviews()">
+        <span class="icon">🎤</span>
+        <span class="label">Interviews</span>
+      </button>
+
+      <button class="menu-item" (click)="openProfile()">
+        <span class="icon">👤</span>
+        <span class="label">My Profile</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="page-title">
+        <h1>My Applications</h1>
+        <p>Track the real-time status of your job submissions and recruiter responses.</p>
+      </div>
+    </header>
+
+    <div class="content-scrollable">
+
+      <!-- FILTER TABS -->
+      <div class="tabs-row">
+        <button class="tab-btn" [class.active]="activeFilter === 'ALL'" (click)="setFilter('ALL')">
+          All ({{ applications.length }})
+        </button>
+        <button class="tab-btn" [class.active]="activeFilter === 'SHORTLISTED'" (click)="setFilter('SHORTLISTED')">
+          ⭐ Shortlisted (1)
+        </button>
+        <button class="tab-btn" [class.active]="activeFilter === 'INTERVIEW'" (click)="setFilter('INTERVIEW')">
+          🎤 Interview (1)
+        </button>
+        <button class="tab-btn" [class.active]="activeFilter === 'REVIEW'" (click)="setFilter('REVIEW')">
+          ⏳ In Review (3)
+        </button>
+      </div>
+
+      <!-- APPLICATIONS TABLE CARD -->
+      <div class="content-card">
+        <div class="table-responsive">
+          <table class="saas-table">
+            <thead>
+              <tr>
+                <th>Job Title & Company</th>
+                <th>Location</th>
+                <th>Applied Date</th>
+                <th>AI Match</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (app of filteredApplications; track (app.id + '_' + $index)) {
+                <tr>
+                  <td>
+                    <div class="job-col">
+                      <div class="app-badge">{{ app.company.charAt(0) }}</div>
+                      <div>
+                        <strong>{{ app.jobTitle }}</strong>
+                        <small>{{ app.company }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>📍 {{ app.location }}</td>
+                  <td>{{ app.appliedDate }}</td>
+                  <td>
+                    <span class="match-tag" [class.high-match]="app.matchScore >= 85">
+                      {{ app.matchScore }}% Match
+                    </span>
+                  </td>
+                  <td>
+                    @if (app.status === 'Shortlisted') {
+                      <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                    } @else if (app.status === 'Interview Scheduled') {
+                      <span class="status-badge badge-purple">🎤 Interview Scheduled</span>
+                    } @else if (app.status === 'Under Review') {
+                      <span class="status-badge badge-blue">⏳ Under Review</span>
+                    } @else {
+                      <span class="status-badge badge-amber">📨 Sent</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="action-btns">
+                      <button class="btn-action-view" (click)="viewDetails(app)">View</button>
+                      <button class="btn-action-withdraw" (click)="withdrawApplication(app)" title="Withdraw">×</button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= JOB APPLICATION DETAILS MODAL ================= -->
+  @if (showDetailsModal && selectedApp) {
+    <div class="modal-backdrop" (click)="closeDetailsModal()">
+      <div class="modal-dialog application-details-modal" (click)="$event.stopPropagation()">
+        
+        <header class="modal-header">
+          <div class="header-title-box">
+            <span class="modal-badge-icon">💼</span>
+            <div>
+              <h2>Job Application Details</h2>
+              <p>Submitted via HireRanker Candidate Portal</p>
+            </div>
+          </div>
+          <button class="btn-close-modal" (click)="closeDetailsModal()" title="Close">✕</button>
+        </header>
+
+        <div class="modal-body">
+          <!-- JOB & COMPANY MAIN CARD -->
+          <div class="detail-header-card">
+            <div class="company-logo-badge">{{ selectedApp.company ? selectedApp.company.charAt(0) : 'J' }}</div>
+            <div class="header-info">
+              <h3>{{ selectedApp.jobTitle }}</h3>
+              <div class="company-sub">{{ selectedApp.company }}</div>
+            </div>
+            <div class="header-score">
+              <span class="match-chip" [class.high-match]="selectedApp.matchScore >= 80">
+                🎯 {{ selectedApp.matchScore }}% Match
+              </span>
+            </div>
+          </div>
+
+          <!-- META ATTRIBUTES GRID -->
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Location</span>
+              <strong class="meta-value">📍 {{ selectedApp.location || (selectedJob?.location || 'Hyderabad') }}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Applied Date</span>
+              <strong class="meta-value">📅 {{ selectedApp.appliedDate }}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Salary Range</span>
+              <strong class="meta-value">💰 {{ selectedApp.salary || (selectedJob?.salary || 'Competitive') }}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Application Status</span>
+              <div class="meta-value">
+                @if (selectedApp.status === 'Shortlisted') {
+                  <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                } @else if (selectedApp.status === 'Interview Scheduled') {
+                  <span class="status-badge badge-purple">🎤 Interview Scheduled</span>
+                } @else if (selectedApp.status === 'Under Review') {
+                  <span class="status-badge badge-blue">⏳ Under Review</span>
+                } @else {
+                  <span class="status-badge badge-amber">📨 Application Sent</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- JOB DESCRIPTION -->
+          <div class="detail-section">
+            <h4>Job Description</h4>
+            <p class="description-text">
+              {{ selectedJob?.description || 'This position involves developing and scaling enterprise web applications within an agile engineering team. The engineer will collaborate closely with product management, architects, and DevOps to deliver robust, high-performance services.' }}
+            </p>
+          </div>
+
+          <!-- REQUIRED SKILLS -->
+          <div class="detail-section">
+            <h4>Required Skills & Competencies</h4>
+            <div class="skills-chips-row">
+              @for (skill of (selectedJob?.tags || ['Java', 'Spring Boot', 'MySQL', 'REST APIs', 'Git']); track skill) {
+                <span class="skill-pill">{{ skill }}</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Close</button>
+        </footer>
+
+      </div>
+    </div>
+  }
+
+</div>

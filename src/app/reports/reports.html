@@ -1,41 +1,114 @@
-<div class="page">
+<div class="page-container">
 
-  <h1>Reports & Analytics</h1>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Recruitment Reports & Performance Analytics</h1>
+      <p>Analyze hiring pipeline velocity, resume screening efficiency, and candidate sourcing metrics.</p>
+    </div>
+  </header>
 
-  <p class="subtitle">
-    Analyze recruitment performance and candidate data.
-  </p>
-
-  <div class="reports">
-
-    <div class="report-card">
-      <span>Total Applicants</span>
-      <strong>248</strong>
-      <small>↑ 18.4% this month</small>
+  <!-- KEY KPIS ROW -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="label">Total Applications</span>
+      <strong>{{ metrics.totalApplicants }}</strong>
+      <small class="text-green">↑ 18.4% this month</small>
     </div>
 
-    <div class="report-card">
-      <span>Screened Resumes</span>
-      <strong>186</strong>
-      <small>↑ 12.7% this month</small>
+    <div class="stat-card">
+      <span class="label">AI Screened Resumes</span>
+      <strong class="text-indigo">{{ metrics.screenedResumes }}</strong>
+      <small class="text-green">↑ 12.7% screening speed</small>
     </div>
 
-    <div class="report-card">
-      <span>Shortlisted</span>
-      <strong>32</strong>
-      <small>↑ 8.3% this month</small>
+    <div class="stat-card">
+      <span class="label">Shortlisted Candidates</span>
+      <strong class="text-purple">{{ metrics.shortlisted }}</strong>
+      <small class="text-green">↑ 8.3% high matches</small>
     </div>
 
-    <div class="report-card">
-      <span>Average Match Score</span>
-      <strong>78%</strong>
-      <small>↑ 5.6% this month</small>
+    <div class="stat-card">
+      <span class="label">Average Match Score</span>
+      <strong>{{ metrics.avgMatchScore }}%</strong>
+      <small class="text-green">↑ 5.6% candidate quality</small>
+    </div>
+  </div>
+
+  <div class="analytics-grid">
+
+    <!-- HIRING FUNNEL -->
+    <div class="content-card">
+      <div class="card-head">
+        <div>
+          <h3>Recruitment Conversion Funnel</h3>
+          <small>Candidate drop-off and progression across screening stages</small>
+        </div>
+      </div>
+
+      <div class="funnel-list">
+        @for (stage of funnelStages; track stage.label) {
+          <div class="funnel-stage">
+            <div class="stage-info">
+              <span class="stage-name">{{ stage.label }}</span>
+              <strong>{{ stage.count }} Candidates ({{ stage.percentage }}%)</strong>
+            </div>
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar-fill" [style.width.%]="stage.percentage" [style.background]="stage.color"></div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- SOURCING BREAKDOWN -->
+    <div class="content-card">
+      <div class="card-head">
+        <div>
+          <h3>Candidate Acquisition Sources</h3>
+          <small>Where the best applicants are applying from</small>
+        </div>
+      </div>
+
+      <div class="sources-list">
+        @for (src of sources; track src.source) {
+          <div class="source-item">
+            <div class="source-icon" [style.background]="src.color"></div>
+            <div class="source-meta">
+              <strong>{{ src.source }}</strong>
+              <small>{{ src.count }} applicants</small>
+            </div>
+            <span class="source-percent">{{ src.percentage }}%</span>
+          </div>
+        }
+      </div>
     </div>
 
   </div>
 
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+  <!-- SKILLS DISTRIBUTION ROW -->
+  <div class="content-card">
+    <div class="card-head">
+      <div>
+        <h3>Candidate Skills Distribution & Market Demand</h3>
+        <small>Most frequent technical skills detected across applicant resumes</small>
+      </div>
+    </div>
+
+    <div class="skills-distribution-grid">
+      @for (skill of skillsDemand; track skill.skill) {
+        <div class="skill-demand-box">
+          <div class="skill-header">
+            <strong>{{ skill.skill }}</strong>
+            <span>{{ skill.applicants }} Candidates</span>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-fill" [style.width.%]="skill.demand"></div>
+          </div>
+          <small class="demand-label">Platform Match Demand: {{ skill.demand }}%</small>
+        </div>
+      }
+    </div>
+  </div>
 
 </div>

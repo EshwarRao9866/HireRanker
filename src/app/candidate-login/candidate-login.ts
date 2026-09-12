@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-candidate-login',
@@ -10,59 +11,65 @@ import { CommonModule } from '@angular/common';
   templateUrl: './candidate-login.html',
   styleUrl: './candidate-login.css'
 })
-export class CandidateLogin {
-
+export class CandidateLogin implements OnInit {
   email: string = '';
   password: string = '';
   errorMessage: string = '';
+  isLoading: boolean = false;
+  showPassword: boolean = false;
 
-  constructor(private router: Router) {}
+  constructor(
+    private readonly router: Router,
+    private readonly authService: AuthService
+  ) {}
 
-  login() {
+  ngOnInit(): void {
+    // Application always opens at login screen on startup
+  }
 
+  login(): void {
     this.errorMessage = '';
 
-    // Empty fields
     if (!this.email || !this.password) {
-      this.errorMessage = 'Please enter your email and password.';
+      this.errorMessage = 'Please enter your candidate email and password.';
       return;
     }
 
-    // Get registered user
-    const storedUser = localStorage.getItem('hireRankerUser');
-
-    if (!storedUser) {
-      this.errorMessage =
-        'Account not found. Please create a candidate account first.';
-      return;
-    }
-
-    const user = JSON.parse(storedUser);
-
-    // Check candidate credentials
-    if (
-      this.email.trim().toLowerCase() === user.email.toLowerCase() &&
-      this.password === user.password
-    ) {
-
-      // Successful login
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userRole', 'CANDIDATE');
-
-      this.router.navigate(['/candidate/dashboard']);
-
-    } else {
-
-      this.errorMessage =
-        'Incorrect email or password. Please enter the correct details.';
-    }
+    this.isLoading = true;
+    this.authService.login(this.email, this.password).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        if (res.token) {
+          if (res.role === 'ADMIN') {
+            this.router.navigate(['/dashboard']);
+          } else {
+            this.router.navigate(['/candidate-dashboard']);
+          }
+        } else {
+          this.errorMessage = res.message || 'Login failed.';
+        }
+      },
+      error: (err) => {
+        const fallback = this.authService.candidateLogin(this.email, this.password);
+        this.isLoading = false;
+        if (fallback.success) {
+          this.router.navigate(['/candidate-dashboard']);
+        } else {
+          this.errorMessage = err?.error?.message || fallback.message || 'Incorrect candidate email or password.';
+        }
+      }
+    });
   }
 
-  goToRegister() {
-    this.router.navigate(['/register']);
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
   }
 
-  goToMainLogin() {
+  goToRegister(): void {
+    this.router.navigate(['/candidate-register']);
+  }
+
+  goToMainLogin(): void {
     this.router.navigate(['/']);
   }
 }

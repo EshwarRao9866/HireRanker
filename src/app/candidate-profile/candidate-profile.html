@@ -1,1 +1,373 @@
-<p>candidate-profile works!</p>
+<div class="candidate-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="brand" (click)="goBack()">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Candidate Portal</span>
+      </div>
+    </div>
+
+    <div class="candidate-info">
+      @if (profile.profilePicture) {
+        <img [src]="profile.profilePicture" alt="Avatar" class="avatar-img" />
+      } @else {
+        <div class="avatar">{{ profile.fullName.charAt(0) }}</div>
+      }
+      <div class="meta">
+        <strong>{{ profile.fullName }}</strong>
+        <small>Candidate</small>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button class="menu-item" (click)="goBack()">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
+
+      <button class="menu-item" (click)="openJobs()">
+        <span class="icon">💼</span>
+        <span class="label">Find Jobs</span>
+      </button>
+
+      <button class="menu-item" (click)="openResume()">
+        <span class="icon">📄</span>
+        <span class="label">My Resume</span>
+      </button>
+
+      <button class="menu-item" (click)="openApplications()">
+        <span class="icon">📋</span>
+        <span class="label">My Applications</span>
+      </button>
+
+      <button class="menu-item" (click)="openInterviews()">
+        <span class="icon">🎤</span>
+        <span class="label">Interviews</span>
+      </button>
+
+      <button class="menu-item active">
+        <span class="icon">👤</span>
+        <span class="label">My Profile</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="main-content">
+    
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="page-title">
+        <h1>Candidate Profile</h1>
+        <p>Manage your personal details, credentials, and resume screening information.</p>
+      </div>
+      <div class="top-actions">
+        <button class="btn btn-edit" (click)="toggleEdit()">
+          @if (isEditing) {
+            💾 Save Profile
+          } @else {
+            ✏️ Edit Profile
+          }
+        </button>
+      </div>
+    </header>
+
+    <div class="content-scrollable">
+
+      <!-- Success notification if saved -->
+      @if (saveMessage) {
+        <div class="alert-success">
+          <span>✓</span> {{ saveMessage }}
+        </div>
+      }
+
+      <!-- PROFILE HEADER CARD -->
+      <section class="profile-header-card">
+        <div class="profile-avatar-wrap">
+          @if (profile.profilePicture) {
+            <img [src]="profile.profilePicture" alt="Profile Picture" class="profile-avatar-img" />
+          } @else {
+            <div class="profile-avatar-large">
+              {{ profile.fullName.charAt(0) }}
+            </div>
+          }
+          <label class="avatar-camera-btn" title="Upload profile photo">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+            </svg>
+            <input type="file" (change)="onProfilePictureSelected($event)" accept="image/*" hidden />
+          </label>
+        </div>
+        <div class="header-details">
+          <div class="name-row">
+            <h2>{{ profile.fullName }}</h2>
+            <span class="badge-verified">✓ Verified Candidate</span>
+          </div>
+          <p class="role-tag">{{ profile.currentTitle }}</p>
+          <div class="contact-chips">
+            <span>✉ {{ profile.email }}</span>
+            <span>📱 {{ profile.mobile }}</span>
+            <span>📍 {{ profile.location }}</span>
+          </div>
+        </div>
+        <div class="header-action">
+          <button class="btn btn-primary" (click)="toggleEdit()">
+            {{ isEditing ? 'Done Editing' : 'Edit Details' }}
+          </button>
+        </div>
+      </section>
+
+      <!-- TWO-COLUMN BODY -->
+      <div class="profile-body-grid">
+
+        <!-- LEFT COLUMN: Personal, Professional, About Me -->
+        <div class="left-col">
+
+          <!-- PERSONAL INFORMATION -->
+          <div class="content-card">
+            <div class="section-title">
+              <h3>Personal Information</h3>
+              <small>Basic identification details</small>
+            </div>
+
+            <div class="form-grid">
+              <div class="field-item">
+                <label>Full Name</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.fullName" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.fullName }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Email Address</label>
+                @if (isEditing) {
+                  <input type="email" [(ngModel)]="profile.email" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.email }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Mobile Number</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.mobile" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.mobile }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Current Location</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.location" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.location }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Date of Birth</label>
+                @if (isEditing) {
+                  <input type="date" [(ngModel)]="profile.dateOfBirth" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.dateOfBirth }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>LinkedIn Profile</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.linkedIn" class="form-input" />
+                } @else {
+                  <a [href]="profile.linkedIn" target="_blank" class="field-val link">{{ profile.linkedIn }}</a>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>GitHub Profile</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.gitHub" class="form-input" />
+                } @else {
+                  <a [href]="profile.gitHub" target="_blank" class="field-val link">{{ profile.gitHub }}</a>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- PROFESSIONAL INFORMATION -->
+          <div class="content-card">
+            <div class="section-title">
+              <h3>Professional Information</h3>
+              <small>Career experience & job preferences</small>
+            </div>
+
+            <div class="form-grid">
+              <div class="field-item">
+                <label>Current Job Title</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.currentTitle" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.currentTitle }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Years of Experience</label>
+                @if (isEditing) {
+                  <input type="number" step="0.5" [(ngModel)]="profile.experienceYears" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.experienceYears }} Years</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Preferred Role</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.preferredRole" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.preferredRole }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Preferred Location</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.preferredLocation" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.preferredLocation }}</p>
+                }
+              </div>
+
+              <div class="field-item">
+                <label>Expected Salary</label>
+                @if (isEditing) {
+                  <input type="text" [(ngModel)]="profile.expectedSalary" class="form-input" />
+                } @else {
+                  <p class="field-val">{{ profile.expectedSalary }}</p>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- ABOUT ME -->
+          <div class="content-card">
+            <div class="section-title">
+              <h3>About Me</h3>
+              <small>Summary for recruiters and hiring managers</small>
+            </div>
+
+            @if (isEditing) {
+              <textarea [(ngModel)]="profile.aboutMe" rows="4" class="form-textarea"></textarea>
+            } @else {
+              <p class="about-text">{{ profile.aboutMe }}</p>
+            }
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Skills, Resume, Profile Strength -->
+        <div class="right-col">
+
+          <!-- PROFILE COMPLETION -->
+          <div class="content-card completion-card">
+            <div class="completion-header">
+              <div>
+                <h3>Profile Completion</h3>
+                <small>Strong profile boosts interview calls</small>
+              </div>
+              <span class="score-badge">{{ profile.completionPercentage }}%</span>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" [style.width.%]="profile.completionPercentage"></div>
+            </div>
+            <ul class="checklist">
+              <li class="done">✓ Personal Information Completed</li>
+              <li class="done">✓ Resume Uploaded & Screened</li>
+              <li class="done">✓ 10 Core Skills Added</li>
+              <li class="pending">○ Add 2 Certifications (+15%)</li>
+            </ul>
+          </div>
+
+          <!-- SKILLS SECTION -->
+          <div class="content-card">
+            <div class="section-title">
+              <h3>Key Skills & Expertise</h3>
+              <small>Indexed by HireRanker AI Screening</small>
+            </div>
+
+            <div class="skills-wrap">
+              @for (skill of skills; track skill) {
+                <span class="skill-chip">
+                  {{ skill }}
+                  @if (isEditing) {
+                    <button type="button" class="remove-chip" (click)="removeSkill(skill)">×</button>
+                  }
+                </span>
+              }
+            </div>
+
+            @if (isEditing) {
+              <div class="add-skill-row">
+                <input
+                  type="text"
+                  [(ngModel)]="newSkill"
+                  (keyup.enter)="addSkill()"
+                  placeholder="Type new skill & press Enter"
+                  class="form-input"
+                />
+                <button type="button" class="btn btn-add" (click)="addSkill()">+ Add</button>
+              </div>
+            }
+          </div>
+
+          <!-- RESUME SECTION -->
+          <div class="content-card resume-section-card">
+            <div class="section-title">
+              <h3>Primary Resume</h3>
+              <small>Used for automatic job matching</small>
+            </div>
+
+            <div class="resume-card-box">
+              <div class="pdf-icon">📄</div>
+              <div class="pdf-info">
+                <strong>{{ profile.resumeName }}</strong>
+                <small>Updated: {{ profile.resumeUpdatedDate }}</small>
+              </div>
+            </div>
+
+            <div class="resume-actions">
+              <button class="btn btn-outline-sm" (click)="viewResume()">
+                👁️ View Resume
+              </button>
+
+              <label class="btn btn-primary-sm">
+                🔄 Replace Resume
+                <input type="file" (change)="uploadResume($event)" accept=".pdf,.doc,.docx" hidden />
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+</div>

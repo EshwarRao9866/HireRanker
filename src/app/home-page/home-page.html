@@ -1,86 +1,114 @@
-<div class="login-page">
-
-  <div class="login-card">
-
-    <!-- Logo -->
+<div class="auth-page">
+  <div class="auth-card">
+    
+    <!-- Brand Header -->
     <div class="brand">
-      <img src={{imageUrl}} alt="HireRanker Logo" style="width: 70px; height: 70px;">
-      <span style="color: rgba(8, 0, 255, 0.755);">HireRanker</span>
+      <div class="logo-badge">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#4f46e5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">HireRanker</span>
+        <span class="brand-badge">Admin Portal</span>
+      </div>
     </div>
 
-    <!-- Heading -->
-    <!-- <h1>Welcome Back</h1> -->
-    <p class="subtitle">Sign in to continue to HireRanker</p>
-
-    <!-- Email -->
-    <div class="input-group">
-      <label>Email Address</label>
-
-      <input
-        type="email"
-        [(ngModel)]="email"
-        placeholder="Enter your email"
-      >
+    <!-- Title and Subtitle -->
+    <div class="auth-header">
+      <h2>Welcome Back, Recruiter</h2>
+      <p>Sign in to manage AI resume screening and candidate rankings.</p>
     </div>
 
-    <!-- Password -->
-    <div class="input-group">
-      <div class="password-label">
-        <label>Password</label>
-        
-        
+    <!-- Error Alert -->
+    @if (errorMessage) {
+      <div class="alert alert-error">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <span>{{ errorMessage }}</span>
+      </div>
+    }
+
+    <!-- Login Form with Enter key support -->
+    <form (ngSubmit)="login()" class="auth-form" novalidate>
+      <div class="form-group">
+        <label for="adminEmail">Work Email</label>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+          </svg>
+          <input
+            id="adminEmail"
+            name="adminEmail"
+            type="email"
+            [(ngModel)]="email"
+            placeholder="admin@hireranker.com"
+            autocomplete="email"
+            required
+          />
+        </div>
       </div>
 
-      <input
-        type="password"
-        [(ngModel)]="password"
-        placeholder="Enter your password" >
-        @if (errorMessage) {
-  <div class="login-error">
-    {{ errorMessage }}
-  </div>
-}
-      <a href="#" class="forgot">Forgot Password</a>
-    </div>
+      <div class="form-group">
+        <div class="label-row">
+          <label for="adminPassword">Password</label>
+          <a href="#" class="forgot-link" (click)="$event.preventDefault()">Forgot password?</a>
+        </div>
+        <div class="input-wrapper">
+          <svg class="input-icon" viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+          </svg>
+          <input
+            id="adminPassword"
+            name="adminPassword"
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
+          <button type="button" class="password-toggle" (click)="togglePassword()" aria-label="Toggle password visibility">
+            @if (showPassword) {
+              👁️
+            } @else {
+              🙈
+            }
+          </button>
+        </div>
+      </div>
 
-    <!-- Remember Me -->
-    <div class="remember">
-      <label>
-        <input type="checkbox">
-        <span>Remember me</span>
-      </label>
-    </div>
+      <div class="form-options">
+        <label class="checkbox-label">
+          <input type="checkbox" name="remember" />
+          <span>Remember this device</span>
+        </label>
+      </div>
 
-    <!-- Login -->
-    <button class="login-btn" (click)="login()">
-      Login
-    </button>
+      <!-- Submit Button -->
+      <button type="submit" class="btn btn-primary" [disabled]="isLoading">
+        @if (isLoading) {
+          <span class="spinner"></span> Signing in...
+        } @else {
+          Sign In to Admin Portal →
+        }
+      </button>
+    </form>
 
-    <!-- Divider -->
-    <div class="divider">
+    <div class="auth-divider">
       <span>OR</span>
     </div>
 
-    <!-- Google -->
-    <button
-  class="candidate-login-btn"
-  (click)="goToCandidateLogin()">
+    <!-- Candidate Portal Switch -->
+    <button type="button" class="btn btn-candidate" (click)="goToCandidateLogin()">
+      <span>👤</span> Switch to Candidate Portal
+    </button>
 
-  👤 Candidate Login
-
-</button>
-
-    <!-- Register -->
-    <div class="register-section">
-      <p>Don't have an account?</p>
-
-      <button
-        class="create-btn"
-        (click)="goToRegister()">
-        Create Account
-      </button>
+    <!-- Registration Link -->
+    <div class="auth-footer">
+      <p>New recruitment team member? <button type="button" class="link-btn" (click)="goToRegister()">Create account</button></p>
     </div>
 
   </div>
-
 </div>

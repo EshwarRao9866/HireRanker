@@ -1,1 +1,566 @@
-<p>interview works!</p>
+<div class="candidate-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand" (click)="goDashboard()">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Candidate Portal</span>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button class="menu-item" (click)="goDashboard()">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
+
+      <button class="menu-item" (click)="openJobs()">
+        <span class="icon">💼</span>
+        <span class="label">Find Jobs</span>
+      </button>
+
+      <button class="menu-item" (click)="openResume()">
+        <span class="icon">📄</span>
+        <span class="label">My Resume</span>
+      </button>
+
+      <button class="menu-item" (click)="openApplications()">
+        <span class="icon">📋</span>
+        <span class="label">My Applications</span>
+      </button>
+
+      <button class="menu-item active">
+        <span class="icon">🎤</span>
+        <span class="label">Interviews</span>
+      </button>
+
+      <button class="menu-item" (click)="openProfile()">
+        <span class="icon">👤</span>
+        <span class="label">My Profile</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="page-title">
+        <h1>Interviews & Assessments</h1>
+        <p>Prepare for and launch scheduled AI automated assessments and technical rounds.</p>
+      </div>
+    </header>
+
+    <div class="content-scrollable">
+
+      <!-- INTERVIEWS LIST -->
+      @if (isLoadingInterviews) {
+        <div class="interviews-loading-state">
+          <div class="spinner-ring"></div>
+          <p>Loading scheduled assessments...</p>
+        </div>
+      } @else if (interviews.length === 0) {
+        <div class="empty-interviews-card">
+          <div class="empty-icon">📅</div>
+          <h3>No Scheduled Assessments Yet</h3>
+          <p>When recruiters review your job applications and schedule an AI assessment or technical interview, it will appear right here.</p>
+          <button class="btn btn-find-jobs" (click)="openJobs()">Explore Available Jobs</button>
+        </div>
+      } @else {
+        <div class="interviews-grid">
+          @for (interview of interviews; track (interview.id + '_' + $index)) {
+            <div class="interview-3d-card" [class.completed]="interview.status === 'Completed'">
+              
+              <div class="card-top-row">
+                <div class="interview-badge">{{ interview.company.charAt(0) }}</div>
+                <div class="interview-header-meta">
+                  <h3>{{ interview.jobTitle }}</h3>
+                  <p class="company-text">{{ interview.company }} • Panel: {{ interview.interviewer }}</p>
+                </div>
+                <span class="type-pill" [class.ai-type]="interview.type === 'AI Assessment'">
+                  {{ interview.type }}
+                </span>
+              </div>
+
+              <div class="interview-meta-details">
+                <div class="meta-block">
+                  <span class="label">Date & Time</span>
+                  <strong>📅 {{ interview.date }} ({{ interview.time }})</strong>
+                </div>
+
+                <div class="meta-block">
+                  <span class="label">Duration</span>
+                  <strong>⏱️ {{ interview.duration }}</strong>
+                </div>
+
+                <div class="meta-block">
+                  <span class="label">Status</span>
+                  @if (interview.status === 'Upcoming') {
+                    <span class="status-upcoming">● Ready to Join</span>
+                  } @else {
+                    <span class="status-completed">✓ Finished</span>
+                  }
+                </div>
+              </div>
+
+              <div class="card-footer-actions">
+                @if (interview.status === 'Upcoming') {
+                  <button class="btn btn-join-interview" (click)="joinInterview(interview)">
+                    🚀 Join Assessment Room
+                  </button>
+                } @else {
+                  <button class="btn btn-view-feedback" (click)="viewResults(interview)">
+                    📊 View Scorecard & Feedback
+                  </button>
+                }
+              </div>
+
+            </div>
+          }
+        </div>
+      }
+
+      <!-- INSTRUCTIONS CALLOUT -->
+      <div class="content-card instructions-card">
+        <h3>💡 Online Interview Tips & Checklist</h3>
+        <ul class="tips-list">
+          <li>Ensure a stable internet connection and quiet testing environment.</li>
+          <li>Have your webcam and microphone tested prior to starting the session.</li>
+          <li>For AI coding assessments, you will be provided an embedded code editor with test cases.</li>
+        </ul>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= PRE-INTERVIEW RULES & HARDWARE TEST MODAL ================= -->
+  @if (showPreInterviewModal) {
+    <div class="modal-backdrop" (click)="closePreInterviewModal()">
+      <div class="modal-dialog pre-interview-modal" (click)="$event.stopPropagation()">
+        
+        <header class="modal-header">
+          <div>
+            <h2>{{ modalPhase === 'INSTRUCTIONS' ? '📋 Pre-Assessment Guidelines & Instructions' : '🛡️ Device Readiness Verification' }}</h2>
+            <p>{{ selectedInterview?.jobTitle }} • HireRanker Live AI Platform</p>
+          </div>
+          <button class="btn-close-modal" (click)="closePreInterviewModal()">✕</button>
+        </header>
+
+        <div class="modal-body">
+          @if (modalPhase === 'INSTRUCTIONS') {
+            <!-- ================= PHASE 1: PRE-INTERVIEW INSTRUCTIONS ================= -->
+            <div class="instructions-view-container">
+              <div class="instructions-hero-banner">
+                <span class="hero-icon">🎯</span>
+                <div>
+                  <h4>Mandatory Assessment Rules & Guidelines</h4>
+                  <p>Please read the following guidelines carefully before proceeding to hardware checks and starting your assessment.</p>
+                </div>
+              </div>
+
+              <div class="rules-detailed-grid">
+                <div class="rule-detail-card">
+                  <span class="rule-icon">🤫</span>
+                  <div class="rule-text">
+                    <strong>Quiet Environment</strong>
+                    <p>Ensure you are in a quiet, distraction-free room with minimal ambient noise for clear speech capture.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">💡</span>
+                  <div class="rule-text">
+                    <strong>Face Visibility & Lighting</strong>
+                    <p>Keep your head, face, and shoulders clearly visible and centered in the camera feed at all times.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">📹</span>
+                  <div class="rule-text">
+                    <strong>Camera Enabled</strong>
+                    <p>Your camera must remain enabled and active throughout the entire 15-minute assessment session.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">🎤</span>
+                  <div class="rule-text">
+                    <strong>Microphone Enabled</strong>
+                    <p>Your microphone must remain active to capture and transcribe your verbal responses in real time.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">🚫</span>
+                  <div class="rule-text">
+                    <strong>Do Not Leave Assessment Room</strong>
+                    <p>Do not switch browser tabs, minimize windows, or navigate away while the proctored assessment is running.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">🗣️</span>
+                  <div class="rule-text">
+                    <strong>Answer Naturally</strong>
+                    <p>Speak clearly and naturally in your own words. Answers are evaluated for technical depth and conceptual understanding.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">⏱️</span>
+                  <div class="rule-text">
+                    <strong>15-Minute Continuous Duration</strong>
+                    <p>The 15:00 assessment timer runs continuously once started. It never pauses during questions, speech, or AI evaluation.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">⏳</span>
+                  <div class="rule-text">
+                    <strong>15-Second Speech-Start Window</strong>
+                    <p>After each question is presented, you have 15 seconds to begin speaking your answer before automatic advancement.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">📄</span>
+                  <div class="rule-text">
+                    <strong>Personalized Questions</strong>
+                    <p>All interview questions are generated dynamically based on your verified resume, core skills, and past projects.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card">
+                  <span class="rule-icon">🔄</span>
+                  <div class="rule-text">
+                    <strong>Do Not Refresh Browser</strong>
+                    <p>Refreshing or closing the browser window during the assessment will terminate the active proctored session.</p>
+                  </div>
+                </div>
+
+                <div class="rule-detail-card warning-card">
+                  <span class="rule-icon">⚠️</span>
+                  <div class="rule-text">
+                    <strong>Retake Policy</strong>
+                    <p>If the assessment is abandoned or prematurely closed, retaking requires explicit administrator or HR approval.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <!-- ================= PHASE 2: INDEPENDENT 3-STEP DEVICE VERIFICATION ================= -->
+            <div class="verification-stepper-box">
+              
+              <div class="verification-stepper-head">
+                <div>
+                  <h4 class="stepper-title">Pre-Assessment Readiness & Verification</h4>
+                  <p class="stepper-sub">Complete the 3 independent device checks below before entering the assessment room.</p>
+                </div>
+                <div class="stepper-actions-right">
+                  <button type="button" class="btn-back-link" (click)="backToInstructions()">
+                    ← Review Instructions
+                  </button>
+                  <button type="button" class="btn-bypass-link" (click)="simulateHardware()" title="Skip device test and verify immediately">
+                    ⚡ Quick Verify / Bypass
+                  </button>
+                </div>
+              </div>
+
+              <!-- STEP 1: CAMERA & ENVIRONMENT VERIFICATION (100% INDEPENDENT) -->
+              <div class="check-step-card" [class.step-passed]="cameraVerified">
+                <div class="step-card-header">
+                  <div class="step-num-title">
+                    <span class="step-badge" [class.badge-ok]="cameraVerified">{{ cameraVerified ? '✓' : '1' }}</span>
+                    <div>
+                      <h5 class="step-heading">1. Camera & Environment Check</h5>
+                      <span class="step-instruction">Verify webcam frame capture and ambient environment lighting</span>
+                    </div>
+                  </div>
+                  <span class="step-status-pill" [class.pill-ok]="cameraVerified">
+                    {{ cameraVerified ? '✅ Camera & Environment Verified' : (cameraTesting ? '⏳ Accessing Camera...' : '📷 Camera Pending') }}
+                  </span>
+                </div>
+
+                <div class="step-card-body">
+                  <div class="camera-environment-preview">
+                    <video id="testVideoPreview" autoplay playsinline muted class="camera-preview-video" [style.display]="cameraVerified ? 'block' : 'none'"></video>
+                    @if (!cameraVerified) {
+                      <div class="camera-placeholder-preview">
+                        <span class="preview-cam-icon">📹</span>
+                        <p>Click below to verify webcam feed independently.</p>
+                        <button type="button" class="btn-activate-cam" (click)="testCamera()" [disabled]="cameraTesting">
+                          {{ cameraTesting ? '⏳ Accessing Camera...' : '📸 Test Camera' }}
+                        </button>
+                      </div>
+                    }
+                    @if (cameraVerified) {
+                      <div class="env-badges-row">
+                        <span class="env-chip live">● LIVE CAMERA FEED</span>
+                        <span class="env-chip" [class.warn]="lightingStatus.includes('Low')">💡 {{ lightingStatus }}</span>
+                        <button type="button" class="btn-retest-sm" (click)="testCamera()">Retest Camera</button>
+                      </div>
+                    }
+                  </div>
+
+                  @if (cameraError) {
+                    <div class="alert-warning-box">
+                      ⚠️ {{ cameraError }}
+                    </div>
+                  }
+
+                  @if (lightingWarning) {
+                    <div class="alert-warning-box">
+                      💡 {{ lightingWarning }}
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- STEP 2: MICROPHONE & SPEECH-TO-TEXT VERIFICATION (100% INDEPENDENT) -->
+              <div class="check-step-card" [class.step-passed]="speechVerificationCompleted">
+                <div class="step-card-header">
+                  <div class="step-num-title">
+                    <span class="step-badge" [class.badge-ok]="speechVerificationCompleted">{{ speechVerificationCompleted ? '✓' : '2' }}</span>
+                    <div>
+                      <h5 class="step-heading">2. Microphone & Speech-to-Text (STT) Check</h5>
+                      <span class="step-instruction">Verify hardware permission, acoustic signal level, and speech transcription</span>
+                    </div>
+                  </div>
+                  <span class="step-status-pill" [class.pill-ok]="speechVerificationCompleted">
+                    {{ speechVerificationCompleted ? '✅ Mic & STT Verified' : (!micPermissionGranted ? '🎤 Permission Needed' : (!micAudioDetected ? '🎙️ Waiting for Sound...' : '📝 Awaiting Spoken Words')) }}
+                  </span>
+                </div>
+
+                <div class="step-card-body">
+                  <div class="mic-speak-prompt-box">
+                    <span class="speak-prompt-icon">🗣️</span>
+                    <div class="speak-prompt-content">
+                      <span class="speak-prompt-label">Please say this out loud into your microphone:</span>
+                      <strong class="speak-prompt-phrase">"{{ speechPhrase }}"</strong>
+                    </div>
+                  </div>
+
+                  <!-- 3-STATE INDEPENDENT TRACKER (Permission -> Input Signal -> STT) -->
+                  <div class="mic-states-grid">
+                    <div class="mic-state-card" [class.verified]="micPermissionGranted">
+                      <span class="state-indicator-icon">{{ micPermissionGranted ? '✅' : '⏳' }}</span>
+                      <div class="state-meta">
+                        <span class="state-name">1. Mic Permission</span>
+                        <strong class="state-val">{{ micPermissionGranted ? 'Granted' : 'Pending Access' }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="mic-state-card" [class.verified]="micAudioDetected">
+                      <span class="state-indicator-icon">{{ micAudioDetected ? '✅' : '⏳' }}</span>
+                      <div class="state-meta">
+                        <span class="state-name">2. Audio Signal</span>
+                        <strong class="state-val">{{ micAudioDetected ? ('Active (' + audioLevel + '%)') : 'No Sound' }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="mic-state-card" [class.verified]="speechRecognitionVerified">
+                      <span class="state-indicator-icon">{{ speechRecognitionVerified ? '✅' : '⏳' }}</span>
+                      <div class="state-meta">
+                        <span class="state-name">3. Speech-to-Text</span>
+                        <strong class="state-val">{{ speechRecognitionVerified ? 'Words Recognized' : (speechRecognitionState === 'STT_UNSUPPORTED' ? 'STT Fallback' : 'Listening') }}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  @if (recognizedTranscript) {
+                    <div class="stt-live-transcript-box">
+                      <span class="stt-tag">🗣️ Live Transcribed:</span>
+                      <span class="stt-transcript">"{{ recognizedTranscript }}"</span>
+                    </div>
+                  }
+
+                  <div class="audio-hud-box">
+                    <div class="audio-hud-header">
+                      <span class="audio-hud-label">Microphone Audio Signal Level:</span>
+                      @if (speechVerificationCompleted) {
+                        <span class="audio-status-tag detected">✅ All 3 Checks Verified! (Permission + Signal + STT)</span>
+                      } @else if (micAudioDetected) {
+                        <span class="audio-status-tag detected">🎙️ Audio Input Detected ({{ audioLevel }}%) — Speak the prompt above</span>
+                      } @else if (micPermissionGranted) {
+                        <span class="audio-status-tag listening">🎙️ Listening... Please speak into your microphone</span>
+                      } @else {
+                        <span class="audio-status-tag">🎤 Click "Test Microphone" below to begin</span>
+                      }
+                    </div>
+                    <div class="audio-level-bar-track">
+                      <div class="audio-level-bar-fill" [style.width.%]="audioLevel"></div>
+                    </div>
+                  </div>
+
+                  <div class="mic-actions-row">
+                    <button type="button" class="btn btn-test-mic" (click)="testMicrophone()" [disabled]="micTesting">
+                      {{ micTesting ? '⏳ Testing Microphone...' : (speechVerificationCompleted ? '🔄 Retest Microphone' : '🎙️ Test Microphone') }}
+                    </button>
+                    @if (!speechVerificationCompleted && micAudioDetected) {
+                      <button type="button" class="btn btn-sm-verify" (click)="confirmMicrophoneVerified('manual')">
+                        🎙️ Confirm Spoken Sentence (Bypass STT)
+                      </button>
+                    }
+                  </div>
+
+                  @if (microphoneError) {
+                    <div class="alert-warning-box">
+                      ⚠️ {{ microphoneError }}
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- STEP 3: SPEAKER & HEARING VERIFICATION (100% INDEPENDENT) -->
+              <div class="check-step-card" [class.step-passed]="speakerReady">
+                <div class="step-card-header">
+                  <div class="step-num-title">
+                    <span class="step-badge" [class.badge-ok]="speakerReady">{{ speakerReady ? '✓' : '3' }}</span>
+                    <div>
+                      <h5 class="step-heading">3. Speaker / Hearing Check</h5>
+                      <span class="step-instruction">Confirm that you can clearly hear audio spoken by the AI interviewer</span>
+                    </div>
+                  </div>
+                  <span class="step-status-pill" [class.pill-ok]="speakerReady">
+                    {{ speakerReady ? '✅ Audio Hearing Verified' : '🔊 Hearing Pending' }}
+                  </span>
+                </div>
+
+                <div class="step-card-body">
+                  <div class="hearing-check-box">
+                    <p class="hearing-question">
+                      Click <strong>Play Test Sound</strong> to listen to the AI voice, then confirm if it is audible:
+                    </p>
+                    <div class="hearing-actions-row">
+                      <button type="button" class="btn btn-play-audio" (click)="playTestAudio()" [disabled]="isPlayingTestAudio">
+                        🔊 {{ isPlayingTestAudio ? 'Playing AI Voice...' : 'Play Test Sound' }}
+                      </button>
+                      <button type="button" class="btn btn-confirm-hearing" (click)="confirmSpeakerReady()" [class.active-confirmed]="speakerReady">
+                        {{ speakerReady ? '✅ Yes, Sound is Clearly Audible' : '👉 Yes, I can hear clearly' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              @if (errorMessage) {
+                <div class="alert-error-box">
+                  <div class="error-text">⚠️ {{ errorMessage }}</div>
+                  <div class="error-actions-row">
+                    <button type="button" class="btn btn-bypass-action" (click)="simulateHardware()">⚡ Quick Verify All (Compatibility Mode)</button>
+                  </div>
+                </div>
+              }
+
+            </div>
+          }
+        </div>
+
+        <footer class="modal-footer">
+          @if (modalPhase === 'INSTRUCTIONS') {
+            <button class="btn btn-secondary" (click)="closePreInterviewModal()">Cancel</button>
+            <button class="btn btn-join-final" (click)="proceedToDeviceChecks()">
+              I Understand & Agree → Proceed to Device Checks ➔
+            </button>
+          } @else {
+            <button class="btn btn-secondary" (click)="backToInstructions()">← Back to Instructions</button>
+            <button class="btn btn-join-final" (click)="proceedToAssessmentRoom()" [disabled]="!allChecksPassed || isProceeding" [title]="allChecksPassed ? 'Enter Assessment Room' : 'Complete Camera, Mic Speech, and Audio checks to proceed'">
+              {{ isProceeding ? '⏳ Starting Session...' : '🚀 Enter Assessment Room' }}
+            </button>
+          }
+        </footer>
+
+      </div>
+    </div>
+  }
+
+  <!-- ================= SCORECARD & FEEDBACK MODAL ================= -->
+  @if (showScorecardModal) {
+    <div class="modal-backdrop" (click)="closeScorecardModal()">
+      <div class="modal-dialog scorecard-modal" (click)="$event.stopPropagation()">
+        
+        <header class="modal-header scorecard-modal-header">
+          <div class="scorecard-title-group">
+            <span class="scorecard-badge">📊 Official Performance Scorecard</span>
+            <h2>{{ selectedInterview?.jobTitle || 'Technical Role' }} Feedback</h2>
+            <p>HireRanker Zero-Bias AI Assessment • {{ selectedScorecard?.candidateName || 'Candidate' }}</p>
+          </div>
+          <button class="btn-close-modal" (click)="closeScorecardModal()">✕</button>
+        </header>
+
+        <div class="modal-body scorecard-modal-body">
+          @if (isLoadingScorecard) {
+            <div class="scorecard-loading">
+              <div class="spinner"></div>
+              <p>Fetching evaluated scorecard & feedback...</p>
+            </div>
+          } @else if (selectedScorecard) {
+            <!-- OVERALL & METRICS GRID -->
+            <div class="scores-grid">
+              <div class="score-box overall-box">
+                <span class="score-label">Overall Match Score</span>
+                <span class="score-value">{{ selectedScorecard.overallScore }}%</span>
+                <span class="badge-hire">{{ selectedScorecard.recommendation || 'STRONG_HIRE' }}</span>
+              </div>
+              <div class="score-box">
+                <span class="score-label">💻 Technical Depth</span>
+                <span class="score-value">{{ selectedScorecard.technicalScore }}%</span>
+                <div class="mini-bar"><div class="mini-fill" [style.width.%]="selectedScorecard.technicalScore"></div></div>
+              </div>
+              <div class="score-box">
+                <span class="score-label">🗣️ Communication</span>
+                <span class="score-value">{{ selectedScorecard.communicationScore }}%</span>
+                <div class="mini-bar"><div class="mini-fill" [style.width.%]="selectedScorecard.communicationScore"></div></div>
+              </div>
+              <div class="score-box">
+                <span class="score-label">🧩 Problem Solving</span>
+                <span class="score-value">{{ selectedScorecard.problemSolvingScore }}%</span>
+                <div class="mini-bar"><div class="mini-fill" [style.width.%]="selectedScorecard.problemSolvingScore"></div></div>
+              </div>
+            </div>
+
+            <!-- DETAILED FEEDBACK SECTION -->
+            <div class="feedback-section">
+              <div class="feedback-col strengths-col">
+                <h4>✅ Key Technical Strengths</h4>
+                <p>{{ selectedScorecard.strengths }}</p>
+              </div>
+              <div class="feedback-col weaknesses-col">
+                <h4>💡 Growth & Improvement Areas</h4>
+                <p>{{ selectedScorecard.weaknesses }}</p>
+              </div>
+            </div>
+
+            <div class="evaluation-summary-box">
+              <span class="eval-icon">🤖</span>
+              <div class="eval-meta">
+                <strong>Zero-Bias AI Recommendation:</strong>
+                <span>Candidate met benchmark requirements for {{ selectedInterview?.jobTitle }}. Performance evaluation confirms competency in required core skills.</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <footer class="modal-footer scorecard-footer">
+          <button class="btn btn-secondary" (click)="closeScorecardModal()">Close Scorecard</button>
+          <button class="btn btn-print-scorecard" (click)="printScorecard()">🖨️ Print / Save PDF</button>
+        </footer>
+
+      </div>
+    </div>
+  }
+
+</div>

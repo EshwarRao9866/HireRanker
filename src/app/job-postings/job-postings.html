@@ -1,92 +1,280 @@
-<div class="page">
+<div class="page-container">
 
+  <!-- PAGE HEADER -->
   <header class="page-header">
-
-    <div>
-      <h1>Job Postings</h1>
-      <p>Create and manage your organization's job openings.</p>
+    <div class="header-left">
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Job Postings Management</h1>
+      <p>Create, monitor, and configure active job requisitions across departments.</p>
     </div>
 
-    <button class="primary-btn" (click)="createJob()">
-      + Create Job
+    <button class="btn btn-primary" (click)="openCreateModal()">
+      + Post New Job
     </button>
-
   </header>
 
-  <div class="stats">
+  @if (saveSuccessMessage) {
+    <div class="alert-success" style="margin-bottom: 20px; padding: 12px 18px; background: #dcfce7; border: 1px solid #86efac; color: #166534; font-weight: 600; border-radius: 8px;">
+      ✓ {{ saveSuccessMessage }}
+    </div>
+  }
 
+  <!-- METRIC STATS -->
+  <section class="stats-row">
     <div class="stat-card">
-      <span>Total Jobs</span>
-      <strong>12</strong>
+      <span class="label">Total Requisitions</span>
+      <strong>{{ jobs.length }}</strong>
+      <small>Active & Closed</small>
     </div>
 
     <div class="stat-card">
-      <span>Active Jobs</span>
-      <strong>8</strong>
+      <span class="label">Active Openings</span>
+      <strong class="text-green">{{ activeJobsCount }}</strong>
+      <small>Receiving applications</small>
     </div>
 
     <div class="stat-card">
-      <span>Total Applicants</span>
-      <strong>248</strong>
+      <span class="label">Total Applicants</span>
+      <strong class="text-indigo">{{ totalApplicantsCount }}</strong>
+      <small>Across all roles</small>
     </div>
 
     <div class="stat-card">
-      <span>Closed Jobs</span>
-      <strong>4</strong>
+      <span class="label">Average Screening Match</span>
+      <strong>86%</strong>
+      <small>AI parsed accuracy</small>
+    </div>
+  </section>
+
+  <!-- TABLE & CONTROLS -->
+  <div class="content-card">
+    <div class="card-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="searchText"
+          placeholder="Search job title or location..."
+        />
+      </div>
+
+      <div class="filter-box">
+        <label>Department:</label>
+        <select [(ngModel)]="selectedDepartment">
+          @for (d of departments; track d) {
+            <option [value]="d">{{ d }}</option>
+          }
+        </select>
+      </div>
     </div>
 
+    <div class="table-wrap">
+      <table class="saas-table">
+        <thead>
+          <tr>
+            <th>Job Title</th>
+            <th>Department</th>
+            <th>Location</th>
+            <th>Experience</th>
+            <th>Salary Range</th>
+            <th>Applicants</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (job of filteredJobs; track (job.id + '_' + $index)) {
+            <tr>
+              <td>
+                <strong>{{ job.title }}</strong>
+                <small class="block text-muted">Created: {{ job.createdDate }}</small>
+              </td>
+              <td><span class="dept-badge">{{ job.department }}</span></td>
+              <td>📍 {{ job.location }}</td>
+              <td>{{ job.experience }}</td>
+              <td>{{ job.salary }}</td>
+              <td>
+                <button class="applicant-count-btn" (click)="viewApplicants(job)">
+                  👥 {{ job.applicants }} Applicants →
+                </button>
+              </td>
+              <td>
+                <button
+                  class="status-toggle-btn"
+                  [class.active-status]="job.status === 'Active'"
+                  [class.closed-status]="job.status === 'Closed'"
+                  (click)="toggleJobStatus(job)"
+                  title="Click to toggle status"
+                >
+                  ● {{ job.status }}
+                </button>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-action-edit" (click)="openEditModal(job)" title="Edit Job Details">✏️</button>
+                  <button class="btn-action-view" (click)="viewApplicants(job)" title="View Applicants">👥</button>
+                  <button class="btn-action-del" (click)="deleteJob(job.id)" title="Delete Job">🗑️</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="card">
+  <!-- CREATE JOB MODAL -->
+  @if (showCreateModal) {
+    <div class="modal-backdrop" (click)="closeCreateModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <h3>Create New Job Posting</h3>
+          <button class="close-modal" (click)="closeCreateModal()">×</button>
+        </div>
 
-    <div class="card-header">
-      <h2>All Job Postings</h2>
+        @if (validationError) {
+          <div class="modal-error-alert" style="margin-bottom: 16px; padding: 10px 14px; background: #fef2f2; border: 1px solid #f87171; color: #b91c1c; border-radius: 8px; font-size: 13.5px; font-weight: 500;">
+            ⚠️ {{ validationError }}
+          </div>
+        }
+
+        <form (ngSubmit)="saveNewJob($event)" class="modal-form">
+          <div class="form-group">
+            <label>Job Title *</label>
+            <input type="text" [(ngModel)]="newJob.title" name="jobTitle" placeholder="e.g. Senior Java Full Stack Developer" required />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Department</label>
+              <select [(ngModel)]="newJob.department" name="jobDept">
+                <option value="Engineering">Engineering</option>
+                <option value="Product">Product</option>
+                <option value="Design">Design</option>
+                <option value="Data & AI">Data & AI</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" [(ngModel)]="newJob.location" name="jobLoc" placeholder="e.g. Hyderabad / Remote" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Experience Required</label>
+              <input type="text" [(ngModel)]="newJob.experience" name="jobExp" placeholder="e.g. 3-5 Yrs" />
+            </div>
+
+            <div class="form-group">
+              <label>Salary Package</label>
+              <input type="text" [(ngModel)]="newJob.salary" name="jobSalary" placeholder="e.g. ₹12 - 18 LPA" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Work Mode / Type</label>
+              <select [(ngModel)]="newJobType" name="jobType">
+                <option value="Full Time">Full Time</option>
+                <option value="Remote">Remote</option>
+                <option value="Contract">Contract</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Key Skills / Tags (comma-separated)</label>
+              <input type="text" [(ngModel)]="newJobTags" name="jobTags" placeholder="e.g. Java, Spring Boot, MySQL" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" (click)="closeCreateModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" (click)="saveNewJob($event)">Publish Job Opening →</button>
+          </div>
+        </form>
+      </div>
     </div>
+  }
 
-    <table>
+  <!-- EDIT JOB MODAL -->
+  @if (showEditModal && editingJob) {
+    <div class="modal-backdrop" (click)="closeEditModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <h3>Edit Job Posting</h3>
+          <button class="close-modal" (click)="closeEditModal()">×</button>
+        </div>
 
-      <thead>
-        <tr>
-          <th>Job Title</th>
-          <th>Department</th>
-          <th>Location</th>
-          <th>Applicants</th>
-          <th>Status</th>
-        </tr>
-      </thead>
+        <form (ngSubmit)="saveEditJob()" class="modal-form">
+          <div class="form-group">
+            <label>Job Title *</label>
+            <input type="text" [(ngModel)]="editingJob.title" name="editJobTitle" placeholder="e.g. Senior Java Full Stack Developer" required />
+          </div>
 
-      <tbody>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Department</label>
+              <select [(ngModel)]="editingJob.department" name="editJobDept">
+                <option value="Engineering">Engineering</option>
+                <option value="Product">Product</option>
+                <option value="Design">Design</option>
+                <option value="Data & AI">Data & AI</option>
+              </select>
+            </div>
 
-        <tr *ngFor="let job of jobs">
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" [(ngModel)]="editingJob.location" name="editJobLoc" placeholder="e.g. Hyderabad / Remote" />
+            </div>
+          </div>
 
-          <td>
-            <strong>{{ job.title }}</strong>
-          </td>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Experience Required</label>
+              <input type="text" [(ngModel)]="editingJob.experience" name="editJobExp" placeholder="e.g. 3-5 Yrs" />
+            </div>
 
-          <td>{{ job.department }}</td>
+            <div class="form-group">
+              <label>Salary Package</label>
+              <input type="text" [(ngModel)]="editingJob.salary" name="editJobSalary" placeholder="e.g. ₹12 - 18 LPA" />
+            </div>
+          </div>
 
-          <td>{{ job.location }}</td>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Work Mode / Type</label>
+              <select [(ngModel)]="editingJob.type" name="editJobType">
+                <option value="Full Time">Full Time</option>
+                <option value="Remote">Remote</option>
+                <option value="Contract">Contract</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
+            </div>
 
-          <td>{{ job.applicants }}</td>
+            <div class="form-group">
+              <label>Status</label>
+              <select [(ngModel)]="editingJob.status" name="editJobStatus">
+                <option value="Active">Active</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </div>
+          </div>
 
-          <td>
-            <span
-              class="status"
-              [class.closed]="job.status === 'Closed'">
-              {{ job.status }}
-            </span>
-          </td>
+          <div class="form-group">
+            <label>Key Skills / Tags (comma-separated)</label>
+            <input type="text" [(ngModel)]="editJobTags" name="editJobTags" placeholder="e.g. Java, Spring Boot, MySQL" />
+          </div>
 
-        </tr>
-
-      </tbody>
-
-    </table>
-
-  </div>
-
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" (click)="closeEditModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" (click)="saveEditJob()">Save Changes & Update →</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 
 </div>

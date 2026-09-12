@@ -1,52 +1,228 @@
-<div class="page">
+<div class="page-container">
 
-  <h1>Settings</h1>
-
-  <p class="subtitle">
-    Manage your HireRanker account and platform preferences.
-  </p>
-
-  <div class="settings-card">
-
-    <h2>Company Information</h2>
-
-    <label>Company Name</label>
-
-    <input
-      type="text"
-      [(ngModel)]="companyName">
-
-    <label>Admin Email</label>
-
-    <input
-      type="email"
-      [(ngModel)]="email">
-
-    <div class="notification">
-
-      <label>
-        <input
-          type="checkbox"
-          [(ngModel)]="notifications">
-
-        Enable email notifications
-
-      </label>
-
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Admin Platform Settings</h1>
+      <p>Configure company profile, security policies, automated resume screening parameters, and notifications.</p>
     </div>
+  </header>
 
-    <button
-      class="save-btn"
-      (click)="saveSettings()">
+  @if (saveMessage) {
+    <div class="alert-success">
+      <span aria-hidden="true">✓</span> {{ saveMessage }}
+    </div>
+  }
 
-      Save Changes
-
+  <!-- TAB NAVIGATION -->
+  <div class="settings-tabs">
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'profile'" (click)="setTab('profile')">
+      🏢 Profile Settings
     </button>
-
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'security'" (click)="setTab('security')">
+      🔒 Security
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'notifications'" (click)="setTab('notifications')">
+      🔔 Notifications
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'app'" (click)="setTab('app')">
+      ⚙️ Application Settings
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'screening'" (click)="setTab('screening')">
+      📄 Resume Screening
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'evaluation'" (click)="setTab('evaluation')">
+      ⚖️ Evaluation Rules
+    </button>
   </div>
 
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+  <!-- TAB CONTENT CARD -->
+  <div class="content-card">
+
+    <!-- PROFILE SETTINGS -->
+    @if (activeTab === 'profile') {
+      <div class="tab-pane">
+        <h3>Company & Recruiter Profile</h3>
+        <p class="pane-subtitle">Manage public details displayed to candidates on job openings.</p>
+
+        <!-- Admin Profile Picture Upload -->
+        <div class="admin-avatar-card">
+          <div class="admin-avatar-wrap">
+            @if (adminAvatar) {
+              <img [src]="adminAvatar" alt="Admin Profile Photo" class="admin-avatar-large-img" />
+            } @else {
+              <div class="admin-avatar-large">
+                {{ adminName.charAt(0).toUpperCase() || 'A' }}
+              </div>
+            }
+            <label class="avatar-camera-btn" title="Upload profile photo">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+              </svg>
+              <input type="file" (change)="onAdminAvatarSelected($event)" accept="image/*" hidden />
+            </label>
+          </div>
+          <div class="admin-avatar-meta">
+            <h4>Admin Profile Picture</h4>
+            <p>Upload a profile photo for your recruiter account. It displays across your command center and candidate communications.</p>
+            <span class="upload-hint">Supported formats: JPG, PNG, WEBP. Click camera icon to upload.</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="admin-name">Admin Full Name</label>
+            <input id="admin-name" type="text" [(ngModel)]="adminName" class="form-input" placeholder="e.g. Eshwar Rao" />
+          </div>
+
+          <div class="form-group">
+            <label for="admin-email">Admin Primary Email</label>
+            <input id="admin-email" type="email" [(ngModel)]="adminEmail" class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label for="company-name">Company Name</label>
+            <input id="company-name" type="text" [(ngModel)]="companyName" class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label for="company-website">Company Website</label>
+            <input id="company-website" type="text" [(ngModel)]="companyWebsite" class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label for="contact-number">Recruitment Helpline / Contact</label>
+            <input id="contact-number" type="text" [(ngModel)]="contactNumber" class="form-input" />
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- SECURITY -->
+    @if (activeTab === 'security') {
+      <div class="tab-pane">
+        <h3>Authentication & Security Controls</h3>
+        <p class="pane-subtitle">Protect recruiter data and session persistence.</p>
+
+        <div class="switches-list">
+          <label class="switch-row">
+            <div>
+              <strong>Enforce Two-Factor Authentication (2FA)</strong>
+              <small>Require OTP on login for admin portal accounts</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="twoFactorAuth" class="toggle-checkbox" />
+          </label>
+
+          <div class="form-group inline-group">
+            <label for="session-timeout">Session Inactivity Timeout (minutes)</label>
+            <input id="session-timeout" type="number" [(ngModel)]="sessionTimeout" class="form-input small-input" />
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- NOTIFICATIONS -->
+    @if (activeTab === 'notifications') {
+      <div class="tab-pane">
+        <h3>Notification Channels</h3>
+        <p class="pane-subtitle">Configure email and real-time recruitment alerts.</p>
+
+        <div class="switches-list">
+          <label class="switch-row">
+            <div>
+              <strong>Email Notifications for New Applications</strong>
+              <small>Receive an instant alert when a candidate applies</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="emailNotifications" class="toggle-checkbox" />
+          </label>
+
+          <label class="switch-row">
+            <div>
+              <strong>Candidate Message Notifications</strong>
+              <small>Alert team when candidates reply in the chat hub</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="candidateAlerts" class="toggle-checkbox" />
+          </label>
+
+          <label class="switch-row">
+            <div>
+              <strong>Daily Recruitment Digest</strong>
+              <small>Summary of screenings, rankings, and upcoming interviews</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="dailyDigest" class="toggle-checkbox" />
+          </label>
+        </div>
+      </div>
+    }
+
+    <!-- APPLICATION SETTINGS -->
+    @if (activeTab === 'app') {
+      <div class="tab-pane">
+        <h3>Applicant Flow Settings</h3>
+        <p class="pane-subtitle">Configure candidate application workflow policies.</p>
+
+        <div class="switches-list">
+          <label class="switch-row">
+            <div>
+              <strong>Require Cover Letter</strong>
+              <small>Ask candidates to write a statement of purpose</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="requireCoverLetter" class="toggle-checkbox" />
+          </label>
+
+          <label class="switch-row">
+            <div>
+              <strong>Auto-Reject Candidates Below Minimum Threshold</strong>
+              <small>Automatically flag low scoring resumes as rejected</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="allowAutoReject" class="toggle-checkbox" />
+          </label>
+        </div>
+      </div>
+    }
+
+    <!-- RESUME SCREENING SETTINGS -->
+    @if (activeTab === 'screening') {
+      <div class="tab-pane">
+        <h3>AI Resume Screening Engine</h3>
+        <p class="pane-subtitle">Parameters driving automated parsing accuracy.</p>
+
+        <div class="switches-list">
+          <label class="switch-row">
+            <div>
+              <strong>Enable Deep Semantic AI Scoring</strong>
+              <small>Utilize neural models to match candidate experience with job requirements</small>
+            </div>
+            <input type="checkbox" [(ngModel)]="enableAIScoring" class="toggle-checkbox" />
+          </label>
+
+          <div class="form-group inline-group">
+            <label for="ocr-engine">OCR & Parsing Engine</label>
+            <input id="ocr-engine" type="text" [(ngModel)]="ocrParsingEngine" class="form-input" readonly />
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- EVALUATION SETTINGS -->
+    @if (activeTab === 'evaluation') {
+      <div class="tab-pane">
+        <h3>Evaluation Rules</h3>
+        <p class="pane-subtitle">Default baseline rules applied to newly created job requisitions.</p>
+
+        <div class="form-group inline-group">
+          <label for="minimum-shortlist-score">Default Minimum Shortlist Score (%)</label>
+          <input id="minimum-shortlist-score" type="number" [(ngModel)]="minMatchScore" class="form-input small-input" />
+        </div>
+      </div>
+    }
+
+    <div class="tab-footer">
+      <button class="btn btn-save" (click)="saveSettings()">
+        💾 Save Changes
+      </button>
+    </div>
+
+  </div>
 
 </div>

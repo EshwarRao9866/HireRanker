@@ -1,31 +1,149 @@
-<div class="page">
+<div class="page-container">
 
-  <h1>Evaluation Criteria</h1>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>AI Evaluation Criteria & Weight Configuration</h1>
+      <p>Fine-tune how HireRanker AI evaluates, scores, and ranks candidate resumes.</p>
+    </div>
+  </header>
 
-  <p class="subtitle">
-    Configure how candidates are evaluated and ranked.
-  </p>
+  @if (saveMessage) {
+    <div class="alert-success">
+      <span>✓</span> {{ saveMessage }}
+    </div>
+  }
 
-  <div class="card">
+  <div class="criteria-grid">
 
-    <div
-      class="criteria"
-      *ngFor="let item of criteria">
-
-      <div>
-        <strong>{{ item.name }}</strong>
+    <!-- WEIGHT CONFIGURATION CARD -->
+    <div class="content-card">
+      <div class="card-head">
+        <div>
+          <h3>Scoring Parameter Weight Distribution</h3>
+          <small>Adjust relative weight percentages for overall candidate score calculation</small>
+        </div>
+        <span class="total-badge" [class.total-valid]="totalWeight === 100" [class.total-invalid]="totalWeight !== 100">
+          Total: {{ totalWeight }}%
+        </span>
       </div>
 
-      <div class="weight">
-        {{ item.weight }}%
+      <div class="sliders-list">
+
+        <!-- Skills -->
+        <div class="slider-group">
+          <div class="slider-info">
+            <span class="param-title">Technical Skills & Stack Overlap</span>
+            <strong class="param-val">{{ skillsWeight }}%</strong>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            [(ngModel)]="skillsWeight"
+            class="range-slider"
+          />
+        </div>
+
+        <!-- Experience -->
+        <div class="slider-group">
+          <div class="slider-info">
+            <span class="param-title">Relevant Experience & Tenure</span>
+            <strong class="param-val">{{ experienceWeight }}%</strong>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            [(ngModel)]="experienceWeight"
+            class="range-slider"
+          />
+        </div>
+
+        <!-- Education -->
+        <div class="slider-group">
+          <div class="slider-info">
+            <span class="param-title">Education & Academic Background</span>
+            <strong class="param-val">{{ educationWeight }}%</strong>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            [(ngModel)]="educationWeight"
+            class="range-slider"
+          />
+        </div>
+
+        <!-- Certifications -->
+        <div class="slider-group">
+          <div class="slider-info">
+            <span class="param-title">Certifications & Industry Credentials</span>
+            <strong class="param-val">{{ certificationsWeight }}%</strong>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            [(ngModel)]="certificationsWeight"
+            class="range-slider"
+          />
+        </div>
+
       </div>
 
+      <button class="btn btn-save" (click)="saveCriteria()">
+        💾 Save Criteria Configuration
+      </button>
+    </div>
+
+    <!-- THRESHOLD & KEYWORDS CARD -->
+    <div class="content-card">
+      <div class="card-head">
+        <div>
+          <h3>Thresholds & Mandatory Keywords</h3>
+          <small>Rules governing automated shortlisting</small>
+        </div>
+      </div>
+
+      <div class="threshold-section">
+        <label>Minimum Score for Auto-Shortlist</label>
+        <div class="threshold-row">
+          <input
+            type="number"
+            min="50"
+            max="100"
+            [(ngModel)]="minScoreThreshold"
+            class="threshold-input"
+          />
+          <span>% (Candidates scoring above this are flagged for interview)</span>
+        </div>
+      </div>
+
+      <div class="keywords-section">
+        <label>Mandatory Keyword Triggers</label>
+        <div class="keywords-chips">
+          @for (kw of keywords; track kw) {
+            <span class="kw-chip">
+              {{ kw }}
+              <button class="remove-kw" (click)="removeKeyword(kw)">×</button>
+            </span>
+          }
+        </div>
+
+        <div class="add-kw-row">
+          <input
+            type="text"
+            [(ngModel)]="newKeyword"
+            (keyup.enter)="addKeyword()"
+            placeholder="Add keyword (e.g. AWS, Redis) and press Enter"
+            class="kw-input"
+          />
+          <button class="btn-add-kw" (click)="addKeyword()">+ Add</button>
+        </div>
+      </div>
     </div>
 
   </div>
-
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
 
 </div>

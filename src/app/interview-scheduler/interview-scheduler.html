@@ -1,65 +1,215 @@
-<div class="page">
+<div class="page-container">
 
-  <header>
-    <h1>Interview Scheduler</h1>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Interview Scheduler & Live Assessments</h1>
+      <p>Coordinate AI bot evaluations, code challenges, and live technical interviews with shortlisted candidates.</p>
+    </div>
 
-    <p>
-      Schedule and conduct AI-powered online interviews.
-    </p>
+    <button class="btn btn-primary" (click)="openScheduleModal()">
+      + Schedule Interview
+    </button>
   </header>
 
-  <div class="interview-info">
-
-    <div>
-      <span>Upcoming Interviews</span>
-      <strong>8</strong>
+  <!-- METRICS ROW -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="label">Upcoming Interviews</span>
+      <strong>{{ interviews.length }}</strong>
+      <small>This week</small>
     </div>
 
-    <div>
-      <span>Completed</span>
-      <strong>24</strong>
+    <div class="stat-card">
+      <span class="label">AI Automated Assessments</span>
+      <strong class="text-indigo">18</strong>
+      <small>Bot evaluated</small>
     </div>
 
-    <div>
-      <span>AI Interviews</span>
-      <strong>18</strong>
+    <div class="stat-card">
+      <span class="label">Completed This Month</span>
+      <strong class="text-green">24</strong>
+      <small>Shortlisted to offer</small>
+    </div>
+
+    <div class="stat-card">
+      <span class="label">Average Interview Score</span>
+      <strong>88%</strong>
+      <small>Pass rate: 74%</small>
+    </div>
+  </div>
+
+  <div class="scheduler-grid">
+
+    <!-- CALENDAR WIDGET -->
+    <div class="content-card calendar-card">
+      <div class="card-head">
+        <h3>{{ currentMonthYear }} Week View</h3>
+        <small>Interactive timetable</small>
+      </div>
+
+      <div class="calendar-strip">
+        @for (d of calendarDays; track d.dateKey) {
+          <div class="day-slot" 
+               [class.active-day]="d.active" 
+               [class.has-event]="d.hasEvent"
+               (click)="selectDate(d)"
+               role="button"
+               tabindex="0"
+               title="Select {{ d.formatted }}">
+            <span class="day-name">{{ d.day }}</span>
+            <span class="day-number">{{ d.date }}</span>
+            @if (d.hasEvent) {
+              <span class="event-dot"></span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="quick-slots">
+        <h4>{{ selectedTimelineTitle }}</h4>
+        @for (slot of filteredInterviews; track (slot.id + '_' + $index)) {
+          <div class="slot-item" [class.active-slot]="slot.status === 'Scheduled'">
+            <span class="slot-time">{{ slot.time }}</span>
+            <div class="slot-info">
+              <strong>{{ slot.candidate }}</strong>
+              <small>{{ slot.type }} • {{ slot.job }}</small>
+            </div>
+            <span class="status-badge" 
+                  [class.badge-emerald]="slot.status === 'Scheduled'" 
+                  [class.badge-purple]="slot.status === 'In Progress'" 
+                  [class.badge-blue]="slot.status === 'Completed'"
+                  [class.badge-gray]="slot.status === 'Cancelled'">
+              {{ slot.status }}
+            </span>
+          </div>
+        }
+        @if (filteredInterviews.length === 0) {
+          <div class="empty-timeline-slot">
+            <p>No interviews scheduled for this date.</p>
+            <small>Click <strong>+ Schedule Interview</strong> to add an interview slot.</small>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- UPCOMING INTERVIEWS TABLE CARD -->
+    <div class="content-card">
+      <div class="card-head">
+        <h3>Upcoming Interview Roster</h3>
+        <small>Real-time launch controls ({{ interviews.length }} total)</small>
+      </div>
+
+      <div class="table-wrap">
+        <table class="saas-table">
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Applied Role</th>
+              <th>Date & Time</th>
+              <th>Interviewer / Type</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of interviews; track (item.id + '_' + $index)) {
+              <tr>
+                <td><strong>{{ item.candidate }}</strong></td>
+                <td>{{ item.job }}</td>
+                <td>
+                  <span class="date-text">{{ item.date }}</span>
+                  <small class="block text-muted">{{ item.time }}</small>
+                </td>
+                <td>
+                  <span class="type-pill" [class.ai-pill]="item.type === 'AI Assessment'">{{ item.type }}</span>
+                  <small class="block text-muted">{{ item.interviewer }}</small>
+                </td>
+                <td>
+                  @if (item.status === 'Scheduled') {
+                    <span class="status-badge badge-emerald">● Scheduled</span>
+                  } @else if (item.status === 'Cancelled') {
+                    <span class="status-badge badge-gray">✕ Cancelled</span>
+                  } @else {
+                    <span class="status-badge badge-blue">✓ Completed</span>
+                  }
+                </td>
+                <td>
+                  <div class="action-btns-cell">
+                    <button class="btn-start" (click)="configureInterview(item)" title="Reschedule or configure interview">
+                      📅 Reschedule
+                    </button>
+                    @if (item.status !== 'Cancelled') {
+                      <button class="btn-cancel-action" (click)="cancelInterview(item)" title="Cancel interview">
+                        ✕
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </div>
 
-  <div class="card">
+  <!-- SCHEDULE MODAL -->
+  @if (showScheduleModal) {
+    <div class="modal-backdrop" (click)="closeScheduleModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <h3>Schedule Candidate Interview</h3>
+          <button class="close-modal" (click)="closeScheduleModal()">×</button>
+        </div>
 
-    <h2>Upcoming Interviews</h2>
+        <form (ngSubmit)="scheduleNewInterview()" class="modal-form">
+          <div class="form-group">
+            <label>Candidate Name *</label>
+            <input type="text" [(ngModel)]="newInterview.candidate" name="cName" placeholder="e.g. Eshwar Rao" required />
+          </div>
 
-    <div
-      class="interview"
-      *ngFor="let interview of interviews">
+          <div class="form-group">
+            <label>Job Position</label>
+            <input type="text" [(ngModel)]="newInterview.job" name="cJob" placeholder="e.g. Java Full Stack Developer" />
+          </div>
 
-      <div>
-        <strong>{{ interview.candidate }}</strong>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" [(ngModel)]="newInterview.date" name="cDate" />
+            </div>
 
-        <p>{{ interview.job }}</p>
+            <div class="form-group">
+              <label>Time</label>
+              <input type="text" [(ngModel)]="newInterview.time" name="cTime" placeholder="e.g. 11:30 AM" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Interview Type</label>
+              <select [(ngModel)]="newInterview.type" name="cType">
+                <option value="AI Assessment">AI Assessment Bot</option>
+                <option value="Live Technical">Live Technical Round</option>
+                <option value="HR Round">HR / Cultural Round</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Interviewer / Panel</label>
+              <input type="text" [(ngModel)]="newInterview.interviewer" name="cPanel" placeholder="e.g. Tech Lead Panel" />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn btn-outline" (click)="closeScheduleModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Schedule Interview →</button>
+          </div>
+        </form>
       </div>
-
-      <div>
-        <strong>{{ interview.date }}</strong>
-        <p>{{ interview.time }}</p>
-      </div>
-
-      <span class="status">
-        {{ interview.status }}
-      </span>
-
-      <button (click)="startInterview()">
-        Start
-      </button>
-
     </div>
-
-  </div>
-
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+  }
 
 </div>

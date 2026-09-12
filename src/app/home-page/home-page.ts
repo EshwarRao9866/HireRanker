@@ -1,70 +1,75 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-
+import { CommonModule } from '@angular/common';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-home-page',
-  imports: [FormsModule],
+  standalone: true,
+  imports: [FormsModule, CommonModule],
   templateUrl: './home-page.html',
   styleUrl: './home-page.css',
 })
-export class HomePage {
-  imageUrl = "https://www.hiringhappnz.com/favicon.ico";
-  // sideimgurl = "";
-   email: string = '';
+export class HomePage implements OnInit {
+  email: string = '';
   password: string = '';
-
   errorMessage: string = '';
+  isLoading: boolean = false;
+  showPassword: boolean = false;
 
-  constructor(private router: Router) {}
+  constructor(
+    private readonly router: Router,
+    private readonly authService: AuthService
+  ) {}
 
-  login() {
+  ngOnInit(): void {
+    // Application always opens at login screen on startup
+  }
 
+  login(): void {
     this.errorMessage = '';
 
-    // Check empty fields
     if (!this.email || !this.password) {
       this.errorMessage = 'Please enter your email and password.';
       return;
     }
 
-    // Get registered user
-    const storedUser = localStorage.getItem('hireRankerUser');
-
-    // No account exists
-    if (!storedUser) {
-      this.errorMessage =
-        'Account not found. Please create an account first.';
-      return;
-    }
-
-    const user = JSON.parse(storedUser);
-
-    // Check email and password
-    if (
-      this.email.trim().toLowerCase() === user.email.toLowerCase() &&
-      this.password === user.password
-    ) {
-
-      // Login successful
-      localStorage.setItem('isLoggedIn', 'true');
-
-      this.router.navigate(['/dashboard']);
-
-    } else {
-
-      // Wrong email or password
-      this.errorMessage =
-        'Incorrect email or password. Please enter the correct details.';
-
-    }
+    this.isLoading = true;
+    this.authService.login(this.email, this.password).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        if (res.token) {
+          if (res.role === 'CANDIDATE') {
+            this.router.navigate(['/candidate-dashboard']);
+          } else {
+            this.router.navigate(['/dashboard']);
+          }
+        } else {
+          this.errorMessage = res.message || 'Login failed.';
+        }
+      },
+      error: (err) => {
+        const fallback = this.authService.adminLogin(this.email, this.password);
+        this.isLoading = false;
+        if (fallback.success) {
+          this.router.navigate(['/dashboard']);
+        } else {
+          this.errorMessage = err?.error?.message || fallback.message || 'Incorrect email or password.';
+        }
+      }
+    });
   }
 
-  goToRegister() {
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  goToRegister(): void {
     this.router.navigate(['/register']);
   }
-  goToCandidateLogin() {
-  this.router.navigate(['/candidate-login']);
-}
+
+  goToCandidateLogin(): void {
+    this.router.navigate(['/candidate-login']);
+  }
 }

@@ -2,21 +2,16 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-
-  imports: [
-    FormsModule,
-    CommonModule
-  ],
-
+  imports: [FormsModule, CommonModule],
   templateUrl: './register.html',
   styleUrl: './register.css'
 })
 export class Register {
-
   fullName: string = '';
   email: string = '';
   mobile: string = '';
@@ -25,55 +20,72 @@ export class Register {
   acceptTerms: boolean = false;
   showPassword: boolean = false;
   showConfirmPassword: boolean = false;
-  togglePassword() {
-  this.showPassword = !this.showPassword;
-}
-  toggleConfirmPassword() {
-  this.showConfirmPassword = !this.showConfirmPassword;
-}
-
   errorMessage: string = '';
 
-  constructor(private router: Router) {}
+  constructor(
+    private readonly router: Router,
+    private readonly authService: AuthService
+  ) {}
 
- createAccount() {
-
-  this.errorMessage = '';
-
-  if (!this.fullName || !this.email || !this.password || !this.confirmPassword) {
-    this.errorMessage = 'Please fill in all fields.';
-    return;
+  togglePassword(): void {
+    this.showPassword = !this.showPassword;
   }
 
-  if (this.password !== this.confirmPassword) {
-    this.errorMessage = 'Passwords do not match.';
-    return;
+  toggleConfirmPassword(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 
-  if (this.password.length < 6) {
-    this.errorMessage = 'Password must contain at least 6 characters.';
-    return;
+  createAccount(): void {
+    this.errorMessage = '';
+
+    if (!this.fullName || !this.email || !this.password || !this.confirmPassword) {
+      this.errorMessage = 'Please fill in all required fields.';
+      return;
+    }
+
+    if (this.password !== this.confirmPassword) {
+      this.errorMessage = 'Passwords do not match.';
+      return;
+    }
+
+    if (this.password.length < 6) {
+      this.errorMessage = 'Password must contain at least 6 characters.';
+      return;
+    }
+
+    if (!this.acceptTerms) {
+      this.errorMessage = 'Please accept the Terms & Conditions.';
+      return;
+    }
+
+    const user = {
+      fullName: this.fullName,
+      email: this.email,
+      mobile: this.mobile,
+      password: this.password
+    };
+
+    if (this.authService.isBrowser()) {
+      localStorage.setItem('hireRankerUser', JSON.stringify(user));
+    }
+
+    // Call backend registration POST /api/auth/register
+    this.authService.register(this.fullName, this.email, this.password, 'ADMIN').subscribe({
+      next: (res) => {
+        if (res && res.success !== false) {
+          alert('Admin account created successfully! Please sign in.');
+          this.router.navigate(['/']);
+        } else {
+          this.errorMessage = res.message || 'Registration failed.';
+        }
+      },
+      error: (err) => {
+        this.errorMessage = err?.error?.message || 'Registration failed. Please check your details.';
+      }
+    });
   }
 
-  if (!this.acceptTerms) {
-    this.errorMessage = 'Please accept the Terms & Conditions.';
-    return;
+  goToLogin(): void {
+    this.router.navigate(['/']);
   }
-
-  // Save account
-  const user = {
-    fullName: this.fullName,
-    email: this.email,
-    password: this.password
-  };
-
-  localStorage.setItem(
-    'hireRankerUser',
-    JSON.stringify(user)
-  );
-
-  alert('Account created successfully!');
-
-  this.router.navigate(['/']);
-}
 }

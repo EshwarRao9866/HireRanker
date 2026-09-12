@@ -15,10 +15,12 @@
 // }
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { AiChatbot } from './ai-chatbot/ai-chatbot';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
+  imports: [RouterOutlet, AiChatbot],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

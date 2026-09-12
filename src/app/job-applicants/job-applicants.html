@@ -1,61 +1,510 @@
-<div class="page">
+<div class="page-container">
 
-  <header>
-    <h1>Job Applicants</h1>
-    <p>View and manage candidates who applied for your jobs.</p>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Applicant Screening & Management</h1>
+      <p>Review candidate profiles, analyze AI match scores, and make shortlisting decisions.</p>
+    </div>
   </header>
 
-  <div class="card">
+  <div class="content-card">
+    <div class="card-toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Search applicants by name, email, or role..."
+        />
+      </div>
 
-    <table>
+      <div class="filter-box">
+        <label>Filter by Status:</label>
+        <select [(ngModel)]="selectedFilter">
+          <option value="All">All Statuses</option>
+          <option value="Shortlisted">Shortlisted</option>
+          <option value="Under Review">Under Review</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
 
-      <thead>
-        <tr>
-          <th>Candidate</th>
-          <th>Applied Job</th>
-          <th>Match Score</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-
-      <tbody>
-
-        <tr *ngFor="let applicant of applicants">
-
-          <td>
-            <strong>{{ applicant.name }}</strong>
-            <small>{{ applicant.email }}</small>
-          </td>
-
-          <td>{{ applicant.job }}</td>
-
-          <td>
-            <strong class="score">
-              {{ applicant.score }}%
-            </strong>
-          </td>
-
-          <td>
-            <span class="status">
-              {{ applicant.status }}
-            </span>
-          </td>
-
-          <td>
-            <button class="view-btn">View</button>
-          </td>
-
-        </tr>
-
-      </tbody>
-
-    </table>
-
+    <div class="table-wrap">
+      <table class="saas-table">
+        <thead>
+          <tr>
+            <th>Candidate</th>
+            <th>Applied Position</th>
+            <th>Resume</th>
+            <th>AI Match Score</th>
+            <th>Skills Match</th>
+            <th>Experience</th>
+            <th>Education</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (a of filteredApplicants; track (a.id + '_' + $index)) {
+            <tr>
+              <td>
+                <div class="applicant-cell">
+                  <div class="applicant-avatar">{{ a.name.charAt(0) }}</div>
+                  <div>
+                    <strong>{{ a.name }}</strong>
+                    <small>{{ a.email }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>{{ a.job }}</td>
+              <td>
+                <button class="resume-link-btn" (click)="viewResume(a)" title="Click to view candidate resume">
+                  📄 {{ a.resumeFileName }}
+                </button>
+              </td>
+              <td>
+                <div class="match-score-pill" [class.high-score]="a.matchScore >= 85">
+                  <strong>{{ a.matchScore }}%</strong>
+                </div>
+              </td>
+              <td><strong>{{ a.skillsMatch }}%</strong></td>
+              <td>{{ a.experience }}</td>
+              <td>{{ a.educationScore }}%</td>
+              <td>
+                @if (a.status === 'Shortlisted') {
+                  <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                } @else if (a.status === 'Under Review') {
+                  <span class="status-badge badge-blue">⏳ Under Review</span>
+                } @else if (a.status === 'Interview Scheduled') {
+                  <span class="status-badge badge-purple">🎤 Interview</span>
+                } @else {
+                  <span class="status-badge badge-rose">✕ Rejected</span>
+                }
+              </td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-shortlist" (click)="shortlistApplicant(a)" title="Shortlist Candidate">⭐</button>
+                  <button class="btn-reject" (click)="rejectApplicant(a)" title="Reject Candidate">✕</button>
+                  <button class="btn-view" (click)="openCandidateProfile(a)" title="View Candidate Profile & Details">👁️</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+  <!-- ================= RESUME PREVIEW MODAL (Column 3) ================= -->
+  @if (selectedResumeApplicant) {
+    <div class="modal-backdrop" (click)="closeResumeModal()">
+      <div class="modal-container resume-modal" (click)="$event.stopPropagation()">
+        
+        <header class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-icon">📄</span>
+            <div>
+              <h3>{{ selectedResumeApplicant.resumeFileName }}</h3>
+              <p>ATS Resume Screening Preview &bull; {{ selectedResumeApplicant.name }}</p>
+            </div>
+          </div>
+          <div class="modal-header-actions">
+            <span class="match-score-pill high-score">
+              <strong>{{ selectedResumeApplicant.matchScore }}% AI Match</strong>
+            </span>
+            <button class="btn-secondary-sm" (click)="downloadResume(selectedResumeApplicant)" title="Print / Download PDF">
+              📥 Download PDF
+            </button>
+            <button class="btn-modal-close" (click)="closeResumeModal()" title="Close">✕</button>
+          </div>
+        </header>
+
+        <div class="modal-body-scrollable">
+          <!-- A4 Professional ATS Resume Layout -->
+          <div class="resume-paper">
+            
+            <div class="rp-header">
+              <h1 class="rp-name">{{ selectedResumeApplicant.name }}</h1>
+              <p class="rp-title">{{ selectedResumeApplicant.currentTitle || selectedResumeApplicant.job }}</p>
+              <div class="rp-contact-strip">
+                <span (click)="copyContact(selectedResumeApplicant.email, 'Email')" title="Click to copy email">
+                  ✉ {{ selectedResumeApplicant.email }}
+                </span>
+                <span (click)="copyContact(selectedResumeApplicant.phone || '+91 98765 43210', 'Phone')" title="Click to copy phone">
+                  📱 {{ selectedResumeApplicant.phone || '+91 98765 43210' }}
+                </span>
+                <span>📍 {{ selectedResumeApplicant.location || 'Hyderabad, India' }}</span>
+                @if (selectedResumeApplicant.linkedin) {
+                  <a [href]="selectedResumeApplicant.linkedin" target="_blank" rel="noopener noreferrer" class="rp-link">
+                    🔗 LinkedIn
+                  </a>
+                }
+                @if (selectedResumeApplicant.github) {
+                  <a [href]="selectedResumeApplicant.github" target="_blank" rel="noopener noreferrer" class="rp-link">
+                    🐙 GitHub
+                  </a>
+                }
+              </div>
+            </div>
+
+            <!-- Summary -->
+            <section class="rp-section">
+              <h2 class="rp-section-title">Professional Summary</h2>
+              <p class="rp-summary-text">
+                {{ selectedResumeApplicant.aboutMe || 'Dedicated software engineer with extensive experience designing performant full stack applications and cloud-ready architectures.' }}
+              </p>
+            </section>
+
+            <!-- Technical Skills -->
+            <section class="rp-section">
+              <h2 class="rp-section-title">Technical Skills &amp; Competencies</h2>
+              <div class="rp-skills-list">
+                @for (skill of selectedResumeApplicant.skills; track skill) {
+                  <span class="rp-skill-chip">{{ skill }}</span>
+                }
+              </div>
+            </section>
+
+            <!-- Experience -->
+            <section class="rp-section">
+              <h2 class="rp-section-title">Work Experience</h2>
+              @if (selectedResumeApplicant.workHistory && selectedResumeApplicant.workHistory.length > 0) {
+                @for (exp of selectedResumeApplicant.workHistory; track exp.role) {
+                  <div class="rp-exp-item">
+                    <div class="rp-exp-head">
+                      <strong>{{ exp.role }} &mdash; <span class="rp-company">{{ exp.company }}</span></strong>
+                      <span class="rp-duration">{{ exp.duration }}</span>
+                    </div>
+                    <ul class="rp-bullets">
+                      @for (hl of exp.highlights; track hl) {
+                        <li>{{ hl }}</li>
+                      }
+                    </ul>
+                  </div>
+                }
+              } @else {
+                <div class="rp-exp-item">
+                  <div class="rp-exp-head">
+                    <strong>Software Engineer &mdash; <span class="rp-company">Enterprise Systems</span></strong>
+                    <span class="rp-duration">{{ selectedResumeApplicant.experience }}</span>
+                  </div>
+                  <ul class="rp-bullets">
+                    <li>Engineered software features and maintained high code reliability standards.</li>
+                    <li>Collaborated in cross-functional agile teams to deliver customer-centric functionality.</li>
+                  </ul>
+                </div>
+              }
+            </section>
+
+            <!-- Education -->
+            <section class="rp-section">
+              <h2 class="rp-section-title">Education &amp; Credentials</h2>
+              <div class="rp-edu-item">
+                <div class="rp-exp-head">
+                  <strong>{{ selectedResumeApplicant.education || 'Bachelor of Technology in Computer Science' }}</strong>
+                  <span class="rp-duration">Score: {{ selectedResumeApplicant.educationScore }}%</span>
+                </div>
+              </div>
+            </section>
+
+            <!-- Projects -->
+            @if (selectedResumeApplicant.projects && selectedResumeApplicant.projects.length > 0) {
+              <section class="rp-section">
+                <h2 class="rp-section-title">Key Projects</h2>
+                @for (proj of selectedResumeApplicant.projects; track proj.title) {
+                  <div class="rp-project-item">
+                    <div class="rp-exp-head">
+                      <strong>{{ proj.title }}</strong>
+                      <span class="rp-tech-badge">{{ proj.tech }}</span>
+                    </div>
+                    <p class="rp-proj-desc">{{ proj.description }}</p>
+                  </div>
+                }
+              </section>
+            }
+
+            <!-- ATS Screening Banner -->
+            <div class="rp-ats-banner">
+              <div class="rp-ats-col">
+                <span class="rp-label">AI Match Score</span>
+                <strong class="rp-val green">{{ selectedResumeApplicant.matchScore }}%</strong>
+              </div>
+              <div class="rp-ats-col">
+                <span class="rp-label">Skills Match</span>
+                <strong class="rp-val">{{ selectedResumeApplicant.skillsMatch }}%</strong>
+              </div>
+              <div class="rp-ats-col">
+                <span class="rp-label">Experience</span>
+                <strong class="rp-val">{{ selectedResumeApplicant.experience }}</strong>
+              </div>
+              <div class="rp-ats-col">
+                <span class="rp-label">Recommendation</span>
+                <strong class="rp-val highlight">
+                  {{ selectedResumeApplicant.matchScore >= 88 ? 'Recommended for Interview' : 'Eligible for Review' }}
+                </strong>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <div class="footer-left">
+            <button class="btn-profile-link" (click)="openProfileFromResume()">
+              👤 View Candidate Profile Details
+            </button>
+          </div>
+          <div class="footer-right">
+            @if (selectedResumeApplicant.status !== 'Shortlisted') {
+              <button class="btn-shortlist-modal" (click)="shortlistApplicant(selectedResumeApplicant)">
+                ⭐ Shortlist
+              </button>
+            }
+            @if (selectedResumeApplicant.status !== 'Interview Scheduled') {
+              <button class="btn-interview-modal" (click)="scheduleInterview(selectedResumeApplicant)">
+                🎤 Schedule Interview
+              </button>
+            }
+            <button class="btn-close-modal" (click)="closeResumeModal()">Close</button>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  }
+
+  <!-- ================= CANDIDATE PROFILE DETAILS MODAL (Last Column) ================= -->
+  @if (selectedProfileApplicant) {
+    <div class="modal-backdrop" (click)="closeProfileModal()">
+      <div class="modal-container profile-modal" (click)="$event.stopPropagation()">
+        
+        <!-- Header Lead -->
+        <header class="profile-modal-header">
+          <div class="profile-header-lead">
+            <div class="candidate-modal-avatar">
+              {{ selectedProfileApplicant.name.charAt(0).toUpperCase() }}
+            </div>
+            <div class="candidate-header-text">
+              <div class="title-with-badge">
+                <h2>{{ selectedProfileApplicant.name }}</h2>
+                @if (selectedProfileApplicant.status === 'Shortlisted') {
+                  <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                } @else if (selectedProfileApplicant.status === 'Under Review') {
+                  <span class="status-badge badge-blue">⏳ Under Review</span>
+                } @else if (selectedProfileApplicant.status === 'Interview Scheduled') {
+                  <span class="status-badge badge-purple">🎤 Interview</span>
+                } @else {
+                  <span class="status-badge badge-rose">✕ Rejected</span>
+                }
+              </div>
+              <p class="candidate-role-sub">{{ selectedProfileApplicant.currentTitle || selectedProfileApplicant.job }}</p>
+            </div>
+          </div>
+          <button class="btn-modal-close" (click)="closeProfileModal()" title="Close">✕</button>
+        </header>
+
+        <div class="modal-body-scrollable">
+          
+          <!-- CONTACT & WEB PRESENCE (GitHub, LinkedIn, Phone, Email, Location) -->
+          <div class="profile-card contact-card">
+            <h3 class="card-title">Contact &amp; Online Profiles</h3>
+            <div class="contact-links-grid">
+              
+              <!-- Phone -->
+              <div class="contact-box">
+                <div class="contact-box-icon phone-icon">📱</div>
+                <div class="contact-box-info">
+                  <small>Phone Number</small>
+                  <a [href]="'tel:' + (selectedProfileApplicant.phone || '+919876543210')" class="contact-main-link">
+                    {{ selectedProfileApplicant.phone || '+91 98765 43210' }}
+                  </a>
+                </div>
+                <button class="copy-btn" (click)="copyContact(selectedProfileApplicant.phone || '+91 98765 43210', 'Phone')" title="Copy Phone">📋</button>
+              </div>
+
+              <!-- Email -->
+              <div class="contact-box">
+                <div class="contact-box-icon email-icon">✉️</div>
+                <div class="contact-box-info">
+                  <small>Email Address</small>
+                  <a [href]="'mailto:' + selectedProfileApplicant.email" class="contact-main-link">
+                    {{ selectedProfileApplicant.email }}
+                  </a>
+                </div>
+                <button class="copy-btn" (click)="copyContact(selectedProfileApplicant.email, 'Email')" title="Copy Email">📋</button>
+              </div>
+
+              <!-- GitHub Profile Link -->
+              <div class="contact-box social-box github-box">
+                <div class="contact-box-icon git-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                  </svg>
+                </div>
+                <div class="contact-box-info">
+                  <small>GitHub Profile</small>
+                  @if (selectedProfileApplicant.github) {
+                    <a [href]="selectedProfileApplicant.github" target="_blank" rel="noopener noreferrer" class="contact-main-link external-link">
+                      {{ selectedProfileApplicant.github }} ↗
+                    </a>
+                  } @else {
+                    <span class="contact-muted">Not specified</span>
+                  }
+                </div>
+                @if (selectedProfileApplicant.github) {
+                  <button class="copy-btn" (click)="copyContact(selectedProfileApplicant.github, 'GitHub Link')" title="Copy Link">📋</button>
+                }
+              </div>
+
+              <!-- LinkedIn Profile Link -->
+              <div class="contact-box social-box linkedin-box">
+                <div class="contact-box-icon linkedin-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                  </svg>
+                </div>
+                <div class="contact-box-info">
+                  <small>LinkedIn Profile</small>
+                  @if (selectedProfileApplicant.linkedin) {
+                    <a [href]="selectedProfileApplicant.linkedin" target="_blank" rel="noopener noreferrer" class="contact-main-link external-link">
+                      {{ selectedProfileApplicant.linkedin }} ↗
+                    </a>
+                  } @else {
+                    <span class="contact-muted">Not specified</span>
+                  }
+                </div>
+                @if (selectedProfileApplicant.linkedin) {
+                  <button class="copy-btn" (click)="copyContact(selectedProfileApplicant.linkedin, 'LinkedIn Link')" title="Copy Link">📋</button>
+                }
+              </div>
+
+              <!-- Location -->
+              <div class="contact-box">
+                <div class="contact-box-icon location-icon">📍</div>
+                <div class="contact-box-info">
+                  <small>Current Location</small>
+                  <span class="contact-main-link text-only">
+                    {{ selectedProfileApplicant.location || 'Hyderabad, Telangana, India' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Compensation -->
+              <div class="contact-box">
+                <div class="contact-box-icon salary-icon">💼</div>
+                <div class="contact-box-info">
+                  <small>Expected Compensation</small>
+                  <span class="contact-main-link text-only">
+                    {{ selectedProfileApplicant.expectedSalary || '₹14 - 18 LPA' }}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ABOUT CANDIDATE -->
+          <div class="profile-card">
+            <h3 class="card-title">About Candidate</h3>
+            <p class="candidate-bio">
+              {{ selectedProfileApplicant.aboutMe || 'Dedicated software engineer with verified experience building scalable web solutions and enterprise microservices.' }}
+            </p>
+          </div>
+
+          <!-- INDEXED SKILLS -->
+          <div class="profile-card">
+            <h3 class="card-title">Indexed Skills &amp; Competencies</h3>
+            <div class="skills-flex-wrap">
+              @for (skill of selectedProfileApplicant.skills; track skill) {
+                <span class="skill-tag-pill">{{ skill }}</span>
+              }
+            </div>
+          </div>
+
+          <!-- APPLICATION & RESUME SNAPSHOT -->
+          <div class="profile-card">
+            <h3 class="card-title">Job Application &amp; Screening Match</h3>
+            <div class="app-metrics-grid">
+              <div class="metric-box">
+                <span class="metric-label">Applied Role</span>
+                <strong class="metric-value">{{ selectedProfileApplicant.job }}</strong>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">AI Match Score</span>
+                <strong class="metric-value text-emerald">{{ selectedProfileApplicant.matchScore }}%</strong>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">Skills Match</span>
+                <strong class="metric-value">{{ selectedProfileApplicant.skillsMatch }}%</strong>
+              </div>
+              <div class="metric-box">
+                <span class="metric-label">Experience</span>
+                <strong class="metric-value">{{ selectedProfileApplicant.experience }}</strong>
+              </div>
+            </div>
+
+            <!-- Attached Resume Row -->
+            <div class="resume-attachment-row">
+              <div class="resume-info">
+                <span class="resume-doc-icon">📄</span>
+                <div>
+                  <strong>{{ selectedProfileApplicant.resumeFileName }}</strong>
+                  <small>Attached Candidate Resume</small>
+                </div>
+              </div>
+              <button class="btn-inspect-resume" (click)="openResumeFromProfile()">
+                🔍 Inspect Full Resume
+              </button>
+            </div>
+          </div>
+
+          <!-- EDUCATION -->
+          <div class="profile-card">
+            <h3 class="card-title">Education Background</h3>
+            <div class="edu-card-content">
+              <strong>{{ selectedProfileApplicant.education || 'B.Tech in Computer Science & Engineering - Centurion University' }}</strong>
+              <p class="edu-score">ATS Academic Match Score: {{ selectedProfileApplicant.educationScore }}%</p>
+            </div>
+          </div>
+
+        </div>
+
+        <footer class="modal-footer">
+          <div class="footer-left">
+            <button class="btn-inspect-resume-footer" (click)="openResumeFromProfile()">
+              📄 View Attached Resume
+            </button>
+          </div>
+          <div class="footer-right">
+            @if (selectedProfileApplicant.status !== 'Shortlisted') {
+              <button class="btn-shortlist-modal" (click)="shortlistApplicant(selectedProfileApplicant)">
+                ⭐ Shortlist
+              </button>
+            }
+            @if (selectedProfileApplicant.status !== 'Interview Scheduled') {
+              <button class="btn-interview-modal" (click)="scheduleInterview(selectedProfileApplicant)">
+                🎤 Schedule Interview
+              </button>
+            }
+            @if (selectedProfileApplicant.status !== 'Rejected') {
+              <button class="btn-reject-modal" (click)="rejectApplicant(selectedProfileApplicant)">
+                ✕ Reject
+              </button>
+            }
+            <button class="btn-close-modal" (click)="closeProfileModal()">Close</button>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  }
+
+  <!-- Toast Feedback -->
+  @if (toastMessage) {
+    <div class="floating-toast">
+      <span>{{ toastMessage }}</span>
+    </div>
+  }
 
 </div>

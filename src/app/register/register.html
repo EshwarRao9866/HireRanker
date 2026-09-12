@@ -76,13 +76,14 @@
         <!-- Full Name -->
         <div class="input-group">
 
-          <label>Full Name</label>
+          <label for="fullName">Full Name</label>
 
           <div class="input-wrapper">
             <span class="input-icon">👤</span>
 
             <input
               type="text"
+              id="fullName"
               [(ngModel)]="fullName"
               name="fullName"
               placeholder="Enter your full name"
@@ -95,13 +96,14 @@
         <!-- Email -->
         <div class="input-group">
 
-          <label>Email Address</label>
+          <label for="email">Email Address</label>
 
           <div class="input-wrapper">
             <span class="input-icon">✉</span>
 
             <input
               type="email"
+              id="email"
               [(ngModel)]="email"
               name="email"
               placeholder="Enter your email"
@@ -114,13 +116,14 @@
         <!-- Mobile -->
         <div class="input-group">
 
-          <label>Mobile Number</label>
+          <label for="mobile">Mobile Number</label>
 
           <div class="input-wrapper">
             <span class="input-icon">📱</span>
 
             <input
               type="tel"
+              id="mobile"
               [(ngModel)]="mobile"
               name="mobile"
               placeholder="Enter mobile number"
@@ -133,7 +136,7 @@
         <!-- Password -->
         <div class="input-group">
 
-          <label>Password</label>
+          <label for="password">Password</label>
 
           <div class="input-wrapper">
 
@@ -141,6 +144,7 @@
 
             <input
               [type]="showPassword ? 'text' : 'password'"
+              id="password"
               [(ngModel)]="password"
               name="password"
               placeholder="Create a password"
@@ -163,7 +167,7 @@
         <!-- Confirm Password -->
         <div class="input-group">
 
-          <label>Confirm Password</label>
+          <label for="confirmPassword">Confirm Password</label>
 
           <div class="input-wrapper">
 
@@ -171,6 +175,7 @@
 
             <input
               [type]="showConfirmPassword ? 'text' : 'password'"
+              id="confirmPassword"
               [(ngModel)]="confirmPassword"
               name="confirmPassword"
               placeholder="Confirm your password"
@@ -205,15 +210,16 @@
 
           <input
             type="checkbox"
+            id="acceptTerms"
             [(ngModel)]="acceptTerms"
             name="acceptTerms">
 
-          <span>
+          <label for="acceptTerms">
             I agree to the
             <a href="#">Terms & Conditions</a>
             and
             <a href="#">Privacy Policy</a>
-          </span>
+          </label>
 
         </div>
 
@@ -236,13 +242,10 @@
 
       <!-- Login -->
       <div class="login-link">
-
         Already have an account?
-
-        <a href="#">
+        <a href="#" (click)="goToLogin(); $event.preventDefault()">
           Login
         </a>
-
       </div>
 
     </div>

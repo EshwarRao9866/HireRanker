@@ -1,1 +1,548 @@
-<p>resume-upload works!</p>
+<div class="candidate-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand" (click)="goDashboard()">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Candidate Portal</span>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button class="menu-item" (click)="goDashboard()">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
+
+      <button class="menu-item" (click)="openJobs()">
+        <span class="icon">💼</span>
+        <span class="label">Find Jobs</span>
+      </button>
+
+      <button class="menu-item active">
+        <span class="icon">📄</span>
+        <span class="label">My Resume</span>
+      </button>
+
+      <button class="menu-item" (click)="openApplications()">
+        <span class="icon">📋</span>
+        <span class="label">My Applications</span>
+      </button>
+
+      <button class="menu-item" (click)="openInterviews()">
+        <span class="icon">🎤</span>
+        <span class="label">Interviews</span>
+      </button>
+
+      <button class="menu-item" (click)="openProfile()">
+        <span class="icon">👤</span>
+        <span class="label">My Profile</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="page-title">
+        <h1>My Resume & AI Screening</h1>
+        <p>View AI parsing analytics, detected skills breakdown, and upload updated resumes.</p>
+      </div>
+    </header>
+
+    <div class="content-scrollable">
+
+      <!-- APPLICATION SUCCESS BANNER -->
+      @if (applicationSuccessMessage) {
+        <div class="application-success-banner">
+          <span>🎉 {{ applicationSuccessMessage }}</span>
+        </div>
+      }
+
+      <!-- TOP SUMMARY ROW -->
+      <div class="resume-grid">
+
+        <!-- RESUME CARD & UPLOAD -->
+        <div class="content-card resume-main-card">
+          <div class="card-head">
+            <div>
+              <h3>Current Active Resume</h3>
+              <small>Default resume used for all automated screenings</small>
+            </div>
+            <span class="status-badge-active" [class.badge-pending]="!hasResume">
+              {{ hasResume ? '● Active' : '○ No Resume' }}
+            </span>
+          </div>
+
+          <div class="resume-preview-box">
+            <div class="pdf-icon-large">📄</div>
+            <div class="resume-meta">
+              <h4>{{ resumeName }}</h4>
+              <p>Size: {{ fileSize }} • Uploaded: {{ uploadDate }}</p>
+              <div class="action-buttons-row">
+                <button class="btn btn-outline" (click)="viewResume()" [disabled]="!hasResume">👁️ View PDF</button>
+                <button class="btn btn-outline" (click)="downloadResume()" [disabled]="!hasResume">⬇️ Download</button>
+                <button class="btn btn-outline btn-replace" (click)="replaceResume()">🔄 Replace Resume</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- DRAG & DROP UPLOAD ZONE -->
+          <div class="upload-dropzone" [class.dragging]="isDragging"
+               (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onFileDropped($event)">
+            <input type="file" (change)="onFileSelected($event)" accept=".pdf" id="resumeUploadInput" hidden />
+            <label for="resumeUploadInput" class="dropzone-label">
+              <span class="upload-icon">☁️</span>
+              <strong>Click to upload or drag & drop updated resume</strong>
+              <p>Supports PDF only with selectable text (Max file size: 10MB)</p>
+            </label>
+
+            @if (isUploading) {
+              <div class="uploading-progress">
+                <div class="spinner-small"></div>
+                <div class="progress-details">
+                  <div class="progress-stage-title">
+                    <span>{{ uploadStageMessage }}</span>
+                    <strong class="progress-percent-badge">{{ uploadProgress }}%</strong>
+                  </div>
+                  <div class="progress-bar-track">
+                    <div class="progress-bar-fill" [style.width.%]="uploadProgress"></div>
+                  </div>
+                  <div class="progress-steps-row">
+                    <span class="step-badge" [class.done]="uploadProgress >= 30" [class.active]="uploadStage === 'UPLOADING'">1. Upload (10%)</span>
+                    <span class="step-divider">→</span>
+                    <span class="step-badge" [class.done]="uploadProgress >= 50" [class.active]="uploadStage === 'STORED'">2. File Stored (30%)</span>
+                    <span class="step-divider">→</span>
+                    <span class="step-badge" [class.done]="uploadProgress >= 70" [class.active]="uploadStage === 'EXTRACTING'">3. Text Extracted (50%)</span>
+                    <span class="step-divider">→</span>
+                    <span class="step-badge" [class.done]="uploadProgress >= 90" [class.active]="uploadStage === 'ANALYZING'">4. AI Analysis (70%)</span>
+                    <span class="step-divider">→</span>
+                    <span class="step-badge" [class.done]="uploadProgress >= 100" [class.active]="uploadStage === 'SCORING'">5. ATS Score (90%)</span>
+                    <span class="step-divider">→</span>
+                    <span class="step-badge" [class.done]="uploadProgress === 100" [class.active]="uploadStage === 'COMPLETE'">6. Complete (100%)</span>
+                  </div>
+                </div>
+              </div>
+            }
+
+            @if (uploadSuccess) {
+              <div class="upload-success-msg">
+                ✓ Resume uploaded, parsed, and ATS scored successfully!
+              </div>
+            }
+
+            @if (errorMessage) {
+              <div class="upload-error-msg">
+                <span>⚠️ {{ errorMessage }}</span>
+                @if (hasResume && uploadedResumeId) {
+                  <button type="button" class="btn-retry-inline" (click)="retryAnalysis()">🔄 Retry AI Analysis</button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- AI SCREENING SCORE CARD -->
+        <div class="content-card ai-score-card">
+          <div class="card-head">
+            <div>
+              <h3>Professional ATS Score</h3>
+              <small>8-Factor Weighted Scoring Algorithm</small>
+            </div>
+            @if (hasAnalyzedResume) {
+              <span class="badge-emerald" [class.badge-emerald]="screeningScore >= 80" [class.badge-blue]="screeningScore >= 60 && screeningScore < 80" [class.badge-amber]="screeningScore < 60">
+                {{ recommendationTier }}
+              </span>
+            } @else {
+              <span class="badge-amber">Awaiting Upload</span>
+            }
+          </div>
+
+          @if (!hasAnalyzedResume) {
+            <div class="score-empty-state">
+              <div class="empty-icon">📊</div>
+              <h4>No ATS Screening Yet</h4>
+              <p>Upload your resume to calculate your 8-factor ATS score, discover missing keywords, and unlock tailored job recommendations.</p>
+            </div>
+          } @else {
+            @if (availableRoles.length > 0) {
+              <div class="target-role-selector-bar">
+                <label class="target-role-label">🎯 Target Role Evaluation:</label>
+                <select class="target-role-select" [(ngModel)]="selectedTargetRole" (ngModelChange)="onTargetRoleChanged($event)">
+                  @for (role of availableRoles; track role.id) {
+                    <option [value]="role.title">{{ role.title }} ({{ role.company }})</option>
+                  }
+                </select>
+              </div>
+            }
+
+            <div class="score-circle-wrap">
+              <div class="score-gauge">
+                <span class="score-num">{{ screeningScore }}%</span>
+                <span class="score-label">{{ recommendationTier }}</span>
+              </div>
+            </div>
+
+            <div class="score-breakdown-list">
+              <div class="breakdown-item">
+                <span>Job/Skill Match (25%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="jobSkillScore"></div></div>
+                <strong>{{ jobSkillScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>Experience Relevance (20%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="experienceScore"></div></div>
+                <strong>{{ experienceScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>Job Description Match (15%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="jobDescriptionScore"></div></div>
+                <strong>{{ jobDescriptionScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>Projects / Work Relevance (10%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="projectScore"></div></div>
+                <strong>{{ projectScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>ATS Compatibility (10%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="atsCompatibilityScore"></div></div>
+                <strong>{{ atsCompatibilityScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>Education (5%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="educationScore"></div></div>
+                <strong>{{ educationScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>Achievements & Impact (5%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="achievementScore"></div></div>
+                <strong>{{ achievementScore }}%</strong>
+              </div>
+
+              <div class="breakdown-item">
+                <span>Resume Completeness (5%)</span>
+                <div class="bar-wrap"><div class="bar-fill" [style.width.%]="completenessScore"></div></div>
+                <strong>{{ completenessScore }}%</strong>
+              </div>
+            </div>
+          }
+        </div>
+
+      </div>
+
+      <!-- DETECTED SKILLS & STRENGTHS ROW -->
+      <div class="analysis-grid">
+
+        <!-- DETECTED SKILLS & RECOMMENDED -->
+        <div class="content-card">
+          <div class="card-head">
+            <div>
+              <h3>AI-Detected Skills ({{ detectedSkills.length }})</h3>
+              <small>Key technologies extracted from your resume</small>
+            </div>
+          </div>
+
+          @if (!hasAnalyzedResume) {
+            <div class="skills-empty-state">
+              <p>Skills will be automatically extracted from your resume once uploaded.</p>
+            </div>
+          } @else {
+            <div class="skills-table">
+              @for (skill of detectedSkills; track (skill.name + '_' + $index)) {
+                <div class="skill-row">
+                  <span class="skill-name">💻 {{ skill.name }}</span>
+                  <span class="skill-depth badge-emerald">{{ skill.match }}</span>
+                </div>
+              }
+            </div>
+
+            @if (missingSkills.length > 0) {
+              <div style="margin-top: 1.25rem; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 1rem;">
+                <h4 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; color: #f59e0b;">⚠️ Missing / Recommended Keywords</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                  @for (missing of missingSkills; track (missing + '_' + $index)) {
+                    <span class="badge-amber" style="padding: 0.3rem 0.6rem; border-radius: 9999px; font-size: 0.8rem;">+ {{ missing }}</span>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+
+        <!-- AI STRENGTHS & HIGHLIGHTS & SUGGESTIONS -->
+        <div class="content-card">
+          <div class="card-head">
+            <div>
+              <h3>AI Candidate Highlights & ATS Suggestions</h3>
+              <small>Actionable feedback to maximize ATS recruiter pass-rate</small>
+            </div>
+          </div>
+
+          @if (!hasAnalyzedResume) {
+            <div class="skills-empty-state">
+              <p>Upload your resume to receive AI feedback, detected strengths, and actionable suggestions to improve your ATS score.</p>
+            </div>
+          } @else {
+            <div class="strengths-list">
+              <h4 style="font-size: 0.85rem; font-weight: 700; color: #10b981; text-transform: uppercase; margin-bottom: 0.5rem;">Verified Strengths</h4>
+              @for (strength of strengths; track (strength + '_' + $index)) {
+                <div class="strength-item">
+                  <span class="check-icon">✓</span>
+                  <p>{{ strength }}</p>
+                </div>
+              }
+
+              @if (improvementSuggestions.length > 0) {
+                <h4 style="font-size: 0.85rem; font-weight: 700; color: #3b82f6; text-transform: uppercase; margin-top: 1rem; margin-bottom: 0.5rem;">Suggestions for Higher Score</h4>
+                @for (suggestion of improvementSuggestions; track (suggestion + '_' + $index)) {
+                  <div class="strength-item">
+                    <span class="check-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">💡</span>
+                    <p>{{ suggestion }}</p>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+
+      </div>
+
+      <!-- AI JOB RECOMMENDATIONS CARD -->
+      @if (hasAnalyzedResume && recommendedJobs.length > 0) {
+        <div class="content-card job-recommendations-card">
+          <div class="card-head">
+            <div>
+              <h3>🎯 AI Job Recommendations Based on Your Skills</h3>
+              <small>Capability percentage and match analysis across available positions</small>
+            </div>
+            <span class="badge-emerald">{{ recommendedJobs.length }} Matching Positions</span>
+          </div>
+
+          <div class="jobs-capability-grid">
+            @for (job of recommendedJobs; track (job.jobId + '_' + $index)) {
+              <div class="job-capability-card">
+                <div class="job-capability-header">
+                  <div>
+                    <h4 class="job-role-title" (click)="viewCompanyDetails(job)" title="Click to view role & company specifications">{{ job.jobTitle }}</h4>
+                    <p class="job-company-loc">
+                      <button type="button" class="company-link-btn" (click)="viewCompanyDetails(job)" title="Click to view company profile, culture, and perks">
+                        🏢 <strong>{{ job.company }}</strong> <span class="company-link-tag">Details →</span>
+                      </button>
+                      <span class="loc-divider">•</span>
+                      <span>{{ job.location }}</span>
+                      <span class="loc-divider">•</span>
+                      <span>{{ job.experienceRequired }}</span>
+                    </p>
+                  </div>
+                  <div class="capability-badge-pill" [class.pill-high]="job.capabilityPercentage >= 80" [class.pill-mid]="job.capabilityPercentage >= 60 && job.capabilityPercentage < 80" [class.pill-low]="job.capabilityPercentage < 60">
+                    <span class="pill-pct">{{ job.capabilityPercentage }}% Capable</span>
+                    <span class="pill-tier">{{ job.capabilityTier }}</span>
+                  </div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="job-capability-bar-wrap">
+                  <div class="job-capability-bar-fill" [style.width.%]="job.capabilityPercentage"
+                       [class.fill-high]="job.capabilityPercentage >= 80"
+                       [class.fill-mid]="job.capabilityPercentage >= 60 && job.capabilityPercentage < 80"
+                       [class.fill-low]="job.capabilityPercentage < 60"></div>
+                </div>
+
+                <div class="job-skills-analysis">
+                  @if (job.matchingSkills.length > 0) {
+                    <div class="skills-block">
+                      <span class="block-label matching-label">✓ Matching Skills ({{ job.matchingSkills.length }}):</span>
+                      <div class="chips-row">
+                        @for (skill of job.matchingSkills; track skill) {
+                          <span class="chip chip-matching">{{ skill }}</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                  @if (job.missingSkills.length > 0) {
+                    <div class="skills-block">
+                      <span class="block-label missing-label">⚠️ Recommended to Learn ({{ job.missingSkills.length }}):</span>
+                      <div class="chips-row">
+                        @for (skill of job.missingSkills; track skill) {
+                          <span class="chip chip-missing">+ {{ skill }}</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <div class="job-capability-footer">
+                  <div class="salary-details-wrap">
+                    <span class="job-salary">{{ job.salary }}</span>
+                    <button type="button" class="btn-company-spec" (click)="viewCompanyDetails(job)" title="View company profile and role requirements">
+                      🏢 Company & Specs ↗
+                    </button>
+                  </div>
+                  <button type="button" class="btn btn-apply"
+                          [class.btn-applied]="appliedJobIds.has(job.jobId)"
+                          [disabled]="appliedJobIds.has(job.jobId) || isApplyingJobId === job.jobId"
+                          (click)="applyToJob(job)">
+                    {{ appliedJobIds.has(job.jobId) ? '✓ Applied' : (isApplyingJobId === job.jobId ? '⏳ Submitting...' : '⚡ Apply') }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- COMPANY & JOB DETAILS MODAL -->
+      @if (showCompanyModal && selectedJobDetails && selectedCompanyProfile) {
+        <div class="company-modal-backdrop" (click)="closeCompanyModal()">
+          <div class="company-modal-card" (click)="$event.stopPropagation()">
+            
+            <!-- Modal Header -->
+            <div class="company-modal-header">
+              <div class="company-header-main">
+                <div class="company-avatar-badge">{{ selectedCompanyProfile.badge }}</div>
+                <div class="company-title-info">
+                  <div class="company-name-row">
+                    <h3>{{ selectedCompanyProfile.name }}</h3>
+                    <span class="company-rating-badge">★ {{ selectedCompanyProfile.rating }} / 5.0</span>
+                    <span class="company-verified-pill">✓ Verified Employer</span>
+                  </div>
+                  <p class="company-tagline">{{ selectedCompanyProfile.tagline }}</p>
+                  <div class="company-meta-strip">
+                    <span>📍 {{ selectedCompanyProfile.headquarters }}</span>
+                    <span>👥 {{ selectedCompanyProfile.size }}</span>
+                    <span>🏛️ Founded {{ selectedCompanyProfile.founded }}</span>
+                    <span>🌐 <a [href]="selectedCompanyProfile.website" target="_blank" rel="noopener">{{ selectedCompanyProfile.website }}</a></span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-close-modal" (click)="closeCompanyModal()" aria-label="Close modal">✕</button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="company-modal-body">
+              
+              <!-- Role Highlight Banner inside Modal -->
+              <div class="modal-job-hero">
+                <div class="modal-job-hero-info">
+                  <span class="hero-role-badge">TARGET OPENING</span>
+                  <h4>{{ selectedJobDetails.jobTitle }}</h4>
+                  <p class="hero-job-specs">
+                    <span>💼 {{ selectedJobDetails.type }}</span>
+                    <span>📍 {{ selectedJobDetails.location }}</span>
+                    <span>⏱️ {{ selectedJobDetails.experienceRequired }}</span>
+                    <span class="hero-salary">💰 {{ selectedJobDetails.salary }}</span>
+                  </p>
+                </div>
+                <div class="modal-job-match-badge" [class.badge-high]="selectedJobDetails.capabilityPercentage >= 80" [class.badge-mid]="selectedJobDetails.capabilityPercentage >= 60 && selectedJobDetails.capabilityPercentage < 80">
+                  <span class="hero-match-pct">{{ selectedJobDetails.capabilityPercentage }}%</span>
+                  <span class="hero-match-label">{{ selectedJobDetails.capabilityTier }}</span>
+                </div>
+              </div>
+
+              <!-- About Company Section -->
+              <div class="modal-section">
+                <h4 class="section-heading">🏢 About {{ selectedCompanyProfile.name }}</h4>
+                <p class="modal-text">{{ selectedCompanyProfile.about }}</p>
+              </div>
+
+              <!-- Skills Alignment for this Job -->
+              <div class="modal-section">
+                <h4 class="section-heading">🎯 Role Skill Match & Capability Breakdown</h4>
+                <div class="modal-skills-grid">
+                  <div class="modal-skill-box box-matching">
+                    <span class="box-title">✓ Verified Matching Skills ({{ selectedJobDetails.matchingSkills.length }})</span>
+                    <div class="modal-chips-row">
+                      @for (s of selectedJobDetails.matchingSkills; track s) {
+                        <span class="modal-chip chip-green">✓ {{ s }}</span>
+                      }
+                      @if (selectedJobDetails.matchingSkills.length === 0) {
+                        <span class="modal-chip-empty">Core stack alignment verified</span>
+                      }
+                    </div>
+                  </div>
+
+                  @if (selectedJobDetails.missingSkills.length > 0) {
+                    <div class="modal-skill-box box-missing">
+                      <span class="box-title">💡 Skills Recommended to Learn ({{ selectedJobDetails.missingSkills.length }})</span>
+                      <div class="modal-chips-row">
+                        @for (s of selectedJobDetails.missingSkills; track s) {
+                          <span class="modal-chip chip-amber">+ {{ s }}</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Company Culture & Engineering Values -->
+              <div class="modal-section">
+                <h4 class="section-heading">🌟 Company Culture & Working Environment</h4>
+                <div class="culture-points-list">
+                  @for (c of selectedCompanyProfile.culture; track c) {
+                    <div class="culture-item">
+                      <span class="culture-icon">🚀</span>
+                      <span>{{ c }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Employee Perks & Benefits -->
+              <div class="modal-section">
+                <h4 class="section-heading">🎁 Perks & Comprehensive Benefits</h4>
+                <div class="perks-grid">
+                  @for (perk of selectedCompanyProfile.perks; track perk.title) {
+                    <div class="perk-card">
+                      <span class="perk-icon">{{ perk.icon }}</span>
+                      <div>
+                        <strong>{{ perk.title }}</strong>
+                        <p>{{ perk.desc }}</p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Modal Action Footer -->
+            <div class="company-modal-footer">
+              <button type="button" class="btn btn-secondary-modal" (click)="closeCompanyModal()">
+                Close
+              </button>
+              <button type="button" class="btn btn-primary-modal"
+                      [class.btn-applied]="appliedJobIds.has(selectedJobDetails.jobId)"
+                      [disabled]="appliedJobIds.has(selectedJobDetails.jobId) || isApplyingJobId === selectedJobDetails.jobId"
+                      (click)="applyToJob(selectedJobDetails)">
+                {{ appliedJobIds.has(selectedJobDetails.jobId) ? '✓ Application Submitted' : (isApplyingJobId === selectedJobDetails.jobId ? '⏳ Submitting...' : '⚡ Apply for this Position') }}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      }
+
+    </div>
+  </main>
+
+</div>

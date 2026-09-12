@@ -1,42 +1,119 @@
-<div class="page">
+<div class="page-container">
 
-  <h1>Candidate Ranking</h1>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>AI Candidate Ranking Leaderboard</h1>
+      <p>Candidates sorted by comprehensive weighted AI match scores across technical skill sets and experience.</p>
+    </div>
+  </header>
 
-  <p class="subtitle">
-    Candidates ranked according to AI-generated match scores.
-  </p>
-
-  <div class="card">
-
-    <div
-      class="candidate"
-      *ngFor="let candidate of candidates">
-
-      <div class="rank">
-        #{{ candidate.rank }}
-      </div>
-
-      <div class="name">
-        <strong>{{ candidate.name }}</strong>
-      </div>
-
-      <div class="score">
-        {{ candidate.score }}%
-      </div>
-
-      <div class="progress">
-        <div
-          class="progress-bar"
-          [style.width.%]="candidate.score">
-        </div>
-      </div>
-
+  <!-- TOP 3 PODIUM ROW -->
+  <div class="podium-row">
+    <!-- Rank 2 -->
+    <div class="podium-card silver-card">
+      <div class="medal">🥈 2nd Place</div>
+      <div class="podium-avatar">{{ candidates[1].name.charAt(0) }}</div>
+      <h3>{{ candidates[1].name }}</h3>
+      <p>{{ candidates[1].role }}</p>
+      <div class="podium-score">{{ candidates[1].overallScore }}%</div>
+      <small>Skills: {{ candidates[1].skillsMatch }}% • Exp: {{ candidates[1].experience }}</small>
     </div>
 
+    <!-- Rank 1 (Tallest) -->
+    <div class="podium-card gold-card">
+      <div class="medal">🥇 Top Candidate</div>
+      <div class="podium-avatar gold-avatar">{{ candidates[0].name.charAt(0) }}</div>
+      <h3>{{ candidates[0].name }}</h3>
+      <p>{{ candidates[0].role }}</p>
+      <div class="podium-score gold-score">{{ candidates[0].overallScore }}%</div>
+      <small>Skills: {{ candidates[0].skillsMatch }}% • Exp: {{ candidates[0].experience }}</small>
+    </div>
+
+    <!-- Rank 3 -->
+    <div class="podium-card bronze-card">
+      <div class="medal">🥉 3rd Place</div>
+      <div class="podium-avatar">{{ candidates[2].name.charAt(0) }}</div>
+      <h3>{{ candidates[2].name }}</h3>
+      <p>{{ candidates[2].role }}</p>
+      <div class="podium-score">{{ candidates[2].overallScore }}%</div>
+      <small>Skills: {{ candidates[2].skillsMatch }}% • Exp: {{ candidates[2].experience }}</small>
+    </div>
   </div>
 
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+  <!-- COMPLETE RANKINGS TABLE -->
+  <div class="content-card">
+    <div class="card-head">
+      <h3>Full Candidate Rankings Roster</h3>
+      <small>Calculated based on active evaluation criteria weights</small>
+    </div>
+
+    <div class="table-wrap">
+      <table class="saas-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Candidate</th>
+            <th>Match Score</th>
+            <th>Skills Match</th>
+            <th>Experience</th>
+            <th>Education</th>
+            <th>Overall Score</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of candidates; track (c.name + '_' + $index)) {
+            <tr>
+              <td>
+                <div class="rank-indicator" [class.gold-rank]="c.rank === 1" [class.silver-rank]="c.rank === 2" [class.bronze-rank]="c.rank === 3">
+                  @if (c.rank === 1) { 🥇 #1 }
+                  @else if (c.rank === 2) { 🥈 #2 }
+                  @else if (c.rank === 3) { 🥉 #3 }
+                  @else { #{{ c.rank }} }
+                </div>
+              </td>
+              <td>
+                <div class="cand-info">
+                  <strong>{{ c.name }}</strong>
+                  <small>{{ c.role }}</small>
+                </div>
+              </td>
+              <td>
+                <div class="bar-col">
+                  <strong>{{ c.matchScore }}%</strong>
+                  <div class="progress-bar"><div class="progress-fill" [style.width.%]="c.matchScore"></div></div>
+                </div>
+              </td>
+              <td><strong>{{ c.skillsMatch }}%</strong></td>
+              <td>{{ c.experience }}</td>
+              <td>{{ c.education }}%</td>
+              <td>
+                <span class="overall-badge">{{ c.overallScore }}%</span>
+              </td>
+              <td>
+                @if (c.status === 'Shortlisted') {
+                  <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                } @else if (c.status === 'Interview Scheduled') {
+                  <span class="status-badge badge-purple">🎤 Scheduled</span>
+                } @else if (c.status === 'Under Review') {
+                  <span class="status-badge badge-blue">⏳ In Review</span>
+                } @else {
+                  <span class="status-badge badge-rose">✕ Rejected</span>
+                }
+              </td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-sm btn-primary-sm" (click)="scheduleInterview(c)">📅 Schedule</button>
+                  <button class="btn-sm btn-outline-sm" (click)="viewProfile(c)">👁️ View</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
 
 </div>

@@ -1,1 +1,171 @@
-<p>job-list works!</p>
+<div class="candidate-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand" (click)="goDashboard()">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Candidate Portal</span>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button class="menu-item" (click)="goDashboard()">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
+
+      <button class="menu-item active">
+        <span class="icon">💼</span>
+        <span class="label">Find Jobs</span>
+      </button>
+
+      <button class="menu-item" (click)="openResume()">
+        <span class="icon">📄</span>
+        <span class="label">My Resume</span>
+      </button>
+
+      <button class="menu-item" (click)="openApplications()">
+        <span class="icon">📋</span>
+        <span class="label">My Applications</span>
+      </button>
+
+      <button class="menu-item" (click)="openInterviews()">
+        <span class="icon">🎤</span>
+        <span class="label">Interviews</span>
+      </button>
+
+      <button class="menu-item" (click)="openProfile()">
+        <span class="icon">👤</span>
+        <span class="label">My Profile</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="topbar">
+      <div class="page-title">
+        <h1>Explore Open Positions</h1>
+        <p>AI-matched software development & technology roles tailored to your resume.</p>
+      </div>
+    </header>
+
+    <div class="content-scrollable">
+
+      <!-- SEARCH & FILTER BAR -->
+      <section class="filter-card">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            placeholder="Search by job title, skills, or company (e.g. Java, Angular, ABC Tech)..."
+            class="search-input"
+          />
+        </div>
+
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Location</label>
+            <select [(ngModel)]="selectedLocation">
+              @for (loc of locations; track loc) {
+                <option [value]="loc">{{ loc }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Experience</label>
+            <select [(ngModel)]="selectedExperience">
+              @for (exp of experienceLevels; track exp) {
+                <option [value]="exp">{{ exp }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label>Job Type</label>
+            <select [(ngModel)]="selectedType">
+              @for (t of jobTypes; track t) {
+                <option [value]="t">{{ t }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULTS HEADER -->
+      <div class="results-header">
+        <p>Showing <strong>{{ filteredJobs.length }}</strong> verified openings</p>
+      </div>
+
+      <!-- JOB CARDS LIST -->
+      <div class="job-cards-grid">
+        @for (job of filteredJobs; track (job.id + '_' + $index)) {
+          <div class="job-3d-card">
+            <div class="job-card-top">
+              <div class="company-logo">{{ job.company.charAt(0) }}</div>
+              <div class="job-meta-head">
+                <h3>{{ job.title }}</h3>
+                <p class="company-name">{{ job.company }} • <span class="posted-time">{{ job.postedDate }}</span></p>
+              </div>
+              <div class="match-indicator" [class.high-match]="job.matchScore >= 85">
+                <span class="score">{{ job.matchScore }}%</span>
+                <span class="sub">AI Match</span>
+              </div>
+            </div>
+
+            <div class="job-details-row">
+              <span>📍 {{ job.location }}</span>
+              <span>💼 {{ job.experience }}</span>
+              <span>💰 {{ job.salary }}</span>
+              <span>⚡ {{ job.type }}</span>
+            </div>
+
+            <div class="tags-row">
+              @for (tag of job.tags; track tag) {
+                <span class="tech-tag">{{ tag }}</span>
+              }
+            </div>
+
+            <div class="job-card-actions">
+              <button
+                class="btn-save"
+                [class.saved]="job.saved"
+                (click)="toggleSave(job)"
+                title="Save Job"
+              >
+                {{ job.saved ? '★ Saved' : '☆ Save' }}
+              </button>
+
+              @if (job.applied) {
+                <button class="btn-applied" disabled>
+                  ✓ Applied
+                </button>
+              } @else {
+                <button class="btn-apply" (click)="applyToJob(job)">
+                  Apply Now ⚡
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+    </div>
+  </main>
+
+</div>

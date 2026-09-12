@@ -1,0 +1,70 @@
+<main class="register-page">
+  <section class="register-shell">
+    <aside class="register-intro">
+      <div class="brand-mark">HR</div>
+      <p class="eyebrow">CANDIDATE PORTAL</p>
+      <h1>Make your next opportunity count.</h1>
+      <p class="intro-copy">Build one thoughtful profile and put your skills in front of the roles that fit.</p>
+      <div class="benefits" aria-label="Candidate account benefits">
+        <div class="benefit"><span class="benefit-icon">01</span><span>Showcase your strongest skills</span></div>
+        <div class="benefit"><span class="benefit-icon">02</span><span>Track every application in one place</span></div>
+        <div class="benefit"><span class="benefit-icon">03</span><span>Find roles matched to your goals</span></div>
+      </div>
+    </aside>
+
+    <div class="register-card">
+      <div class="form-heading">
+        <div style="text-align: center;">
+          <p class="form-kicker">GET STARTED</p>
+          <h2>Create your account</h2>
+        </div>
+        <span class="step-indicator">1 / 1</span>
+      </div>
+      <p class="subtitle">It takes less than a minute to get started.</p>
+
+      @if (errorMessage) {
+      <p class="error-message" role="alert">{{ errorMessage }}</p>
+      }
+
+      <form (ngSubmit)="createAccount()" #candidateForm="ngForm">
+        <label for="fullName">
+          Full name
+          <span class="input-wrap"><span class="input-symbol">✦</span><input id="fullName" type="text" name="fullName"
+              [(ngModel)]="fullName" placeholder="Jordan Lee" required></span>
+        </label>
+
+        <label for="email">
+          Email address
+          <span class="input-wrap"><span class="input-symbol">@</span><input id="email" type="email" name="email"
+              [(ngModel)]="email" placeholder="you@example.com" required email></span>
+        </label>
+
+        <label for="password">
+          Password
+          <span class="input-wrap"><span class="input-symbol">*</span><input id="password"
+              [type]="showPassword ? 'text' : 'password'" name="password" [(ngModel)]="password"
+              placeholder="At least 6 characters" required><button class="visibility-button" type="button"
+              (click)="togglePassword()">{{ showPassword ? 'Hide' : 'Show' }}</button></span>
+        </label>
+        <p class="field-hint" [class.ready]="password.length >= 6">{{ password.length >= 6 ? 'Password strength: ready'
+          : 'Use at least 6 characters' }}</p>
+
+        <label for="confirmPassword">
+          Confirm password
+          <span class="input-wrap"><span class="input-symbol">*</span><input id="confirmPassword"
+              [type]="showConfirmPassword ? 'text' : 'password'" name="confirmPassword" [(ngModel)]="confirmPassword"
+              placeholder="Repeat your password" required><button class="visibility-button" type="button"
+              (click)="toggleConfirmPassword()">{{ showConfirmPassword ? 'Hide' : 'Show' }}</button></span>
+        </label>
+
+        <button class="submit-button" type="submit" [disabled]="candidateForm.invalid">Create account <span
+            aria-hidden="true">→</span></button>
+      </form>
+
+      <p class="login-link">
+        Already have an account?
+        <button type="button" (click)="goToLogin()">Sign in</button>
+      </p>
+    </div>
+  </section>
+</main>

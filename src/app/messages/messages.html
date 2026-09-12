@@ -1,50 +1,104 @@
-<div class="page">
+<div class="page-container">
 
-  <h1>Messages</h1>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>Recruitment Messaging Hub</h1>
+      <p>Direct candidate communication, automated interview invitations, and status notifications.</p>
+    </div>
+  </header>
 
-  <p class="subtitle">
-    Communicate with candidates and manage recruitment conversations.
-  </p>
+  <!-- CHAT PLATFORM CONTAINER -->
+  <div class="chat-platform-card">
 
-  <div class="message-card">
+    <!-- LEFT: CONVERSATION LIST -->
+    <div class="convo-sidebar">
+      <div class="convo-search">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Search candidates..."
+        />
+      </div>
 
-    <div class="avatar">E</div>
+      <div class="convo-list">
+        @for (convo of filteredConversations; track convo.id) {
+          <div
+            class="convo-item"
+            [class.active]="selectedConversation.id === convo.id"
+            (click)="selectConversation(convo)"
+          >
+            <div class="avatar-wrap">
+              <div class="convo-avatar">{{ convo.avatar }}</div>
+              @if (convo.online) {
+                <span class="online-indicator"></span>
+              }
+            </div>
 
-    <div class="content">
-      <strong>Eshwar Rao</strong>
+            <div class="convo-info">
+              <div class="name-time-row">
+                <strong>{{ convo.candidateName }}</strong>
+                <small>{{ convo.time }}</small>
+              </div>
+              <p class="role-snip">{{ convo.candidateRole }}</p>
+              <p class="msg-preview">{{ convo.lastMessage }}</p>
+            </div>
 
-      <p>
-        Thank you for considering my application.
-        I am available for the interview.
-      </p>
-
-      <small>10 minutes ago</small>
+            @if (convo.unreadCount > 0) {
+              <span class="unread-pill">{{ convo.unreadCount }}</span>
+            }
+          </div>
+        }
+      </div>
     </div>
 
-    <button>Reply</button>
+    <!-- RIGHT: CHAT WINDOW -->
+    <div class="chat-window">
+      
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <div class="avatar-wrap">
+          <div class="convo-avatar">{{ selectedConversation.avatar }}</div>
+          @if (selectedConversation.online) {
+            <span class="online-indicator"></span>
+          }
+        </div>
 
-  </div>
+        <div class="chat-user-meta">
+          <h3>{{ selectedConversation.candidateName }}</h3>
+          <p>{{ selectedConversation.candidateRole }} • {{ selectedConversation.online ? 'Online' : 'Offline' }}</p>
+        </div>
+      </div>
 
-  <div class="message-card">
+      <!-- Messages Body -->
+      <div class="chat-messages-body">
+        @for (msg of selectedConversation.messages; track msg.text) {
+          <div class="msg-row" [class.msg-outgoing]="msg.sender === 'admin'" [class.msg-incoming]="msg.sender === 'candidate'">
+            <div class="msg-bubble">
+              <p>{{ msg.text }}</p>
+              <span class="msg-time">{{ msg.time }}</span>
+            </div>
+          </div>
+        }
+      </div>
 
-    <div class="avatar">K</div>
+      <!-- Chat Input Footer -->
+      <form (ngSubmit)="sendMessage()" class="chat-input-footer">
+        <input
+          type="text"
+          [(ngModel)]="newMessageText"
+          name="chatMsg"
+          placeholder="Type your message to {{ selectedConversation.candidateName }}..."
+          class="chat-input"
+        />
+        <button type="submit" class="btn btn-send">
+          Send Message ✈
+        </button>
+      </form>
 
-    <div class="content">
-      <strong>Krupa Jyothi</strong>
-
-      <p>
-        Could you please share the interview schedule?
-      </p>
-
-      <small>1 hour ago</small>
     </div>
 
-    <button>Reply</button>
-
   </div>
-
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
 
 </div>

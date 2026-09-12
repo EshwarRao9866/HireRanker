@@ -1,48 +1,282 @@
-<div class="page">
+<div class="page-container">
 
-  <header>
-    <h1>AI Resume Screening</h1>
-    <p>Automatically analyze resumes and identify the best candidates.</p>
+  <header class="page-header">
+    <div>
+      <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
+      <h1>AI-Powered Resume Screening Lab</h1>
+      <p>Automated semantic resume parsing, requirement matching, and skill gap detection.</p>
+    </div>
   </header>
 
-  <div class="screening-card">
+  <!-- SCREENING INPUT & JOB SELECTION -->
+  <div class="content-card input-card">
+    <div class="screening-controls-row">
+      <div class="control-group">
+        <label>Select Target Job Opening:</label>
+        <select [(ngModel)]="selectedJobId" (ngModelChange)="onJobChange($event)" class="form-select">
+          @for (job of jobs; track (job.id + '_' + $index)) {
+            <option [value]="job.id">{{ cleanJobTitle(job.displayTitle || job.title) }}</option>
+          }
+        </select>
+      </div>
 
-    <div class="icon">📄</div>
+      <div class="control-group">
+        <label>Select Candidate / Application:</label>
+        <select [(ngModel)]="selectedApplicantId" (ngModelChange)="onApplicantChange($event)" class="form-select">
+          @for (app of applicants; track (app.id + '_' + $index)) {
+            <option [value]="app.id">{{ cleanCandidateName(app.candidateName) }} - {{ cleanCandidateEmail(app.candidateEmail) }}</option>
+          }
+          @if (applicants.length === 0) {
+            <option [value]="null" disabled>No applications for this role</option>
+          }
+        </select>
+      </div>
 
-    <h2>AI-Powered Resume Screening</h2>
+      <div class="upload-btn-group">
+        <label class="btn btn-upload" [class.btn-disabled]="isScreening">
+          📄 Upload Candidate Resume
+          <input type="file" (change)="onFileSelected($event)" accept=".pdf" [disabled]="isScreening" hidden />
+        </label>
+        <button class="btn btn-primary" (click)="triggerScreening()" [disabled]="isScreening">
+          @if (isScreening) {
+            ⚡ Analyzing Resume... ({{ screeningProgress }}%)
+          } @else {
+            ⚡ Run AI Screening
+          }
+        </button>
+      </div>
+    </div>
 
-    <p>
-      Upload candidate resumes and let the system analyze
-      skills, education, experience and job compatibility.
-    </p>
+    @if (isScreening) {
+      <div class="scanning-indicator">
+        <div class="scanning-head">
+          <span class="scanning-title">⚡ AI Resume Screening in Progress</span>
+          <span class="scanning-percent-badge">{{ screeningProgress }}%</span>
+        </div>
+        <div class="scan-bar-track">
+          <div class="scan-bar-fill" [style.width.%]="screeningProgress"></div>
+        </div>
+        <p class="scanning-stage-msg">{{ screeningStageText || 'Extracting candidate skills, evaluating tenure, computing semantic match score...' }}</p>
+        <div class="progress-steps-row" style="margin-top: 12px; justify-content: center;">
+          <span class="step-badge" [class.active]="screeningProgress >= 10 && screeningProgress < 30" [class.done]="screeningProgress >= 30">1. Upload (10%)</span>
+          <span class="step-divider">→</span>
+          <span class="step-badge" [class.active]="screeningProgress >= 30 && screeningProgress < 50" [class.done]="screeningProgress >= 50">2. Stored (30%)</span>
+          <span class="step-divider">→</span>
+          <span class="step-badge" [class.active]="screeningProgress >= 50 && screeningProgress < 70" [class.done]="screeningProgress >= 70">3. Extraction (50%)</span>
+          <span class="step-divider">→</span>
+          <span class="step-badge" [class.active]="screeningProgress >= 70 && screeningProgress < 90" [class.done]="screeningProgress >= 90">4. AI Analysis (70%)</span>
+          <span class="step-divider">→</span>
+          <span class="step-badge" [class.active]="screeningProgress >= 90 && screeningProgress < 100" [class.done]="screeningProgress >= 100">5. Scoring (90%)</span>
+          <span class="step-divider">→</span>
+          <span class="step-badge" [class.active]="screeningProgress === 100" [class.done]="screeningProgress === 100">6. Complete (100%)</span>
+        </div>
+      </div>
+    }
 
-    <button (click)="startScreening()">
-      Start Screening
-    </button>
-
+    @if (errorMessage && !isScreening) {
+      <div class="screening-alert-banner" role="alert">
+        <div class="alert-icon-col">⚠️</div>
+        <div class="alert-text-col">
+          <strong>Screening Analysis Notice</strong>
+          <p>{{ errorMessage }}</p>
+        </div>
+        <button class="btn btn-retry" (click)="retryScreening()" [disabled]="isScreening">
+          🔄 Retry Analysis
+        </button>
+      </div>
+    }
   </div>
 
-  <div class="features">
-
-    <div>
-      <h3>Skills Analysis</h3>
-      <p>Identify skills matching the job requirements.</p>
+  @if (!screeningComplete && !isScreening) {
+    <!-- PRE-SCREENING / NOT SCREENED YET STATE -->
+    <div class="content-card empty-screening-card" style="text-align: center; padding: 48px 24px; margin-top: 24px; border: 2px dashed #cbd5e1; border-radius: 12px; background: #ffffff;">
+      <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+      <h3 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">Resume Not Screened Yet</h3>
+      <p style="font-size: 14px; color: #64748b; max-width: 540px; margin: 0 auto 20px;">
+        Upload candidate resume or click <strong>"⚡ Run AI Screening"</strong> above to evaluate keyword overlap, detect skill gaps, and compute the 8-factor weighted ATS score.
+      </p>
     </div>
+  }
 
-    <div>
-      <h3>Experience Analysis</h3>
-      <p>Compare candidate experience with job requirements.</p>
+  @if (screeningComplete && !isScreening) {
+    <!-- RESULTS GRID -->
+    <div class="results-grid">
+
+      <!-- MAIN SCORE CARD -->
+      <div class="content-card score-card">
+        <div class="card-head">
+          <h3>AI Resume Match Score</h3>
+          <span class="tier-badge" [class.tier-strong]="matchData.matchTier === 'Strong Match'" [class.tier-moderate]="matchData.matchTier === 'Moderate Match'" [class.tier-weak]="matchData.matchTier === 'Weak Match'">
+            ✓ {{ matchData.matchTier }}
+          </span>
+        </div>
+
+        <div class="gauge-wrap">
+          <div class="gauge-circle">
+            <span class="gauge-number">{{ matchData.overallScore }}%</span>
+            <span class="gauge-sub">Overall ATS Match</span>
+          </div>
+        </div>
+
+        <div class="subscores-list">
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Job/Skill Match <small class="weight-label">(25%)</small></span>
+              <strong>{{ matchData.jobSkillScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.jobSkillScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Experience Relevance <small class="weight-label">(20%)</small></span>
+              <strong>{{ matchData.experienceScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.experienceScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Job Description Match <small class="weight-label">(15%)</small></span>
+              <strong>{{ matchData.jobDescriptionScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.jobDescriptionScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Projects / Work Relevance <small class="weight-label">(10%)</small></span>
+              <strong>{{ matchData.projectScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.projectScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>ATS Compatibility <small class="weight-label">(10%)</small></span>
+              <strong>{{ matchData.atsCompatibilityScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.atsCompatibilityScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Education <small class="weight-label">(5%)</small></span>
+              <strong>{{ matchData.educationScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.educationScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Achievements & Impact <small class="weight-label">(5%)</small></span>
+              <strong>{{ matchData.achievementScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.achievementScore"></div></div>
+          </div>
+
+          <div class="subscore-item">
+            <div class="subscore-head">
+              <span>Resume Completeness <small class="weight-label">(5%)</small></span>
+              <strong>{{ matchData.completenessScore }}%</strong>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width.%]="matchData.completenessScore"></div></div>
+          </div>
+        </div>
+
+        <div class="recommendation-box">
+          <span class="recom-title">AI Recommendation:</span>
+          <strong>{{ matchData.recommendation }}</strong>
+        </div>
+
+        <button class="btn btn-shortlist-action" (click)="proceedToShortlist()">
+          ⭐ Add to Shortlisted Candidates →
+        </button>
+      </div>
+
+      <!-- SKILLS & STRENGTHS BREAKDOWN -->
+      <div class="content-card breakdown-card">
+        <div class="card-head">
+          <div>
+            <h3>Candidate Profile Analysis</h3>
+            <small>Resume File: {{ uploadedFileName }}</small>
+          </div>
+          <button class="btn-view-resume-action" (click)="viewSelectedResume()" [disabled]="!selectedApplicantId" title="View / Download Candidate Resume PDF">
+            📄 View Resume PDF
+          </button>
+        </div>
+
+        @if (matchData.resumeSummary) {
+          <div class="summary-box">
+            <h4>📋 Executive Summary</h4>
+            <p>{{ matchData.resumeSummary }}</p>
+          </div>
+        }
+
+        <div class="skills-block">
+          <h4>✅ Skills Detected ({{ matchData.detectedSkills.length }})</h4>
+          <div class="chips-container">
+            @for (skill of matchData.detectedSkills; track (skill + '_' + $index)) {
+              <span class="chip chip-green">{{ skill }}</span>
+            }
+          </div>
+        </div>
+
+        @if (matchData.missingSkills.length > 0) {
+          <div class="skills-block">
+            <h4>⚠️ Missing / Desired Skills ({{ matchData.missingSkills.length }})</h4>
+            <div class="chips-container">
+              @for (skill of matchData.missingSkills; track (skill + '_' + $index)) {
+                <span class="chip chip-amber">{{ skill }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        @if (matchData.recommendedSkills.length > 0) {
+          <div class="skills-block">
+            <h4>💡 Recommended Skills to Target ({{ matchData.recommendedSkills.length }})</h4>
+            <div class="chips-container">
+              @for (skill of matchData.recommendedSkills; track (skill + '_' + $index)) {
+                <span class="chip chip-blue">{{ skill }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="strengths-block">
+          <h4>🌟 Key Strengths & Evaluation Summary</h4>
+          <ul class="strengths-ul">
+            @for (strength of matchData.strengths; track (strength + '_' + $index)) {
+              <li>✓ {{ strength }}</li>
+            }
+          </ul>
+        </div>
+
+        @if (matchData.weaknesses.length > 0) {
+          <div class="weaknesses-block" style="margin-top: 18px;">
+            <h4>⚠️ Areas for Growth / Skill Gaps</h4>
+            <ul class="weaknesses-ul">
+              @for (weakness of matchData.weaknesses; track (weakness + '_' + $index)) {
+                <li>⚡ {{ weakness }}</li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (matchData.improvementSuggestions.length > 0) {
+          <div class="suggestions-block" style="margin-top: 18px;">
+            <h4>🎯 ATS Optimization Suggestions</h4>
+            <ul class="suggestions-ul">
+              @for (sug of matchData.improvementSuggestions; track (sug + '_' + $index)) {
+                <li>📌 {{ sug }}</li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+
     </div>
-
-    <div>
-      <h3>Match Score</h3>
-      <p>Generate an overall candidate-job compatibility score.</p>
-    </div>
-
-  </div>
-
-  <button class="back-btn" (click)="goBack()">
-    ← Back to Dashboard
-  </button>
+  }
 
 </div>

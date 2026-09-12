@@ -1,10 +1,6 @@
 * {
   box-sizing: border-box;
 }
-/* body {
-  margin: 0;
-  padding: 0;
-} */
 
 .register-page {
   min-height: 100vh;
@@ -166,7 +162,7 @@
 }
 
 .info-content h1 span {
-  color: #58c7ff;
+  color: #b7e8ff;
 }
 
 .info-content > p {
@@ -208,7 +204,7 @@
 
   background: rgba(88, 199, 255, 0.15);
 
-  color: #58c7ff;
+  color: #b7e8ff;
 
   display: flex;
 
