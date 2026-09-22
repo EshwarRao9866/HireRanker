@@ -147,6 +147,14 @@
                   </div>
                 </td>
               </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted, #64748b);">
+                  <div style="font-size: 1.8rem; margin-bottom: 8px;">📅</div>
+                  <strong>No interviews scheduled.</strong>
+                  <p style="margin: 4px 0 0; font-size: 0.85rem;">Click "Schedule Interview" to assign an interview to a candidate.</p>
+                </td>
+              </tr>
             }
           </tbody>
         </table>

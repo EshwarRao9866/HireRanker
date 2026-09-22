@@ -77,6 +77,18 @@ export class MyApplications implements OnInit {
     return this.applications;
   }
 
+  get shortlistedCount(): number {
+    return this.applications.filter(a => a.status === 'Shortlisted').length;
+  }
+
+  get interviewCount(): number {
+    return this.applications.filter(a => a.status === 'Interview Scheduled').length;
+  }
+
+  get reviewCount(): number {
+    return this.applications.filter(a => a.status === 'Under Review' || a.status === 'Application Sent').length;
+  }
+
   setFilter(filter: 'ALL' | 'SHORTLISTED' | 'REVIEW' | 'INTERVIEW'): void {
     this.activeFilter = filter;
   }

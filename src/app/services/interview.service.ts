@@ -58,6 +58,7 @@ export interface StartInterviewSessionResponse {
   status: string;
   totalQuestionsTarget: number;
   firstQuestion?: LiveQuestion;
+  introduction?: string;
 }
 
 export interface LiveAnswerResponse {
@@ -89,6 +90,21 @@ export interface LiveInterviewResult {
   strengths: string;
   weaknesses: string;
   completedAt?: string;
+  integrityStatus?: 'NORMAL' | 'REVIEW_REQUIRED';
+  totalIntegrityEvents?: number;
+  multiplePersonEvents?: number;
+  tabSwitchEvents?: number;
+  attentionAwayEvents?: number;
+  audioAnomalyEvents?: number;
+}
+
+export interface ClientIntegrityEvent {
+  eventType: 'MULTIPLE_PERSON' | 'ATTENTION_AWAY' | 'TAB_SWITCH' | 'WINDOW_BLUR' | 'FULLSCREEN_EXIT' | 'AUDIO_ANOMALY';
+  severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  startTime?: number;
+  endTime?: number;
+  durationSeconds?: number;
+  message?: string;
 }
 
 export interface ScheduledInterview {
@@ -131,73 +147,14 @@ export class InterviewService {
         const stored = localStorage.getItem('hireRankerScheduledInterviews');
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed)) {
             return parsed;
           }
         }
       } catch {}
     }
 
-    const today = new Date();
-    const todayKey = this.formatDateKey(today);
-    const todayFormatted = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const tomorrowKey = this.formatDateKey(tomorrow);
-    const tomorrowFormatted = tomorrow.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    const pastDate = new Date(today);
-    pastDate.setDate(today.getDate() - 3);
-    const pastKey = this.formatDateKey(pastDate);
-    const pastFormatted = pastDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    const defaults: ScheduledInterview[] = [
-      {
-        id: 1,
-        candidate: 'Eshwar Rao',
-        job: 'Java Full Stack Developer',
-        date: `Today, ${todayFormatted}`,
-        dateKey: todayKey,
-        time: '10:30 AM',
-        interviewer: 'HireRanker AI Bot',
-        type: 'AI Assessment',
-        status: 'Scheduled',
-        applicationId: 1
-      },
-      {
-        id: 2,
-        candidate: 'Krupa Jyothi',
-        job: 'Senior Angular Developer',
-        date: tomorrowFormatted,
-        dateKey: tomorrowKey,
-        time: '02:00 PM',
-        interviewer: 'Frontend Team Lead',
-        type: 'Live Technical',
-        status: 'Scheduled',
-        applicationId: 2
-      },
-      {
-        id: 3,
-        candidate: 'Durga Rohith',
-        job: 'Java Developer',
-        date: pastFormatted,
-        dateKey: pastKey,
-        time: '03:30 PM',
-        interviewer: 'Engineering Manager',
-        type: 'HR Round',
-        status: 'Completed',
-        applicationId: 3
-      }
-    ];
-
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        localStorage.setItem('hireRankerScheduledInterviews', JSON.stringify(defaults));
-      } catch {}
-    }
-
-    return defaults;
+    return [];
   }
 
   private persistInterviews(list: ScheduledInterview[]): void {
@@ -407,5 +364,19 @@ export class InterviewService {
    */
   approveRetake(interviewId: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/${interviewId}/approve-retake`, {});
+  }
+
+  /**
+   * Live Interview: Batch log integrity events detected during session
+   */
+  logIntegrityEvents(interviewId: number, events: ClientIntegrityEvent[]): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${interviewId}/integrity-events`, { events });
+  }
+
+  /**
+   * Live Interview: Retrieve integrity events for an interview
+   */
+  getIntegrityEvents(interviewId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/${interviewId}/integrity-events`);
   }
 }

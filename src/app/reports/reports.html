@@ -57,6 +57,11 @@
               <div class="funnel-bar-fill" [style.width.%]="stage.percentage" [style.background]="stage.color"></div>
             </div>
           </div>
+        } @empty {
+          <div style="text-align: center; padding: 28px; color: var(--text-muted, #64748b);">
+            <div style="font-size: 1.5rem; margin-bottom: 6px;">📊</div>
+            <p style="margin: 0; font-size: 0.9rem;">No conversion funnel data available yet.</p>
+          </div>
         }
       </div>
     </div>
@@ -79,6 +84,11 @@
               <small>{{ src.count }} applicants</small>
             </div>
             <span class="source-percent">{{ src.percentage }}%</span>
+          </div>
+        } @empty {
+          <div style="text-align: center; padding: 28px; color: var(--text-muted, #64748b);">
+            <div style="font-size: 1.5rem; margin-bottom: 6px;">🌐</div>
+            <p style="margin: 0; font-size: 0.9rem;">No sourcing data available yet.</p>
           </div>
         }
       </div>
@@ -106,6 +116,11 @@
             <div class="bar-fill" [style.width.%]="skill.demand"></div>
           </div>
           <small class="demand-label">Platform Match Demand: {{ skill.demand }}%</small>
+        </div>
+      } @empty {
+        <div style="grid-column: 1 / -1; text-align: center; padding: 32px; color: var(--text-muted, #64748b);">
+          <div style="font-size: 1.5rem; margin-bottom: 6px;">💡</div>
+          <p style="margin: 0; font-size: 0.9rem;">No candidate skills screened yet.</p>
         </div>
       }
     </div>

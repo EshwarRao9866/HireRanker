@@ -1,7 +1,8 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './auth.service';
 import { AssistantModeService, AssistantMode } from './assistant-mode.service';
+import { BackendHealthService } from './backend-health.service';
 import { environment } from '../../environments/environment';
 
 export interface ChatMessage {
@@ -26,6 +27,7 @@ export class AiChatService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly assistantModeService = inject(AssistantModeService);
+  private readonly healthService = inject(BackendHealthService);
 
   private readonly CHATBOT_API_URL = `${environment.apiUrl}/chatbot`;
 
@@ -132,11 +134,22 @@ export class AiChatService {
           : this.generateSmartLocalResponse(trimmed);
         this.appendAiReply(replyText);
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.isThinking.set(false);
-        console.warn('Chatbot API communication error, activating local grounded fallback:', err);
-        const smartReply = this.generateSmartLocalResponse(trimmed);
-        this.appendAiReply(smartReply);
+        if (err.status === 0 || !this.healthService.isOnline()) {
+          this.healthService.markOffline();
+          const offlineMessage = this.isRecruiter()
+            ? "Recruiter AI is temporarily unavailable because the HireRanker backend is offline. Please start the HireRanker backend (port 8080)."
+            : "Career AI is temporarily unavailable because the HireRanker backend is offline. Please start the HireRanker backend.";
+          this.appendAiReply(offlineMessage);
+        } else if (err.status === 503 && err.error && err.error.database === 'DOWN') {
+          this.appendAiReply("The HireRanker backend is online, but the database is unreachable. Please ensure MySQL is running.");
+        } else if (err.status >= 500) {
+          this.appendAiReply("AI service is temporarily unavailable. The backend encountered a processing error. Please try again in a moment.");
+        } else {
+          const smartReply = this.generateSmartLocalResponse(trimmed);
+          this.appendAiReply(smartReply);
+        }
       }
     });
   }

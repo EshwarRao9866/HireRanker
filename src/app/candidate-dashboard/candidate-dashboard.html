@@ -22,7 +22,7 @@
         <img [src]="candidateAvatar" alt="Avatar" class="avatar-img" />
       } @else {
         <div class="avatar">
-          {{ candidateName.charAt(0) }}
+          {{ candidateInitial }}
         </div>
       }
       <div class="meta">
@@ -164,7 +164,7 @@
           @if (candidateAvatar) {
             <img [src]="candidateAvatar" alt="Avatar" class="mini-avatar-img" />
           } @else {
-            <div class="mini-avatar">{{ candidateName.charAt(0) }}</div>
+            <div class="mini-avatar">{{ candidateInitial }}</div>
           }
           <div class="meta">
             <strong>{{ candidateName }}</strong>
@@ -175,6 +175,17 @@
     </header>
 
     <div class="content-scrollable">
+
+      <!-- BACKEND OFFLINE BANNER -->
+      @if (isBackendOffline || !backendLive) {
+        <div class="backend-offline-banner">
+          <span class="offline-icon">⚠️</span>
+          <div class="offline-text">
+            <strong>Backend server is currently unavailable. Please start the backend service.</strong>
+            <small>Live sync is paused. Running in offline mode.</small>
+          </div>
+        </div>
+      }
 
       <!-- WELCOME HERO BANNER -->
       <section class="welcome-banner">
@@ -242,7 +253,7 @@
           <div class="job-list">
             @for (job of recommendedJobs; track (job.id + '_' + $index)) {
               <div class="job-item" (click)="openJobs()" style="cursor: pointer;" title="Click to view and apply">
-                <div class="company-badge badge-a">{{ job.company.charAt(0) }}</div>
+                <div class="company-badge badge-a">{{ getCompanyInitial(job.company) }}</div>
                 <div class="job-details">
                   <h4>{{ job.title }}</h4>
                   <p class="company">{{ job.company }}</p>
@@ -271,64 +282,74 @@
             <button class="view-all-btn" (click)="openApplications()">View All</button>
           </div>
 
-          <div class="active-app-header">
-            <div class="app-icon">J</div>
-            <div class="app-title">
-              <h4>Java Full Stack Developer</h4>
-              <p>ABC Technologies Pvt Ltd</p>
-            </div>
-            <span class="status-pill status-shortlisted">Shortlisted</span>
-          </div>
-
-          <div class="timeline">
-            <div class="timeline-step completed">
-              <div class="step-indicator">✓</div>
-              <div class="step-body">
-                <strong>Application Submitted</strong>
-                <small>{{ applicationDateFormatted }}</small>
+          @if (latestApplication) {
+            <div class="active-app-header">
+              <div class="app-icon">{{ (latestApplication.jobTitle || 'J').charAt(0) }}</div>
+              <div class="app-title">
+                <h4>{{ latestApplication.jobTitle }}</h4>
+                <p>{{ latestApplication.company || 'HireRanker' }}</p>
               </div>
+              <span class="status-pill status-shortlisted">{{ latestApplication.status }}</span>
             </div>
 
-            <div class="timeline-step completed">
-              <div class="step-indicator">✓</div>
-              <div class="step-body">
-                <strong>AI Resume Screening</strong>
-                <small>Score: 94% Match</small>
+            <div class="timeline">
+              <div class="timeline-step completed">
+                <div class="step-indicator">✓</div>
+                <div class="step-body">
+                  <strong>Application Submitted</strong>
+                  <small>{{ applicationDateFormatted || 'Recent' }}</small>
+                </div>
               </div>
-            </div>
 
-            <div class="timeline-step completed">
-              <div class="step-indicator">✓</div>
-              <div class="step-body">
-                <strong>Shortlisted for Interview</strong>
-                <small>{{ shortlistedDateFormatted }}</small>
+              <div class="timeline-step" [class.completed]="latestApplication.matchScore > 0">
+                <div class="step-indicator">{{ latestApplication.matchScore > 0 ? '✓' : '2' }}</div>
+                <div class="step-body">
+                  <strong>AI Resume Screening</strong>
+                  <small>{{ latestApplication.matchScore > 0 ? 'Score: ' + latestApplication.matchScore + '% Match' : 'Pending Screening' }}</small>
+                </div>
               </div>
-            </div>
 
-            <div class="timeline-step active">
-              <div class="step-indicator">4</div>
-              <div class="step-body">
-                <strong>Technical Interview</strong>
-                <small>Tomorrow, 10:30 AM</small>
+              <div class="timeline-step" [class.completed]="latestApplication.status === 'Shortlisted' || latestApplication.status === 'SHORTLISTED'">
+                <div class="step-indicator">{{ (latestApplication.status === 'Shortlisted' || latestApplication.status === 'SHORTLISTED') ? '✓' : '3' }}</div>
+                <div class="step-body">
+                  <strong>Shortlisted for Interview</strong>
+                  <small>{{ shortlistedDateFormatted || 'Under Evaluation' }}</small>
+                </div>
+              </div>
+
+              <div class="timeline-step" [class.active]="latestApplication.status === 'Interview Scheduled' || latestApplication.status === 'INTERVIEW'">
+                <div class="step-indicator">4</div>
+                <div class="step-body">
+                  <strong>Technical Interview</strong>
+                  <small>{{ upcomingInterview ? upcomingInterview.time || 'Scheduled' : 'Pending Schedule' }}</small>
+                </div>
               </div>
             </div>
-          </div>
+          } @else {
+            <div style="padding: 2.5rem; text-align: center; color: #94a3b8;">
+              <span style="font-size: 2.5rem; display: block; margin-bottom: 0.5rem;">📋</span>
+              <p style="margin: 0 0 0.5rem; font-size: 1rem; color: #cbd5e1; font-weight: 500;">No applications yet.</p>
+              <small style="color: #64748b;">Search and apply for open positions to track your application status here.</small>
+            </div>
+          }
         </div>
 
       </section>
 
       <!-- UPCOMING INTERVIEW CALLOUT -->
-      <section class="interview-callout">
-        <div class="callout-icon">🎤</div>
-        <div class="callout-info">
-          <span class="kicker">UPCOMING AI-POWERED INTERVIEW</span>
-          <h3>Java Full Stack Technical Round</h3>
-          <p>Tomorrow at 10:30 AM • Hosted via HireRanker AI Live Assessment</p>
-        </div>
-        <button class="btn btn-join" (click)="openInterviews()">
-          View Interview Details →
-        </button>
-      </section>
+      @if (upcomingInterview) {
+        <section class="interview-callout">
+          <div class="callout-icon">🎤</div>
+          <div class="callout-info">
+            <span class="kicker">UPCOMING AI-POWERED INTERVIEW</span>
+            <h3>{{ upcomingInterview.jobTitle || 'Live Technical Assessment' }}</h3>
+            <p>{{ upcomingInterview.scheduledDateTime || 'Scheduled session' }} • Hosted via HireRanker AI Live Assessment</p>
+          </div>
+          <button class="btn btn-join" (click)="openInterviews()">
+            View Interview Details →
+          </button>
+        </section>
+      }
 
       <!-- PROFILE COMPLETION & RESUME ROW -->
       <section class="profile-row">
@@ -338,10 +359,10 @@
               <h3>Profile Strength</h3>
               <p>Completed profiles get 3.5x more screening visibility.</p>
             </div>
-            <span class="percentage-pill">85% Complete</span>
+            <span class="percentage-pill">{{ activeResumeName ? '75%' : '25%' }} Complete</span>
           </div>
           <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width: 85%;"></div>
+            <div class="progress-bar-fill" [style.width.%]="activeResumeName ? 75 : 25"></div>
           </div>
           <button class="btn btn-outline" (click)="openProfile()">
             Update Profile & Skills →
@@ -352,8 +373,13 @@
           <div class="resume-icon">📄</div>
           <div class="resume-info">
             <h3>Resume Status</h3>
-            <p>Eshwar_Rao_FullStack_Resume.pdf</p>
-            <small>AI Screening Score: <strong>94/100</strong></small>
+            @if (activeResumeName) {
+              <p>{{ activeResumeName }}</p>
+              <small>AI Screening Score: <strong>{{ activeResumeScore > 0 ? activeResumeScore + '/100' : 'Ready for Screening' }}</strong></small>
+            } @else {
+              <p style="color: #94a3b8;">No resume uploaded yet.</p>
+              <small>Upload your resume to enable AI screening and matching.</small>
+            }
           </div>
           <button class="btn btn-outline" (click)="openResume()">
             Manage Resume →

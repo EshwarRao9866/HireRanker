@@ -119,29 +119,53 @@ export class JobApplicants implements OnInit {
   }
 
   shortlistApplicant(applicant: ApplicantRecord): void {
+    const prevStatus = applicant.status;
     applicant.status = 'Shortlisted';
     this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Shortlisted');
+
     this.applicationService.shortlistApplication(applicant.id).subscribe({
-      next: () => {},
-      error: () => {}
+      next: (res) => {
+        this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
+      },
+      error: (err) => {
+        // Fallback to updating status via generic endpoint if shortlist had an issue
+        this.applicationService.updateApplicationStatus(applicant.id, 'SHORTLISTED').subscribe({
+          next: () => {
+            this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
+          },
+          error: () => {
+            // Local state is already updated for demo/offline fallback
+            this.showToast(`⭐ ${applicant.name} shortlisted (saved locally).`);
+          }
+        });
+      }
     });
-    this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
   }
 
   rejectApplicant(applicant: ApplicantRecord): void {
     applicant.status = 'Rejected';
     this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Rejected');
     this.applicationService.updateApplicationStatus(applicant.id, 'REJECTED').subscribe({
-      next: () => {},
-      error: () => {}
+      next: () => {
+        this.showToast(`✕ ${applicant.name} application marked as rejected.`);
+      },
+      error: () => {
+        this.showToast(`✕ ${applicant.name} marked as rejected (saved locally).`);
+      }
     });
-    this.showToast(`✕ ${applicant.name} application marked as rejected.`);
   }
 
   scheduleInterview(applicant: ApplicantRecord): void {
     applicant.status = 'Interview Scheduled';
     this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Interview Scheduled');
-    this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+    this.applicationService.updateApplicationStatus(applicant.id, 'INTERVIEW').subscribe({
+      next: () => {
+        this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+      },
+      error: () => {
+        this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+      }
+    });
   }
 
   downloadResume(applicant: ApplicantRecord): void {

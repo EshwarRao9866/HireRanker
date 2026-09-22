@@ -26,6 +26,7 @@ export class JobList implements OnInit {
   jobTypes = ['All', 'Full Time', 'Contract', 'Remote', 'Hybrid'];
 
   jobs: JobItem[] = [];
+  selectedJob: JobItem | null = null;
 
   constructor(
     private readonly router: Router,
@@ -38,6 +39,22 @@ export class JobList implements OnInit {
 
   ngOnInit(): void {
     this.loadJobs();
+  }
+
+  viewDetails(job: JobItem): void {
+    this.selectedJob = job;
+  }
+
+  closeDetails(): void {
+    this.selectedJob = null;
+  }
+
+  getResponsibilitiesList(text?: string): string[] {
+    if (!text) return [];
+    return text
+      .split('\n')
+      .map(line => line.replace(/^[•\-\*\s]+/, '').trim())
+      .filter(line => line.length > 0);
   }
 
   loadJobs(): void {

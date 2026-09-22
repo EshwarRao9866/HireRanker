@@ -28,77 +28,9 @@ export class NotificationService {
   private readonly STORAGE_CANDIDATE_NOTIFS = 'hireRankerCandidateNotifications';
   private readonly STORAGE_ADMIN_NOTIFS = 'hireRankerAdminNotifications';
 
-  private readonly defaultCandidateNotifications: AppNotification[] = [
-    {
-      id: 'cand-notif-1',
-      title: '💼 New Job Opening: Senior Angular Developer',
-      message: 'HireRanker Technologies is hiring for Senior Angular Developer in Bangalore (₹14 - 20 LPA). Your profile is an 89% match!',
-      type: 'job',
-      timestamp: '10 mins ago',
-      createdAt: Date.now() - 10 * 60 * 1000,
-      read: false,
-      link: '/find-jobs',
-      meta: {
-        jobId: 2,
-        jobTitle: 'Senior Angular Developer',
-        company: 'HireRanker Technologies',
-        matchScore: 89,
-        location: 'Bangalore',
-        salary: '₹14 - 20 LPA'
-      }
-    },
-    {
-      id: 'cand-notif-2',
-      title: '⭐ Application Shortlisted',
-      message: 'Great news! Your application for Java Full Stack Developer has been shortlisted by the recruiter.',
-      type: 'info',
-      timestamp: '2 hours ago',
-      createdAt: Date.now() - 2 * 60 * 60 * 1000,
-      read: true,
-      link: '/my-applications',
-      meta: {
-        jobId: 1,
-        jobTitle: 'Java Full Stack Developer'
-      }
-    }
-  ];
+  private readonly defaultCandidateNotifications: AppNotification[] = [];
 
-  private readonly defaultAdminNotifications: AppNotification[] = [
-    {
-      id: 'admin-notif-1',
-      title: '📄 New Application: Eshwar Rao',
-      message: 'Eshwar Rao just applied for "Java Full Stack Developer" with an AI resume match score of 94%.',
-      type: 'application',
-      timestamp: '15 mins ago',
-      createdAt: Date.now() - 15 * 60 * 1000,
-      read: false,
-      link: '/job-applicants',
-      meta: {
-        jobId: 1,
-        jobTitle: 'Java Full Stack Developer',
-        candidateName: 'Eshwar Rao',
-        candidateEmail: 'eshwar@candidate.com',
-        matchScore: 94
-      }
-    },
-    {
-      id: 'admin-notif-2',
-      title: '📄 New Application: Krupa Jyothi',
-      message: 'Krupa Jyothi applied for "Senior Angular Developer" with an AI resume match score of 89%.',
-      type: 'application',
-      timestamp: '1 hour ago',
-      createdAt: Date.now() - 60 * 60 * 1000,
-      read: true,
-      link: '/job-applicants',
-      meta: {
-        jobId: 2,
-        jobTitle: 'Senior Angular Developer',
-        candidateName: 'Krupa Jyothi',
-        candidateEmail: 'krupa.jyothi@email.com',
-        matchScore: 89
-      }
-    }
-  ];
+  private readonly defaultAdminNotifications: AppNotification[] = [];
 
   readonly candidateNotificationsSignal = signal<AppNotification[]>([]);
   readonly adminNotificationsSignal = signal<AppNotification[]>([]);
@@ -123,17 +55,16 @@ export class NotificationService {
   // ================= CANDIDATE NOTIFICATIONS =================
 
   getCandidateNotifications(): AppNotification[] {
-    if (!this.isBrowser()) return [...this.defaultCandidateNotifications];
+    if (!this.isBrowser()) return [];
     try {
       const raw = localStorage.getItem(this.STORAGE_CANDIDATE_NOTIFS);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed;
       }
-      this.saveCandidateNotifications(this.defaultCandidateNotifications);
-      return [...this.defaultCandidateNotifications];
+      return [];
     } catch {
-      return [...this.defaultCandidateNotifications];
+      return [];
     }
   }
 
@@ -204,17 +135,16 @@ export class NotificationService {
   // ================= ADMIN NOTIFICATIONS =================
 
   getAdminNotifications(): AppNotification[] {
-    if (!this.isBrowser()) return [...this.defaultAdminNotifications];
+    if (!this.isBrowser()) return [];
     try {
       const raw = localStorage.getItem(this.STORAGE_ADMIN_NOTIFS);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed;
       }
-      this.saveAdminNotifications(this.defaultAdminNotifications);
-      return [...this.defaultAdminNotifications];
+      return [];
     } catch {
-      return [...this.defaultAdminNotifications];
+      return [];
     }
   }
 

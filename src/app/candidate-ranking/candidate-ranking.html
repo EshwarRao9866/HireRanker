@@ -9,37 +9,39 @@
   </header>
 
   <!-- TOP 3 PODIUM ROW -->
-  <div class="podium-row">
-    <!-- Rank 2 -->
-    <div class="podium-card silver-card">
-      <div class="medal">🥈 2nd Place</div>
-      <div class="podium-avatar">{{ candidates[1].name.charAt(0) }}</div>
-      <h3>{{ candidates[1].name }}</h3>
-      <p>{{ candidates[1].role }}</p>
-      <div class="podium-score">{{ candidates[1].overallScore }}%</div>
-      <small>Skills: {{ candidates[1].skillsMatch }}% • Exp: {{ candidates[1].experience }}</small>
-    </div>
+  @if (candidates.length >= 3) {
+    <div class="podium-row">
+      <!-- Rank 2 -->
+      <div class="podium-card silver-card">
+        <div class="medal">🥈 2nd Place</div>
+        <div class="podium-avatar">{{ candidates[1].name.charAt(0) }}</div>
+        <h3>{{ candidates[1].name }}</h3>
+        <p>{{ candidates[1].role }}</p>
+        <div class="podium-score">{{ candidates[1].overallScore }}%</div>
+        <small>Skills: {{ candidates[1].skillsMatch }}% • Exp: {{ candidates[1].experience }}</small>
+      </div>
 
-    <!-- Rank 1 (Tallest) -->
-    <div class="podium-card gold-card">
-      <div class="medal">🥇 Top Candidate</div>
-      <div class="podium-avatar gold-avatar">{{ candidates[0].name.charAt(0) }}</div>
-      <h3>{{ candidates[0].name }}</h3>
-      <p>{{ candidates[0].role }}</p>
-      <div class="podium-score gold-score">{{ candidates[0].overallScore }}%</div>
-      <small>Skills: {{ candidates[0].skillsMatch }}% • Exp: {{ candidates[0].experience }}</small>
-    </div>
+      <!-- Rank 1 (Tallest) -->
+      <div class="podium-card gold-card">
+        <div class="medal">🥇 Top Candidate</div>
+        <div class="podium-avatar gold-avatar">{{ candidates[0].name.charAt(0) }}</div>
+        <h3>{{ candidates[0].name }}</h3>
+        <p>{{ candidates[0].role }}</p>
+        <div class="podium-score gold-score">{{ candidates[0].overallScore }}%</div>
+        <small>Skills: {{ candidates[0].skillsMatch }}% • Exp: {{ candidates[0].experience }}</small>
+      </div>
 
-    <!-- Rank 3 -->
-    <div class="podium-card bronze-card">
-      <div class="medal">🥉 3rd Place</div>
-      <div class="podium-avatar">{{ candidates[2].name.charAt(0) }}</div>
-      <h3>{{ candidates[2].name }}</h3>
-      <p>{{ candidates[2].role }}</p>
-      <div class="podium-score">{{ candidates[2].overallScore }}%</div>
-      <small>Skills: {{ candidates[2].skillsMatch }}% • Exp: {{ candidates[2].experience }}</small>
+      <!-- Rank 3 -->
+      <div class="podium-card bronze-card">
+        <div class="medal">🥉 3rd Place</div>
+        <div class="podium-avatar">{{ candidates[2].name.charAt(0) }}</div>
+        <h3>{{ candidates[2].name }}</h3>
+        <p>{{ candidates[2].role }}</p>
+        <div class="podium-score">{{ candidates[2].overallScore }}%</div>
+        <small>Skills: {{ candidates[2].skillsMatch }}% • Exp: {{ candidates[2].experience }}</small>
+      </div>
     </div>
-  </div>
+  }
 
   <!-- COMPLETE RANKINGS TABLE -->
   <div class="content-card">
@@ -108,6 +110,14 @@
                   <button class="btn-sm btn-primary-sm" (click)="scheduleInterview(c)">📅 Schedule</button>
                   <button class="btn-sm btn-outline-sm" (click)="viewProfile(c)">👁️ View</button>
                 </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">📊</span>
+                <p style="margin: 0; font-size: 1rem; color: #cbd5e1; font-weight: 500;">No candidates available for ranking.</p>
+                <small style="color: #64748b;">Candidates who apply and undergo resume screening will be ranked automatically.</small>
               </td>
             </tr>
           }

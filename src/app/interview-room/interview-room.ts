@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,22 +6,17 @@ import { timeout, catchError, of, Subscription, firstValueFrom } from 'rxjs';
 import { InterviewService, LiveQuestion, LiveInterviewResult, LiveAnswerResponse } from '../services/interview.service';
 import { InterviewMediaService, MicState } from '../services/interview-media.service';
 import { AuthService } from '../services/auth.service';
+import { IntegrityMonitoringService, IntegrityAlert, IntegritySummary } from '../services/integrity-monitoring.service';
 
 export type InterviewSessionState =
-  | 'PRECHECK'
-  | 'CAMERA_CHECK'
-  | 'MIC_CHECK'
-  | 'SPEAKER_CHECK'
-  | 'READY'
-  | 'ENTERING_INTERVIEW'
-  | 'AI_INTRODUCTION'
-  | 'QUESTION_GENERATING'
+  | 'PREPARING'
+  | 'INTRODUCTION'
+  | 'QUESTION_LOADING'
   | 'QUESTION_SPEAKING'
-  | 'WAITING_FOR_ANSWER'
-  | 'CANDIDATE_SPEAKING'
-  | 'ANSWER_PROCESSING'
-  | 'ANSWER_EVALUATING'
-  | 'FEEDBACK'
+  | 'WAITING_FOR_RESPONSE'
+  | 'CANDIDATE_ANSWERING'
+  | 'SUBMITTING_ANSWER'
+  | 'EVALUATING_ANSWER'
   | 'NEXT_QUESTION'
   | 'COMPLETED'
   | 'TIME_EXPIRED'
@@ -49,10 +44,27 @@ export class InterviewRoom implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly interviewService = inject(InterviewService);
   private readonly interviewMediaService = inject(InterviewMediaService);
+  readonly integrityService = inject(IntegrityMonitoringService);
   private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
   readonly authService = inject(AuthService);
 
   private mediaSub?: Subscription;
+  private integrityAlertSub?: Subscription;
+  private integritySummarySub?: Subscription;
+  private activeQuestionToken: number = 0;
+
+  // Active Integrity Alert & Summary
+  activeIntegrityAlert: IntegrityAlert | null = null;
+  integritySummary: IntegritySummary = {
+    totalEvents: 0,
+    multiplePersonEvents: 0,
+    tabSwitchEvents: 0,
+    attentionAwayEvents: 0,
+    audioAnomalyEvents: 0,
+    monitoredDurationSeconds: 0,
+    integrityStatus: 'NORMAL'
+  };
 
   // Real-time acoustic & STT state
   audioLevel: number = 0;
@@ -67,21 +79,22 @@ export class InterviewRoom implements OnInit, OnDestroy {
   currentQuestionNumber: number = 1;
   totalQuestions: number = 6;
 
-  // Unified 18-State Machine Tracker
-  sessionState: InterviewSessionState = 'ENTERING_INTERVIEW';
+  // Authoritative Interview State Machine Tracker
+  sessionState: InterviewSessionState = 'PREPARING';
 
   // Question State Machine
   questionState: QuestionFlowState = 'WAITING_FOR_QUESTION';
   autoSkipMessage: string = '';
 
-  // Quick Verbal Answer Modal & Assistance State
-  showQuickAnswerModal: boolean = false;
-  currentQuestionIsAssisted: boolean = false;
+  // Candidate Microphone & Recording State
+  isRecording: boolean = false;
   private silenceDebounceTimer: any = null;
 
   // AI Interviewer Introduction Phase
   isIntroPhase: boolean = true;
-  introGreeting: string = '';
+  introGreeting: string = 'Welcome to your HireRanker technical interview. I am your AI Technical Interviewer. I will ask you a series of technical questions based on your skills and experience. Please answer naturally and clearly. Your responses will be evaluated on technical knowledge, problem-solving, and communication. Let\'s begin.';
+  isIntroSpeaking: boolean = false;
+  introCompleted: boolean = false;
   private canvasAnimFrameId: number | null = null;
 
   // 15-second speech countdown state
@@ -93,7 +106,10 @@ export class InterviewRoom implements OnInit, OnDestroy {
   isSpeaking: boolean = false;
   candidateIsAnswering: boolean = false;
   answerText: string = '';
+  finalTranscript: string = '';
+  interimTranscript: string = '';
   isSubmitting: boolean = false;
+  private submissionGuard: boolean = false;
   errorMessage: string = '';
   completionNotice: string = '';
 
@@ -101,7 +117,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
   isCompleted: boolean = false;
   scorecard: LiveInterviewResult | null = null;
 
-  // 15-Minute Overall Continuous Assessment Timer
+  // 15-Minute Overall Continuous Assessment Timer (authoritative start/end timestamp)
   sessionSecondsRemaining: number = 15 * 60; // 900 seconds
   private sessionStartTime: number = 0;
   private sessionEndTime: number = 0;
@@ -112,6 +128,29 @@ export class InterviewRoom implements OnInit, OnDestroy {
     const secs = this.sessionSecondsRemaining % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
+
+  // Introduction Button Label & Status
+  get introButtonText(): string {
+    if (this.isQuestionStarting) {
+      return 'Loading Question 1...';
+    }
+    if (this.sessionState === 'PREPARING') {
+      return 'Preparing Interview...';
+    }
+    if (this.sessionState === 'INTRODUCTION' && this.isIntroSpeaking) {
+      return 'Start Question 1 Now';
+    }
+    return 'Start Question 1';
+  }
+
+  get canStartQuestion1(): boolean {
+    return !this.isQuestionStarting;
+  }
+
+  // Duplicate Protection Guards
+  private isQuestionStarting: boolean = false;
+  private isRequestInProgress: boolean = false;
+  private introSafetyTimer: any = null;
 
   // Exit Modal State
   showExitModal: boolean = false;
@@ -182,6 +221,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
     const idParam = this.route.snapshot.paramMap.get('interviewId');
     if (!idParam) {
       this.errorMessage = 'No valid Interview ID was specified.';
+      this.sessionState = 'ERROR';
       return;
     }
 
@@ -191,8 +231,6 @@ export class InterviewRoom implements OnInit, OnDestroy {
     if (currentUser?.fullName) {
       this.candidateName = currentUser.fullName;
     }
-
-    // Note: The 15:00 assessment timer starts strictly when the AI interviewer begins speaking the introduction
 
     const isScorecardView = this.route.snapshot.queryParamMap.get('view') === 'scorecard';
     if (isScorecardView) {
@@ -219,11 +257,12 @@ export class InterviewRoom implements OnInit, OnDestroy {
         weaknesses: 'Can deepen hands-on optimization in distributed caching patterns (Redis) and concurrent thread-pool fine-tuning.'
       };
       this.questionState = 'INTERVIEW_COMPLETED';
+      this.sessionState = 'COMPLETED';
       this.completionNotice = 'Assessment Completed: This session was evaluated and saved. Retakes require HR authorization.';
       return;
     }
 
-    // Enter active assessment room directly
+    // Enter active assessment room
     this.startActiveAssessment();
 
     // Subscribe to real-time acoustic level and speaking state from InterviewMediaService
@@ -237,9 +276,14 @@ export class InterviewRoom implements OnInit, OnDestroy {
       this.interviewMediaService.isSpeaking$.subscribe((speaking) => {
         this.isAcousticSpeaking = speaking;
         if (speaking) {
-          this.isSpeaking = true;
-          if (this.questionState === 'WAITING_FOR_RESPONSE') {
-            this.startSpeakingFromAcousticInput();
+          if (this.sessionState === 'WAITING_FOR_RESPONSE' || this.questionState === 'WAITING_FOR_RESPONSE') {
+            if (!this.isRecording) {
+              this.startSpeaking();
+            } else {
+              this.startSpeakingFromAcousticInput();
+            }
+          } else if (this.isRecording) {
+            this.isSpeaking = true;
           }
         } else {
           this.isSpeaking = false;
@@ -251,25 +295,48 @@ export class InterviewRoom implements OnInit, OnDestroy {
         this.micState = state;
       })
     );
+
+    // Subscribe to AI Integrity Monitoring alerts and summary
+    this.integrityAlertSub = this.integrityService.activeAlert$.subscribe((alert) => {
+      this.activeIntegrityAlert = alert;
+      this.cdr.markForCheck();
+    });
+
+    this.integritySummarySub = this.integrityService.summary$.subscribe((summary) => {
+      this.integritySummary = summary;
+      this.cdr.markForCheck();
+    });
   }
 
   private startActiveAssessment(): void {
+    this.sessionState = 'PREPARING';
+    this.isIntroPhase = true;
+    this.introCompleted = false;
+    this.isQuestionStarting = false;
+
     this.initCamera();
-    this.startIntroPhase();
 
-    // Default question is pre-loaded immediately so room never hangs on a blank spinner
+    // Default question is pre-loaded as fallback so room never hangs on a blank spinner
     this.currentQuestion = this.fallbackQuestions[0];
+    this.currentQuestionNumber = 1;
 
-    // Attempt initializing interview session on backend with safety timeout
+    // Initialize backend session in the background
     this.interviewService.startInterview({ interviewId: this.interviewId }).pipe(
       timeout(3500),
-      catchError(() => of(null))
+      catchError((err) => {
+        this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
+        return of(null);
+      })
     ).subscribe({
       next: (session) => {
         if (session) {
+          this.errorMessage = '';
           if (session.candidateName) this.candidateName = session.candidateName;
           if (session.jobTitle) this.jobTitle = session.jobTitle;
           if (session.totalQuestionsTarget) this.totalQuestions = session.totalQuestionsTarget;
+          if (session.introduction) {
+            this.introGreeting = session.introduction;
+          }
           if (session.firstQuestion) {
             this.currentQuestion = session.firstQuestion;
             this.currentQuestionNumber = session.firstQuestion.questionNumber || 1;
@@ -277,48 +344,104 @@ export class InterviewRoom implements OnInit, OnDestroy {
         }
       },
       error: () => {
-        // Fallback already prepared
+        this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
+      }
+    });
+
+    // Start the AI Introduction and the global 15-minute timer at the exact beginning of introduction
+    setTimeout(() => {
+      this.startIntroPhase();
+    }, 150);
+  }
+
+  finishIntroPhase(): void {
+    if (this.introSafetyTimer) {
+      clearTimeout(this.introSafetyTimer);
+      this.introSafetyTimer = null;
+    }
+    this.ngZone.run(() => {
+      this.isTtsSpeaking = false;
+      this.isIntroSpeaking = false;
+      this.introCompleted = true;
+      if (this.sessionState === 'PREPARING' || this.sessionState === 'INTRODUCTION') {
+        // Automatically progress from introduction to question 1
+        this.beginFirstQuestion();
       }
     });
   }
 
   startIntroPhase(): void {
     this.isIntroPhase = true;
-    this.sessionState = 'AI_INTRODUCTION';
-    this.introGreeting = `Welcome to your HireRanker technical interview, ${this.candidateName}. I am your AI Technical Interviewer for the ${this.jobTitle} position. I will ask you a series of technical questions based on your skills and experience. Please answer naturally and clearly. Your responses will be evaluated on technical knowledge, problem-solving, and communication. Let's begin.`;
+    this.sessionState = 'INTRODUCTION';
+    this.isIntroSpeaking = true;
+    this.introCompleted = false;
+
+    // Start the global 15-minute timer at the exact beginning of the introduction
+    this.startSessionTimer();
+
+    if (!this.introGreeting || this.introGreeting.trim() === '') {
+      this.introGreeting = `Welcome to your HireRanker technical interview, ${this.candidateName}. I am your AI Technical Interviewer for the ${this.jobTitle} position. I will ask you a series of technical questions based on your skills and experience. Please answer naturally and clearly. Your responses will be evaluated on technical knowledge, problem-solving, and communication. Let's begin.`;
+    }
+
+    // Safety fallback timer: Ensure introduction phase finishes cleanly and advances to Question 1 even if speech synthesis is muted, blocked, or hangs
+    if (this.introSafetyTimer) {
+      clearTimeout(this.introSafetyTimer);
+    }
+    this.introSafetyTimer = setTimeout(() => {
+      this.finishIntroPhase();
+    }, 12000);
 
     if (this.ttsEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(this.introGreeting);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.onstart = () => {
-        this.isTtsSpeaking = true;
-      };
-      utterance.onend = () => {
-        this.isTtsSpeaking = false;
-        // Continuous assessment timer starts strictly when the AI introduction completes
-        this.startSessionTimer();
-      };
-      utterance.onerror = () => {
-        this.isTtsSpeaking = false;
-        this.startSessionTimer();
-      };
-      window.speechSynthesis.speak(utterance);
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(this.introGreeting);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.onstart = () => {
+          this.ngZone.run(() => {
+            this.isTtsSpeaking = true;
+            this.isIntroSpeaking = true;
+          });
+        };
+        utterance.onend = () => {
+          this.finishIntroPhase();
+        };
+        utterance.onerror = () => {
+          this.finishIntroPhase();
+        };
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        this.finishIntroPhase();
+      }
     } else {
-      this.startSessionTimer();
+      this.finishIntroPhase();
     }
   }
 
   beginFirstQuestion(): void {
+    // Stop any remaining TTS and introduction state
+    this.isIntroSpeaking = false;
+    this.introCompleted = true;
+    if (this.introSafetyTimer) {
+      clearTimeout(this.introSafetyTimer);
+      this.introSafetyTimer = null;
+    }
+
+    if (this.isQuestionStarting) {
+      return;
+    }
+
+    this.isQuestionStarting = true;
     this.stopTts();
-    // Guarantee continuous 15-minute assessment timer is running when candidate begins first question
-    this.startSessionTimer();
     this.isIntroPhase = false;
-    this.sessionState = 'QUESTION_GENERATING';
+    this.sessionState = 'QUESTION_LOADING';
+    this.questionState = 'WAITING_FOR_QUESTION';
+
     if (!this.currentQuestion) {
       this.currentQuestion = this.fallbackQuestions[0];
+      this.currentQuestionNumber = 1;
     }
+
     this.onQuestionLoaded();
   }
 
@@ -328,7 +451,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.sessionEndTime = this.sessionStartTime + (15 * 60 * 1000);
     this.sessionSecondsRemaining = 15 * 60;
 
-    // Independent, uninterrupted 15-minute continuous countdown
+    // Single stable timing mechanism calculating remaining time from authoritative start/end timestamp
     this.sessionTimer = setInterval(() => {
       const now = Date.now();
       this.sessionSecondsRemaining = Math.max(0, Math.round((this.sessionEndTime - now) / 1000));
@@ -398,6 +521,9 @@ export class InterviewRoom implements OnInit, OnDestroy {
       videoEl.play().catch((e) => {
         console.warn('candidateVideo play notice:', e);
       });
+
+      // Start AI Integrity Monitoring with video element
+      this.integrityService.startMonitoring(videoEl);
     }
   }
 
@@ -490,6 +616,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.integrityService.stopMonitoring();
     this.stopCountdown();
     this.stopTts();
     this.stopVoiceRecognition();
@@ -497,12 +624,26 @@ export class InterviewRoom implements OnInit, OnDestroy {
       clearInterval(this.sessionTimer);
       this.sessionTimer = null;
     }
+    if (this.introSafetyTimer) {
+      clearTimeout(this.introSafetyTimer);
+      this.introSafetyTimer = null;
+    }
+    if (this.silenceDebounceTimer) {
+      clearTimeout(this.silenceDebounceTimer);
+      this.silenceDebounceTimer = null;
+    }
     if (this.canvasAnimFrameId) {
       cancelAnimationFrame(this.canvasAnimFrameId);
       this.canvasAnimFrameId = null;
     }
     if (this.mediaSub) {
       this.mediaSub.unsubscribe();
+    }
+    if (this.integrityAlertSub) {
+      this.integrityAlertSub.unsubscribe();
+    }
+    if (this.integritySummarySub) {
+      this.integritySummarySub.unsubscribe();
     }
     this.interviewMediaService.setPreserveMedia(false);
     this.interviewMediaService.stopAll(true);
@@ -515,29 +656,46 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   loadActiveQuestion(): void {
+    if (this.isRequestInProgress || this.isCompleted) return;
+    this.isRequestInProgress = true;
     this.errorMessage = '';
     this.autoSkipMessage = '';
+    this.sessionState = 'QUESTION_LOADING';
     this.questionState = 'WAITING_FOR_QUESTION';
 
     this.interviewService.getNextQuestion(this.interviewId).pipe(
       timeout(3500),
-      catchError(() => of(null))
+      catchError(() => {
+        this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
+        return of(null);
+      })
     ).subscribe({
       next: (q) => {
+        this.isRequestInProgress = false;
+        let newQuestion: LiveQuestion;
         if (q && q.questionId) {
-          this.currentQuestion = q;
-          this.currentQuestionNumber = q.questionNumber || this.currentQuestionNumber;
+          this.errorMessage = '';
+          newQuestion = q;
         } else {
-          const fallback = this.fallbackQuestions[this.currentQuestionNumber - 1] || this.fallbackQuestions[0];
-          this.currentQuestion = fallback;
+          this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
+          newQuestion = this.fallbackQuestions[this.currentQuestionNumber - 1] || this.fallbackQuestions[0];
         }
+
+        // 1. FIRST: Immediately update currentQuestion and questionNumber
+        this.currentQuestion = newQuestion;
+        this.currentQuestionNumber = newQuestion.questionNumber || this.currentQuestionNumber;
+
+        // 2. Then trigger question loaded lifecycle if intro phase is over
         if (!this.isIntroPhase) {
           this.onQuestionLoaded();
         }
       },
       error: () => {
+        this.isRequestInProgress = false;
+        this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
         const fallback = this.fallbackQuestions[this.currentQuestionNumber - 1] || this.fallbackQuestions[0];
         this.currentQuestion = fallback;
+        this.currentQuestionNumber = fallback.questionNumber || this.currentQuestionNumber;
         if (!this.isIntroPhase) {
           this.onQuestionLoaded();
         }
@@ -546,35 +704,63 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   private onQuestionLoaded(): void {
+    // Increment active question token to invalidate any stale asynchronous callbacks from previous questions
+    this.activeQuestionToken++;
+    const currentToken = this.activeQuestionToken;
+
+    // 1. Reset the question-specific UI state FIRST so the Angular UI renders the new question immediately
     this.answerText = '';
+    this.finalTranscript = '';
+    this.interimTranscript = '';
+    this.submissionGuard = false;
     this.isSpeaking = false;
     this.candidateIsAnswering = false;
     this.autoSkipMessage = '';
     this.questionState = 'QUESTION_ASKED';
     this.sessionState = 'QUESTION_SPEAKING';
-
-    // AI voice synthesizes the question aloud
-    if (this.currentQuestion?.questionText && this.ttsEnabled) {
-      this.speakQuestion(this.currentQuestion.questionText);
-    } else {
-      this.startWaitingForCandidateResponse();
+    this.stopCountdown();
+    this.stopVoiceRecognition();
+    if (this.silenceDebounceTimer) {
+      clearTimeout(this.silenceDebounceTimer);
+      this.silenceDebounceTimer = null;
     }
+
+    // Force immediate Angular change detection to guarantee DOM has rendered the new question card
+    this.cdr.detectChanges();
+
+    // 2. ONLY AFTER the DOM has rendered the new question, TTS starts speaking
+    setTimeout(() => {
+      // Guard against token mismatch or state transition during the render tick
+      if (this.activeQuestionToken !== currentToken) return;
+
+      if (this.currentQuestion?.questionText && this.ttsEnabled) {
+        this.speakQuestion(this.currentQuestion.questionText, currentToken);
+      } else {
+        this.startWaitingForCandidateResponse();
+      }
+    }, 60);
   }
 
   private startWaitingForCandidateResponse(): void {
     this.questionState = 'WAITING_FOR_RESPONSE';
-    this.sessionState = 'WAITING_FOR_ANSWER';
+    this.sessionState = 'WAITING_FOR_RESPONSE';
     this.candidateIsAnswering = false;
     this.isSpeaking = false;
-    this.start15SecondCountdown();
-    this.startVoiceRecognition();
+    this.isRecording = false;
 
-    // Reset silence tracker and start audio chunk capture for Groq Whisper Cloud STT
+    // Reset turn speech and set up silence detection callback
     this.interviewMediaService.resetTurnSpeech();
     this.interviewMediaService.setSilenceCallback(() => {
       this.onNaturalSilenceDetected();
     });
+
+    // Prime speech recognition and acoustic recorder so voice input is captured immediately without manual button clicks
+    this.startVoiceRecognition();
     this.interviewMediaService.startAnswerRecording();
+    this.isRecording = true;
+
+    // Start completely separate 15-second countdown ONLY after TTS finishes
+    this.start15SecondCountdown();
   }
 
   start15SecondCountdown(): void {
@@ -586,7 +772,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
       if (this.countdownSeconds > 0) {
         this.countdownSeconds--;
       } else {
-        // 15-second speech countdown expired without speech!
+        // 15-second speech countdown expired without an answer!
         this.stopCountdown();
         this.autoSkipDueToTimeout();
       }
@@ -601,7 +787,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
     }
   }
 
-  speakQuestion(text: string): void {
+  speakQuestion(text: string, token: number = this.activeQuestionToken): void {
     if (!this.ttsEnabled) {
       this.startWaitingForCandidateResponse();
       return;
@@ -612,18 +798,32 @@ export class InterviewRoom implements OnInit, OnDestroy {
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       utterance.onstart = () => {
-        this.isTtsSpeaking = true;
+        this.ngZone.run(() => {
+          if (this.activeQuestionToken === token) {
+            this.isTtsSpeaking = true;
+            this.sessionState = 'QUESTION_SPEAKING';
+          }
+        });
       };
       utterance.onend = () => {
-        this.isTtsSpeaking = false;
-        this.startWaitingForCandidateResponse();
+        this.ngZone.run(() => {
+          if (this.activeQuestionToken === token) {
+            this.isTtsSpeaking = false;
+            this.startWaitingForCandidateResponse();
+          }
+        });
       };
       utterance.onerror = () => {
-        this.isTtsSpeaking = false;
-        this.startWaitingForCandidateResponse();
+        this.ngZone.run(() => {
+          if (this.activeQuestionToken === token) {
+            this.isTtsSpeaking = false;
+            this.startWaitingForCandidateResponse();
+          }
+        });
       };
       window.speechSynthesis.speak(utterance);
     } else {
+      this.isTtsSpeaking = false;
       this.startWaitingForCandidateResponse();
     }
   }
@@ -636,12 +836,17 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   replayQuestionVoice(): void {
+    // Replay ONLY the current question text without changing question, number, or state
     if (this.currentQuestion?.questionText) {
-      this.speakQuestion(this.currentQuestion.questionText);
+      this.stopCountdown();
+      this.speakQuestion(this.currentQuestion.questionText, this.activeQuestionToken);
     }
   }
 
   private baseTranscript: string = '';
+
+  private recognitionRestartAttempts: number = 0;
+  private maxRestartAttempts: number = 8;
 
   startVoiceRecognition(): void {
     if (typeof window === 'undefined') return;
@@ -652,7 +857,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
     }
 
     this.stopVoiceRecognition();
-    this.baseTranscript = this.answerText.trim();
+    this.interimTranscript = '';
 
     try {
       this.recognition = new SpeechRec();
@@ -661,11 +866,13 @@ export class InterviewRoom implements OnInit, OnDestroy {
       this.recognition.lang = 'en-US';
 
       this.recognition.onstart = () => {
-        this.isListening = true;
+        this.ngZone.run(() => {
+          this.isListening = true;
+          this.recognitionRestartAttempts = 0;
+        });
       };
 
       this.recognition.onspeechstart = () => {
-        // Candidate started speaking! Immediately cancel 15-second speech countdown
         this.ngZone.run(() => {
           this.startSpeakingFromAcousticInput();
         });
@@ -673,22 +880,35 @@ export class InterviewRoom implements OnInit, OnDestroy {
 
       this.recognition.onresult = (event: any) => {
         this.ngZone.run(() => {
-          let interimTranscript = '';
-          let sessionFinalTranscript = '';
+          let accumulatedFinal = '';
+          let currentInterim = '';
 
-          for (let i = 0; i < event.results.length; i++) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              sessionFinalTranscript += result[0].transcript + ' ';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const res = event.results[i];
+            const textChunk = (res[0]?.transcript || '').trim();
+            if (!textChunk) continue;
+
+            if (res.isFinal) {
+              accumulatedFinal += (accumulatedFinal ? ' ' : '') + textChunk;
             } else {
-              interimTranscript += result[0].transcript + ' ';
+              currentInterim += (currentInterim ? ' ' : '') + textChunk;
             }
           }
 
-          const currentSessionText = (sessionFinalTranscript + interimTranscript).trim();
-          const combined = this.baseTranscript
-            ? (this.baseTranscript + ' ' + currentSessionText).trim()
-            : currentSessionText;
+          if (accumulatedFinal) {
+            this.finalTranscript = this.finalTranscript
+              ? (this.finalTranscript + ' ' + accumulatedFinal).replace(/\s+/g, ' ').trim()
+              : accumulatedFinal.trim();
+          }
+
+          this.interimTranscript = currentInterim.trim();
+
+          // Full combined text: confirmed final transcript + current partial interim speech
+          const combined = [this.finalTranscript, this.interimTranscript]
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
 
           if (combined) {
             this.answerText = combined;
@@ -699,24 +919,30 @@ export class InterviewRoom implements OnInit, OnDestroy {
       };
 
       this.recognition.onerror = (e: any) => {
-        console.warn('[INTERVIEW ROOM] Speech recognition notice:', e);
+        console.warn('[INTERVIEW ROOM] Speech recognition error/notice:', e?.error || e);
+        if (e?.error === 'not-allowed') {
+          this.errorMessage = 'Microphone permission is required to answer.';
+        }
       };
 
       this.recognition.onend = () => {
-        this.isListening = false;
-        // Commit current text to baseTranscript so restarting recognition doesn't clobber earlier speech
-        if (this.answerText.trim()) {
-          this.baseTranscript = this.answerText.trim();
-        }
-        // Auto-restart if candidate is still actively answering and not submitting
-        if (this.questionState === 'CANDIDATE_ANSWERING' || this.questionState === 'WAITING_FOR_RESPONSE') {
-          if (!this.isSubmitting && !this.isTtsSpeaking && !this.isCompleted) {
-            try {
-              this.recognition.start();
-              this.isListening = true;
-            } catch {}
+        this.ngZone.run(() => {
+          this.isListening = false;
+          // If candidate is still answering or waiting, restart recognition cleanly without losing accumulated final transcript
+          if (this.isRecording && !this.submissionGuard && !this.isSubmitting && !this.isTtsSpeaking && !this.isCompleted) {
+            if (this.sessionState === 'CANDIDATE_ANSWERING' || this.sessionState === 'WAITING_FOR_RESPONSE') {
+              if (this.recognitionRestartAttempts < this.maxRestartAttempts) {
+                this.recognitionRestartAttempts++;
+                try {
+                  this.recognition.start();
+                  this.isListening = true;
+                } catch (startErr) {
+                  console.warn('[INTERVIEW ROOM] Speech recognition restart exception:', startErr);
+                }
+              }
+            }
           }
-        }
+        });
       };
 
       this.recognition.start();
@@ -726,6 +952,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   stopVoiceRecognition(): void {
+    this.recognitionRestartAttempts = 0;
     if (this.recognition) {
       try {
         this.recognition.abort();
@@ -738,33 +965,34 @@ export class InterviewRoom implements OnInit, OnDestroy {
   startSpeakingFromAcousticInput(): void {
     this.isSpeaking = true;
     this.candidateIsAnswering = true;
-    this.sessionState = 'CANDIDATE_SPEAKING';
-    if (this.questionState === 'WAITING_FOR_RESPONSE') {
-      this.questionState = 'CANDIDATE_ANSWERING';
-    }
+    this.sessionState = 'CANDIDATE_ANSWERING';
+    this.questionState = 'CANDIDATE_ANSWERING';
+    // Candidate started speaking: stop the 15-second response countdown (Global 15-min timer continues undisturbed)
     this.stopCountdown();
     this.stopTts();
   }
 
   onTextInput(): void {
     this.candidateIsAnswering = true;
-    this.sessionState = 'CANDIDATE_SPEAKING';
-    if (this.questionState === 'WAITING_FOR_RESPONSE') {
-      this.questionState = 'CANDIDATE_ANSWERING';
-    }
+    this.sessionState = 'CANDIDATE_ANSWERING';
+    this.questionState = 'CANDIDATE_ANSWERING';
     this.stopCountdown();
     this.stopTts();
+    this.finalTranscript = this.answerText.trim();
+    this.interimTranscript = '';
     this.onSpeechActivity();
   }
 
   startSpeaking(): void {
+    if (this.submissionGuard || this.isSubmitting || this.isCompleted) return;
+    this.isRecording = true;
     this.candidateIsAnswering = true;
-    if (this.questionState === 'WAITING_FOR_RESPONSE') {
-      this.questionState = 'CANDIDATE_ANSWERING';
-    }
+    this.sessionState = 'CANDIDATE_ANSWERING';
+    this.questionState = 'CANDIDATE_ANSWERING';
     this.stopCountdown();
     this.stopTts();
     this.startVoiceRecognition();
+    this.interviewMediaService.startAnswerRecording();
     if (!this.interviewMediaService.isMicrophoneLive()) {
       this.interviewMediaService.requestCameraAndMicrophone().then(() => {
         this.interviewMediaService.initAudioAnalyser();
@@ -773,68 +1001,36 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   onSpeechActivity(): void {
-    // Reset silence debounce timer
+    // Reset silence timer on speech activity
     if (this.silenceDebounceTimer) {
       clearTimeout(this.silenceDebounceTimer);
       this.silenceDebounceTimer = null;
     }
 
-    // Silence detection: when candidate has provided meaningful response (>= 15 chars & >= 3 words)
-    // and pauses for strict 2.5 seconds (2500ms), auto-submit the response
     const text = this.answerText.trim();
-    if (text.length >= 15 && text.split(/\s+/).length >= 3) {
+    // Allow natural pauses: only schedule 4.0s silence debounce if substantial answer content exists (>= 20 chars, >= 4 words)
+    if (text.length >= 20 && text.split(/\s+/).length >= 4) {
       this.silenceDebounceTimer = setTimeout(() => {
-        if (this.questionState === 'CANDIDATE_ANSWERING' && !this.isSubmitting && !this.isCompleted) {
-          console.log('[INTERVIEW ROOM] Natural 2.5s silence threshold detected after candidate response. Auto-submitting answer...');
+        if ((this.sessionState === 'CANDIDATE_ANSWERING' || this.questionState === 'CANDIDATE_ANSWERING') && !this.submissionGuard && !this.isSubmitting && !this.isCompleted) {
+          console.log('[INTERVIEW ROOM] Natural 4.0s silence threshold detected after complete candidate response. Finalizing answer...');
           this.finalizeAndSubmitAnswer();
         }
-      }, 2500);
+      }, 4000);
     }
   }
 
   private onNaturalSilenceDetected(): void {
-    if (this.questionState === 'CANDIDATE_ANSWERING' && !this.isSubmitting && !this.isCompleted) {
+    if ((this.sessionState === 'CANDIDATE_ANSWERING' || this.questionState === 'CANDIDATE_ANSWERING') && !this.submissionGuard && !this.isSubmitting && !this.isCompleted && this.isRecording) {
       const text = this.answerText.trim();
-      if (text.length >= 8 || this.isAcousticSpeaking) {
-        console.log('[INTERVIEW ROOM] 2500ms acoustic silence threshold detected. Finalizing with Groq Whisper & submitting...');
+      // Only finalize on acoustic silence if candidate has provided a substantial spoken answer (>= 20 chars and >= 4 words)
+      if (text.length >= 20 && text.split(/\s+/).length >= 4) {
+        console.log('[INTERVIEW ROOM] 4000ms acoustic silence threshold detected after substantial answer. Finalizing and submitting answer...');
         this.finalizeAndSubmitAnswer();
+      } else {
+        // If transcript is short or candidate paused mid-sentence, keep listening without auto-submitting
+        console.log('[INTERVIEW ROOM] Acoustic pause detected with short transcript. Continuing to listen for candidate...');
       }
     }
-  }
-
-  requestQuickVerbalAnswer(): void {
-    if (this.isSubmitting || this.isCompleted) return;
-    this.showQuickAnswerModal = true;
-  }
-
-  cancelQuickAnswer(): void {
-    this.showQuickAnswerModal = false;
-  }
-
-  confirmQuickAnswer(): void {
-    this.showQuickAnswerModal = false;
-    this.currentQuestionIsAssisted = true;
-    this.simulateVoiceInput();
-  }
-
-  simulateVoiceInput(): void {
-    this.candidateIsAnswering = true;
-    if (this.questionState === 'WAITING_FOR_RESPONSE') {
-      this.questionState = 'CANDIDATE_ANSWERING';
-    }
-    this.stopCountdown();
-    this.stopTts();
-    const mockAnswers = [
-      'In Spring Boot, dependency injection is managed by the Spring IoC container. Constructor injection is preferred because it guarantees immutability, facilitates unit testing with mocks, and prevents NullPointerExceptions during bean initialization.',
-      'Angular standalone components remove NgModule boilerplate and improve tree-shakability. Signals provide fine-grained reactivity, notifying only the specific view bindings that changed rather than triggering full component zone checks.',
-      'To prevent N+1 queries in Spring Data JPA, I use @EntityGraph or JOIN FETCH in JPQL queries. Additionally, creating database indexes on foreign keys and high-cardinality search columns dramatically reduces lookup latency.',
-      'For microservices authentication, we issue stateless signed JWT tokens with short expiry, validate signatures at the API gateway with public keys, and implement a distributed Redis blocklist for instant token revocation.',
-      'In our high-throughput payment service, we diagnosed a thread pool starvation bottleneck using APM profiling. We refactored blocking database calls into asynchronous reactive pipelines and tuned connection pool sizing, reducing p99 latency by 72%.'
-    ];
-    const qIndex = (this.currentQuestionNumber - 1) % mockAnswers.length;
-    this.answerText = mockAnswers[qIndex];
-    // Trigger silence debounce to auto-submit smoothly
-    this.onSpeechActivity();
   }
 
   submitAnswer(): void {
@@ -842,7 +1038,17 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   async finalizeAndSubmitAnswer(): Promise<void> {
-    if (!this.currentQuestion || this.isSubmitting) return;
+    if (!this.currentQuestion || this.submissionGuard || this.isSubmitting || this.isCompleted) return;
+
+    const trimmedAnswer = this.answerText.trim();
+    if (!trimmedAnswer && !this.isRecording) {
+      console.log('[INTERVIEW ROOM] Attempted submit with completely empty answer and no recording. Aborting submission.');
+      return;
+    }
+
+    // Activate submission guard immediately to prevent double submissions
+    this.submissionGuard = true;
+    this.isRecording = false;
 
     if (this.silenceDebounceTimer) {
       clearTimeout(this.silenceDebounceTimer);
@@ -850,14 +1056,13 @@ export class InterviewRoom implements OnInit, OnDestroy {
     }
 
     this.isSubmitting = true;
+    this.sessionState = 'SUBMITTING_ANSWER';
     this.questionState = 'PROCESSING_ANSWER';
-    this.sessionState = 'ANSWER_PROCESSING';
     this.stopCountdown();
     this.stopTts();
     this.stopVoiceRecognition();
 
     try {
-      // 1. Capture recorded audio blob and send to Groq Whisper STT on backend
       this.isTranscribingWithWhisper = true;
       const audioBlob = await this.interviewMediaService.stopAnswerRecording();
       if (audioBlob && audioBlob.size > 1200) {
@@ -871,8 +1076,6 @@ export class InterviewRoom implements OnInit, OnDestroy {
 
           const whisperText = (resp?.text || resp?.transcript || '').trim();
           if (whisperText.length > 0) {
-            console.log('[INTERVIEW ROOM] Groq Whisper cloud transcript received:', whisperText);
-            // If browser Web Speech missed words or was empty, prefer Whisper
             if (!this.answerText.trim() || this.answerText.trim().length < whisperText.length) {
               this.answerText = whisperText;
             } else if (!this.answerText.toLowerCase().includes(whisperText.toLowerCase().slice(0, 15))) {
@@ -887,22 +1090,29 @@ export class InterviewRoom implements OnInit, OnDestroy {
       this.isTranscribingWithWhisper = false;
     }
 
+    // Check once more after Whisper transcription
+    if (!this.answerText.trim()) {
+      console.log('[INTERVIEW ROOM] Answer remains completely empty after audio processing. Handling as no response timeout.');
+      this.isSubmitting = false;
+      this.submissionGuard = false;
+      this.autoSkipDueToTimeout();
+      return;
+    }
+
     this.executeSubmitAnswer();
   }
 
   private executeSubmitAnswer(): void {
     const answer = this.answerText.trim() || 'Candidate provided verbal answer during live session.';
-    const isAssisted = this.currentQuestionIsAssisted;
-    this.sessionState = 'ANSWER_EVALUATING';
+    this.sessionState = 'EVALUATING_ANSWER';
+    this.isRecording = false;
 
-    this.interviewService.submitAnswer(this.interviewId, this.currentQuestion!.questionId, answer, 15, isAssisted).subscribe({
+    this.interviewService.submitAnswer(this.interviewId, this.currentQuestion!.questionId, answer, 15).subscribe({
       next: (res) => {
         this.isSubmitting = false;
-        this.currentQuestionIsAssisted = false;
 
         // If answer is incorrect and AI provides constructive explanation, speak it aloud before next question
         if (res.correct === false && res.explanation) {
-          this.sessionState = 'FEEDBACK';
           const explanationSpeech = `Thank you for your answer. To clarify: ${res.explanation}`;
           if (this.ttsEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
             const utt = new SpeechSynthesisUtterance(explanationSpeech);
@@ -920,20 +1130,10 @@ export class InterviewRoom implements OnInit, OnDestroy {
 
         this.proceedAfterSubmission(res);
       },
-      error: () => {
+      error: (err) => {
         this.isSubmitting = false;
-        this.currentQuestionIsAssisted = false;
-        if (this.currentQuestionNumber >= this.totalQuestions || this.currentQuestionNumber >= this.fallbackQuestions.length) {
-          this.questionState = 'INTERVIEW_COMPLETED';
-          this.sessionState = 'COMPLETED';
-          this.finishInterview();
-        } else {
-          this.questionState = 'ANSWER_COMPLETED';
-          this.sessionState = 'NEXT_QUESTION';
-          this.currentQuestionNumber++;
-          this.currentQuestion = this.fallbackQuestions[this.currentQuestionNumber - 1];
-          this.onQuestionLoaded();
-        }
+        this.submissionGuard = false;
+        this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
       }
     });
   }
@@ -946,14 +1146,18 @@ export class InterviewRoom implements OnInit, OnDestroy {
     } else {
       this.questionState = 'ANSWER_COMPLETED';
       this.sessionState = 'NEXT_QUESTION';
+
+      // 1. FIRST update currentQuestion and currentQuestionNumber immediately
       this.currentQuestion = res.nextQuestion;
       this.currentQuestionNumber = res.nextQuestion.questionNumber || (this.currentQuestionNumber + 1);
+
+      // 2. Then proceed to onQuestionLoaded (UI render first, TTS only after)
       this.onQuestionLoaded();
     }
   }
 
   skipQuestion(): void {
-    if (!this.currentQuestion || this.isSubmitting) return;
+    if (!this.currentQuestion || this.isSubmitting || this.isCompleted) return;
 
     if (this.silenceDebounceTimer) {
       clearTimeout(this.silenceDebounceTimer);
@@ -965,6 +1169,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.stopTts();
     this.stopVoiceRecognition();
     this.questionState = 'QUESTION_SKIPPED';
+    this.sessionState = 'SUBMITTING_ANSWER';
 
     this.interviewService.skipQuestion(this.interviewId, this.currentQuestion.questionId, 'Candidate skipped question').subscribe({
       next: (res) => {
@@ -973,8 +1178,10 @@ export class InterviewRoom implements OnInit, OnDestroy {
       },
       error: () => {
         this.isSubmitting = false;
+        this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
         if (this.currentQuestionNumber >= this.totalQuestions || this.currentQuestionNumber >= this.fallbackQuestions.length) {
           this.questionState = 'INTERVIEW_COMPLETED';
+          this.sessionState = 'COMPLETED';
           this.finishInterview();
         } else {
           this.currentQuestionNumber++;
@@ -986,12 +1193,15 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   private autoSkipDueToTimeout(): void {
-    if (!this.currentQuestion || this.questionState === 'CANDIDATE_ANSWERING') return;
+    if (!this.currentQuestion || this.sessionState === 'CANDIDATE_ANSWERING' || this.questionState === 'CANDIDATE_ANSWERING') return;
 
     this.stopCountdown();
     this.stopVoiceRecognition();
     this.questionState = 'QUESTION_SKIPPED';
-    const timeoutMsg = "I haven't detected an answer yet. We'll move to the next question.";
+    this.sessionState = 'NEXT_QUESTION';
+
+    // Speak exact required prompt: "I didn't hear an answer. We'll move to the next question."
+    const timeoutMsg = "I didn't hear an answer. We'll move to the next question.";
     this.autoSkipMessage = timeoutMsg;
 
     if (this.ttsEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -1035,6 +1245,11 @@ export class InterviewRoom implements OnInit, OnDestroy {
       clearInterval(this.sessionTimer);
       this.sessionTimer = null;
     }
+
+    // Stop integrity monitoring and collect recorded events
+    this.integrityService.stopMonitoring();
+    const integrityEvents = this.integrityService.getRecordedEvents();
+
     this.interviewMediaService.setPreserveMedia(false);
     this.interviewMediaService.stopAll(true);
     if (this.mediaStream) {
@@ -1045,52 +1260,59 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.interviewService.stopActiveMediaStream();
     this.isSubmitting = true;
 
-    this.interviewService.completeInterview(this.interviewId).subscribe({
-      next: (result) => {
-        this.isSubmitting = false;
-        this.isCompleted = true;
-        this.questionState = 'INTERVIEW_COMPLETED';
-        this.sessionState = 'COMPLETED';
-        this.scorecard = result;
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(result));
-        }
-      },
-      error: () => {
-        // Attempt retrieving existing scorecard
-        this.interviewService.getInterviewResult(this.interviewId).subscribe({
-          next: (res) => {
-            this.isSubmitting = false;
-            this.isCompleted = true;
-            this.questionState = 'INTERVIEW_COMPLETED';
-            this.scorecard = res;
-            if (typeof localStorage !== 'undefined') {
-              localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(res));
-            }
-          },
-          error: () => {
-            this.isSubmitting = false;
-            this.isCompleted = true;
-            this.questionState = 'INTERVIEW_COMPLETED';
-            this.scorecard = {
-              interviewId: this.interviewId,
-              candidateName: this.candidateName || 'Eshwar Rao',
-              jobTitle: this.jobTitle || 'Java Developer',
-              overallScore: 88,
-              technicalScore: 90,
-              communicationScore: 85,
-              problemSolvingScore: 89,
-              recommendation: 'STRONG_HIRE',
-              strengths: 'Solid system architecture and problem-solving fundamentals.',
-              weaknesses: 'Can deepen distributed caching optimization.'
-            };
-            if (typeof localStorage !== 'undefined') {
-              localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(this.scorecard));
-            }
+    // Log integrity events to backend then finalize interview
+    const completeAndShowResult = () => {
+      this.interviewService.completeInterview(this.interviewId).subscribe({
+        next: (result) => {
+          this.isSubmitting = false;
+          this.isCompleted = true;
+          this.questionState = 'INTERVIEW_COMPLETED';
+          this.sessionState = 'COMPLETED';
+          this.scorecard = result;
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(result));
           }
-        });
-      }
-    });
+
+          // TEST 22: Professional AI conclusion speech
+          const conclusionSpeech = `Congratulations ${this.candidateName}. You have completed your technical interview for ${this.jobTitle}. Your responses have been evaluated and your performance scorecard is now available. Thank you for your time.`;
+          if (this.ttsEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utt = new SpeechSynthesisUtterance(conclusionSpeech);
+            utt.rate = 1.0;
+            window.speechSynthesis.speak(utt);
+          }
+        },
+        error: () => {
+          // Attempt retrieving existing scorecard
+          this.interviewService.getInterviewResult(this.interviewId).subscribe({
+            next: (res) => {
+              this.isSubmitting = false;
+              this.isCompleted = true;
+              this.questionState = 'INTERVIEW_COMPLETED';
+              this.scorecard = res;
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(res));
+              }
+            },
+            error: () => {
+              this.isSubmitting = false;
+              this.errorMessage = 'Backend server is currently unavailable. Please start the backend service.';
+            }
+          });
+        }
+      });
+    };
+
+    if (integrityEvents.length > 0) {
+      this.interviewService.logIntegrityEvents(this.interviewId, integrityEvents).pipe(
+        timeout(3000),
+        catchError(() => of(null))
+      ).subscribe(() => {
+        completeAndShowResult();
+      });
+    } else {
+      completeAndShowResult();
+    }
   }
 
   promptExit(): void {

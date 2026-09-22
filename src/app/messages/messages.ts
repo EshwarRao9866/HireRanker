@@ -34,50 +34,8 @@ export class Messages implements OnInit {
   searchQuery = '';
   newMessageText = '';
 
-  conversations: Conversation[] = [
-    {
-      id: 1,
-      candidateName: 'Eshwar Rao',
-      candidateRole: 'Java Full Stack Developer (Match: 95%)',
-      avatar: 'E',
-      lastMessage: 'Thank you for considering my application. I am available for the interview.',
-      time: '10m ago',
-      unreadCount: 1,
-      online: true,
-      messages: [
-        { sender: 'admin', text: 'Hello Eshwar, your resume screening match score for the Java Full Stack position is 95%. We would like to invite you for a technical assessment.', time: '10:15 AM' },
-        { sender: 'candidate', text: 'Thank you for considering my application. I am available for the interview.', time: '10:20 AM' }
-      ]
-    },
-    {
-      id: 2,
-      candidateName: 'Krupa Jyothi',
-      candidateRole: 'Senior Angular Developer (Match: 89%)',
-      avatar: 'K',
-      lastMessage: 'Could you please share the interview schedule link?',
-      time: '1h ago',
-      unreadCount: 2,
-      online: false,
-      messages: [
-        { sender: 'candidate', text: 'Hi Team, I received the shortlist confirmation. Could you please share the interview schedule link?', time: '09:00 AM' }
-      ]
-    },
-    {
-      id: 3,
-      candidateName: 'Durga Rohith',
-      candidateRole: 'Java Developer (Match: 84%)',
-      avatar: 'D',
-      lastMessage: 'I have updated my portfolio link in my candidate profile.',
-      time: '1d ago',
-      unreadCount: 0,
-      online: true,
-      messages: [
-        { sender: 'candidate', text: 'I have updated my portfolio link in my candidate profile.', time: 'Yesterday' }
-      ]
-    }
-  ];
-
-  selectedConversation: Conversation = this.conversations[0];
+  conversations: Conversation[] = [];
+  selectedConversation: Conversation | null = null;
 
   constructor(
     private readonly router: Router,
@@ -122,7 +80,7 @@ export class Messages implements OnInit {
 
   sendMessage(): void {
     const text = this.newMessageText.trim();
-    if (!text) return;
+    if (!text || !this.selectedConversation) return;
 
     this.selectedConversation.messages.push({
       sender: 'admin',

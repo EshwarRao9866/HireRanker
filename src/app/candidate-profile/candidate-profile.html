@@ -343,24 +343,36 @@
               <small>Used for automatic job matching</small>
             </div>
 
-            <div class="resume-card-box">
-              <div class="pdf-icon">📄</div>
-              <div class="pdf-info">
-                <strong>{{ profile.resumeName }}</strong>
-                <small>Updated: {{ profile.resumeUpdatedDate }}</small>
+            @if (profile.resumeName) {
+              <div class="resume-card-box">
+                <div class="pdf-icon">📄</div>
+                <div class="pdf-info">
+                  <strong>{{ profile.resumeName }}</strong>
+                  <small>Updated: {{ profile.resumeUpdatedDate }}</small>
+                </div>
               </div>
-            </div>
 
-            <div class="resume-actions">
-              <button class="btn btn-outline-sm" (click)="viewResume()">
-                👁️ View Resume
-              </button>
+              <div class="resume-actions">
+                <button class="btn btn-outline-sm" (click)="viewResume()">
+                  👁️ View Resume
+                </button>
 
-              <label class="btn btn-primary-sm">
-                🔄 Replace Resume
-                <input type="file" (change)="uploadResume($event)" accept=".pdf,.doc,.docx" hidden />
-              </label>
-            </div>
+                <label class="btn btn-primary-sm">
+                  🔄 Replace Resume
+                  <input type="file" (change)="uploadResume($event)" accept=".pdf,.doc,.docx" hidden />
+                </label>
+              </div>
+            } @else {
+              <div class="resume-card-box" style="justify-content: center; text-align: center; padding: 1.5rem; color: #94a3b8;">
+                <p style="margin: 0; font-size: 0.95rem;">No resume uploaded yet.</p>
+              </div>
+              <div class="resume-actions" style="justify-content: center;">
+                <label class="btn btn-primary-sm">
+                  📁 Upload Resume
+                  <input type="file" (change)="uploadResume($event)" accept=".pdf,.doc,.docx" hidden />
+                </label>
+              </div>
+            }
           </div>
 
         </div>

@@ -41,7 +41,7 @@
 
     <div class="stat-card">
       <span class="label">Average Screening Match</span>
-      <strong>86%</strong>
+      <strong>{{ averageMatchDisplay }}</strong>
       <small>AI parsed accuracy</small>
     </div>
   </section>
@@ -117,6 +117,14 @@
                 </div>
               </td>
             </tr>
+          } @empty {
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 3rem 1.5rem; color: #94a3b8;">
+                <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">💼</span>
+                <p style="margin: 0; font-size: 1rem; color: #475569; font-weight: 600;">No job postings available.</p>
+                <small style="color: #94a3b8;">Click "+ Post New Job" above to create your first requisition.</small>
+              </td>
+            </tr>
           }
         </tbody>
       </table>
@@ -139,9 +147,16 @@
         }
 
         <form (ngSubmit)="saveNewJob($event)" class="modal-form">
-          <div class="form-group">
-            <label>Job Title *</label>
-            <input type="text" [(ngModel)]="newJob.title" name="jobTitle" placeholder="e.g. Senior Java Full Stack Developer" required />
+          <div class="form-row">
+            <div class="form-group">
+              <label>Company Name *</label>
+              <input type="text" [(ngModel)]="newJob.company" name="jobCompany" placeholder="e.g. HireRanker Technologies" required />
+            </div>
+
+            <div class="form-group">
+              <label>Job Title *</label>
+              <input type="text" [(ngModel)]="newJob.title" name="jobTitle" placeholder="e.g. Senior Java Full Stack Developer" required />
+            </div>
           </div>
 
           <div class="form-row">
@@ -164,12 +179,12 @@
           <div class="form-row">
             <div class="form-group">
               <label>Experience Required</label>
-              <input type="text" [(ngModel)]="newJob.experience" name="jobExp" placeholder="e.g. 3-5 Yrs" />
+              <input type="text" [(ngModel)]="newJob.experience" name="jobExp" placeholder="e.g. 2-4 Years" />
             </div>
 
             <div class="form-group">
               <label>Salary Package</label>
-              <input type="text" [(ngModel)]="newJob.salary" name="jobSalary" placeholder="e.g. ₹12 - 18 LPA" />
+              <input type="text" [(ngModel)]="newJob.salary" name="jobSalary" placeholder="e.g. ₹8 - 14 LPA" />
             </div>
           </div>
 
@@ -186,8 +201,37 @@
 
             <div class="form-group">
               <label>Key Skills / Tags (comma-separated)</label>
-              <input type="text" [(ngModel)]="newJobTags" name="jobTags" placeholder="e.g. Java, Spring Boot, MySQL" />
+              <input type="text" [(ngModel)]="newJobTags" name="jobTags" placeholder="e.g. Java, Spring Boot, Angular, MySQL" />
             </div>
+          </div>
+
+          <div class="form-group">
+            <label>Job Description *</label>
+            <textarea
+              [(ngModel)]="newJob.description"
+              name="jobDescription"
+              rows="4"
+              class="form-textarea"
+              placeholder="e.g. We are looking for a Java Full Stack Developer to design, develop, and maintain scalable web applications using Spring Boot and Angular..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Responsibilities *</label>
+            <textarea
+              [(ngModel)]="newJob.responsibilities"
+              name="jobResponsibilities"
+              rows="5"
+              class="form-textarea"
+              placeholder="e.g.
+• Design and develop scalable applications
+• Build REST APIs using Spring Boot
+• Develop responsive Angular interfaces
+• Write unit and integration tests
+• Collaborate with the development team"
+              required
+            ></textarea>
           </div>
 
           <div class="modal-actions">
@@ -208,10 +252,23 @@
           <button class="close-modal" (click)="closeEditModal()">×</button>
         </div>
 
+        @if (editValidationError) {
+          <div class="modal-error-alert" style="margin-bottom: 16px; padding: 10px 14px; background: #fef2f2; border: 1px solid #f87171; color: #b91c1c; border-radius: 8px; font-size: 13.5px; font-weight: 500;">
+            ⚠️ {{ editValidationError }}
+          </div>
+        }
+
         <form (ngSubmit)="saveEditJob()" class="modal-form">
-          <div class="form-group">
-            <label>Job Title *</label>
-            <input type="text" [(ngModel)]="editingJob.title" name="editJobTitle" placeholder="e.g. Senior Java Full Stack Developer" required />
+          <div class="form-row">
+            <div class="form-group">
+              <label>Company Name *</label>
+              <input type="text" [(ngModel)]="editingJob.company" name="editJobCompany" placeholder="e.g. HireRanker Technologies" required />
+            </div>
+
+            <div class="form-group">
+              <label>Job Title *</label>
+              <input type="text" [(ngModel)]="editingJob.title" name="editJobTitle" placeholder="e.g. Senior Java Full Stack Developer" required />
+            </div>
           </div>
 
           <div class="form-row">
@@ -234,12 +291,12 @@
           <div class="form-row">
             <div class="form-group">
               <label>Experience Required</label>
-              <input type="text" [(ngModel)]="editingJob.experience" name="editJobExp" placeholder="e.g. 3-5 Yrs" />
+              <input type="text" [(ngModel)]="editingJob.experience" name="editJobExp" placeholder="e.g. 2-4 Years" />
             </div>
 
             <div class="form-group">
               <label>Salary Package</label>
-              <input type="text" [(ngModel)]="editingJob.salary" name="editJobSalary" placeholder="e.g. ₹12 - 18 LPA" />
+              <input type="text" [(ngModel)]="editingJob.salary" name="editJobSalary" placeholder="e.g. ₹8 - 14 LPA" />
             </div>
           </div>
 
@@ -266,6 +323,33 @@
           <div class="form-group">
             <label>Key Skills / Tags (comma-separated)</label>
             <input type="text" [(ngModel)]="editJobTags" name="editJobTags" placeholder="e.g. Java, Spring Boot, MySQL" />
+          </div>
+
+          <div class="form-group">
+            <label>Job Description *</label>
+            <textarea
+              [(ngModel)]="editingJob.description"
+              name="editJobDescription"
+              rows="4"
+              class="form-textarea"
+              placeholder="e.g. Enter full job description..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Responsibilities *</label>
+            <textarea
+              [(ngModel)]="editingJob.responsibilities"
+              name="editJobResponsibilities"
+              rows="5"
+              class="form-textarea"
+              placeholder="e.g.
+• Design and develop applications
+• Build REST APIs
+• Work with databases"
+              required
+            ></textarea>
           </div>
 
           <div class="modal-actions">

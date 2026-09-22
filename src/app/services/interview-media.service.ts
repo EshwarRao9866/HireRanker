@@ -24,8 +24,8 @@ export type CameraState =
 })
 export class InterviewMediaService {
   // Configurable thresholds
-  readonly MIC_AUDIO_THRESHOLD = 8; // Acoustic level % (0-100) to trigger speaking detection
-  readonly ANSWER_SILENCE_TIMEOUT_MS = 2500; // Strict 2.5-second silence duration before auto-submitting answer
+  readonly MIC_AUDIO_THRESHOLD = 4; // Acoustic level % (0-100) calibrated for quiet-to-normal speech
+  readonly ANSWER_SILENCE_TIMEOUT_MS = 4000; // 4.0-second silence duration before auto-submitting answer to allow natural pauses
 
   // Centralized media state
   private activeStream: MediaStream | null = null;

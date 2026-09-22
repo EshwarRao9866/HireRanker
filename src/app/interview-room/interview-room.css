@@ -1,14 +1,201 @@
-.interview-room-container {
-  min-height: 100vh;
-  background: #090d16;
-  color: #f8fafc;
+/* ================= NON-BLOCKING INTEGRITY ALERT TOAST ================= */
+.integrity-alert-toast {
+  position: fixed;
+  top: 76px;
+  right: 28px;
+  z-index: 1000;
   display: flex;
-  flex-direction: column;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow-x: hidden;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  max-width: 480px;
+  backdrop-filter: blur(12px);
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
 }
 
-/* ================= TOPBAR ================= */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.integrity-alert-toast.toast-low {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #e0f2fe;
+}
+
+.integrity-alert-toast.toast-med {
+  background: rgba(26, 21, 35, 0.96);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fef3c7;
+}
+
+.integrity-alert-toast.toast-high {
+  background: rgba(30, 16, 22, 0.96);
+  border: 1px solid rgba(244, 63, 94, 0.6);
+  color: #ffe4e6;
+}
+
+.toast-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.toast-message {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  opacity: 0.92;
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 8px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.toast-close-btn:hover {
+  opacity: 1;
+}
+
+/* ================= SCORECARD INTEGRITY SECTION ================= */
+.integrity-scorecard-section {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin: 20px 0 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.integrity-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.integrity-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.integrity-shield-icon {
+  font-size: 1.8rem;
+}
+
+.integrity-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.integrity-subtitle {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+.integrity-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.integrity-status-pill.status-normal {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.integrity-status-pill.status-review {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.pill-dot {
+  font-size: 0.75rem;
+}
+
+.integrity-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.integrity-metric-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.integrity-metric-card .metric-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.integrity-metric-card .metric-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.integrity-metric-card .metric-note {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.integrity-disclaimer-box {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #93c5fd;
+  line-height: 1.45;
+}
 .room-topbar {
   display: flex;
   justify-content: space-between;
@@ -489,6 +676,44 @@
 .fallback-icon {
   font-size: 3rem;
   opacity: 0.6;
+}
+
+/* Dynamic Live Mic Overlay Indicator */
+.mic-live-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(220, 38, 38, 0.9);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+  z-index: 15;
+  animation: pulse-badge 1.5s ease-in-out infinite;
+}
+
+.rec-dot-pulse {
+  color: #ffffff;
+  font-size: 0.85rem;
+  line-height: 1;
+  animation: pulse-dot 1s infinite;
+}
+
+@keyframes pulse-badge {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.85);
+  }
 }
 
 .mic-hud-pill {
@@ -1212,6 +1437,14 @@
 .btn-begin-interview:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+}
+
+.btn-begin-interview:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  pointer-events: none;
 }
 
 .voice-helpers-group {

@@ -41,16 +41,17 @@ export class Interview implements OnInit, OnDestroy {
   selectedScorecard: LiveInterviewResult | null = null;
   isLoadingScorecard = false;
 
-  hardwareTesting = false;
   cameraTesting = false;
   micTesting = false;
 
-  // Independent Camera State Machine
+  // 1. Independent Camera State Machine
   cameraState: 'CAMERA_IDLE' | 'CAMERA_CHECKING' | 'CAMERA_VERIFIED' | 'CAMERA_FAILED' = 'CAMERA_IDLE';
+  cameraPermission = false;
+  cameraStreamActive = false;
   cameraVerified = false;
   cameraError = '';
 
-  // Independent Microphone State Machine (Section 23B: Strict 3-State Separation)
+  // 2. Independent Microphone State Machine
   // State 1: MICROPHONE_PERMISSION (Hardware access permission)
   micPermissionState: 'PERMISSION_PENDING' | 'PERMISSION_GRANTED' | 'PERMISSION_DENIED' = 'PERMISSION_PENDING';
   micPermissionGranted = false;
@@ -247,6 +248,8 @@ export class Interview implements OnInit, OnDestroy {
     this.modalPhase = 'INSTRUCTIONS'; // Display clear rules & guidelines first!
     this.errorMessage = '';
     this.cameraState = 'CAMERA_IDLE';
+    this.cameraPermission = false;
+    this.cameraStreamActive = false;
     this.cameraVerified = false;
     this.cameraError = '';
     this.microphoneState = 'MIC_IDLE';
@@ -281,21 +284,30 @@ export class Interview implements OnInit, OnDestroy {
     this.cameraError = '';
     this.cameraState = 'CAMERA_CHECKING';
     this.lightingWarning = '';
+    this.cameraPermission = false;
+    this.cameraStreamActive = false;
+    this.cameraVerified = false;
 
     try {
       if (!navigator?.mediaDevices?.getUserMedia) {
         throw new Error('Webcam capture is not supported by your browser.');
       }
 
-      console.log('[INTERVIEW] Executing independent Camera Verification...');
+      console.log('[INTERVIEW] Executing independent Camera Verification (video only)...');
       const res = await this.interviewMediaService.requestCameraOnly();
       if (res.cameraOk && res.stream) {
-        this.cameraVerified = true;
-        this.cameraState = 'CAMERA_VERIFIED';
+        const videoTracks = res.stream.getVideoTracks();
+        if (videoTracks.length === 0 || videoTracks[0].readyState !== 'live') {
+          throw new Error('Camera track is not active.');
+        }
+
+        this.cameraPermission = true;
+        this.cameraStreamActive = true;
         this.cameraError = '';
         this.mediaStream = res.stream;
         this.interviewService.setMediaStream(res.stream);
 
+        // Attach to preview and ensure usable video frames
         setTimeout(() => {
           const videoEl = document.getElementById('testVideoPreview') as HTMLVideoElement;
           if (videoEl && this.mediaStream) {
@@ -303,17 +315,27 @@ export class Interview implements OnInit, OnDestroy {
             videoEl.muted = true;
             videoEl.play().catch(() => {});
             videoEl.onloadedmetadata = () => {
+              // Video is live and rendering frames
+              this.cameraVerified = true;
+              this.cameraState = 'CAMERA_VERIFIED';
               setTimeout(() => this.checkAmbientLighting(videoEl), 200);
             };
+          } else {
+            this.cameraVerified = true;
+            this.cameraState = 'CAMERA_VERIFIED';
           }
         }, 80);
       } else {
+        this.cameraPermission = false;
+        this.cameraStreamActive = false;
         this.cameraVerified = false;
         this.cameraState = 'CAMERA_FAILED';
         this.cameraError = res.error || 'Failed to detect active video stream from camera.';
       }
     } catch (err: any) {
       console.warn('[INTERVIEW] testCamera error:', err);
+      this.cameraPermission = false;
+      this.cameraStreamActive = false;
       this.cameraVerified = false;
       this.cameraState = 'CAMERA_FAILED';
       this.cameraError = err?.message || 'Camera access failed.';
@@ -388,139 +410,6 @@ export class Interview implements OnInit, OnDestroy {
     this.isProceeding = false;
   }
 
-  async testHardware(): Promise<void> {
-    this.hardwareTesting = true;
-    this.errorMessage = '';
-    this.cameraError = '';
-    this.microphoneError = '';
-    this.lightingWarning = '';
-    this.cameraState = 'CAMERA_CHECKING';
-    this.microphoneState = 'MIC_REQUESTING';
-    this.stopMediaTest(false);
-
-    try {
-      if (!navigator?.mediaDevices?.getUserMedia) {
-        throw new Error('Your browser does not support media device capture. Please click "Quick Verify / Bypass" below.');
-      }
-
-      console.log('[INTERVIEW] Requesting camera and microphone access...');
-
-      // Safety timeout promise (8s)
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        this.testTimeoutHandle = setTimeout(() => {
-          const err = new Error('Device verification timed out. Click "Quick Verify / Bypass" to proceed directly.');
-          err.name = 'TimeoutError';
-          reject(err);
-        }, 8000);
-      });
-
-      let stream: MediaStream | null = null;
-      try {
-        const mediaPromise = navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-          audio: { echoCancellation: true, noiseSuppression: true }
-        });
-        stream = await Promise.race([mediaPromise, timeoutPromise]);
-      } catch (errCombined) {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      }
-
-      if (this.testTimeoutHandle) {
-        clearTimeout(this.testTimeoutHandle);
-        this.testTimeoutHandle = null;
-      }
-
-      this.mediaStream = stream;
-      if (stream) {
-        this.interviewMediaService.setActiveStream(stream);
-      }
-      const videoTracks = stream.getVideoTracks();
-      const audioTracks = stream.getAudioTracks();
-
-      // ==========================================
-      // STEP 1 & 2: VERIFY CAMERA FEED INDEPENDENTLY
-      // ==========================================
-      if (videoTracks.length > 0 && videoTracks[0].readyState === 'live') {
-        this.cameraVerified = true;
-        this.cameraState = 'CAMERA_VERIFIED';
-        this.lightingStatus = 'Optimal Lighting';
-        console.log('[INTERVIEW] Camera & Environment Verified successfully.');
-
-        setTimeout(() => {
-          const videoEl = document.getElementById('testVideoPreview') as HTMLVideoElement;
-          if (videoEl && this.mediaStream) {
-            videoEl.srcObject = this.mediaStream;
-            videoEl.muted = true;
-            videoEl.play().catch(() => {});
-            videoEl.onloadedmetadata = () => {
-              setTimeout(() => this.checkAmbientLighting(videoEl), 200);
-            };
-          }
-        }, 50);
-      } else {
-        this.cameraVerified = false;
-        this.cameraState = 'CAMERA_FAILED';
-        this.cameraError = 'No active video track detected on webcam.';
-        console.warn('[INTERVIEW] Camera verification failed: video track inactive.');
-      }
-
-      // =========================================================================
-      // STEP 3: MICROPHONE PERMISSION (State 1: MICROPHONE_PERMISSION)
-      // DO NOT mark mic verified merely because getUserMedia() succeeded!
-      // =========================================================================
-      if (audioTracks.length > 0 && audioTracks[0].readyState === 'live') {
-        this.micPermissionGranted = true;
-        this.micPermissionState = 'PERMISSION_GRANTED';
-        this.micInputState = 'WAITING_FOR_AUDIO';
-        this.speechRecognitionState = 'STT_LISTENING';
-        this.microphoneState = 'MIC_CHECKING';
-        console.log('[INTERVIEW] State 1 (MICROPHONE_PERMISSION): GRANTED. Audio signal and Speech-to-Text still pending.');
-
-        // Start State 2 audio level monitoring
-        this.initAudioMeter(stream);
-
-        // Start State 3 speech recognition listening for actual phrase
-        this.startSpeechVerification();
-      } else {
-        this.micPermissionGranted = false;
-        this.micPermissionState = 'PERMISSION_DENIED';
-        this.microphoneState = 'MIC_FAILED';
-        this.microphoneError = 'No active audio track detected on microphone.';
-        console.warn('[INTERVIEW] Microphone access failed: audio track inactive.');
-      }
-
-    } catch (err: any) {
-      console.error('[INTERVIEW] testHardware error:', err);
-      if (this.testTimeoutHandle) {
-        clearTimeout(this.testTimeoutHandle);
-        this.testTimeoutHandle = null;
-      }
-      this.stopMediaTest(true);
-      this.cameraVerified = false;
-      this.cameraState = 'CAMERA_FAILED';
-      this.micPermissionGranted = false;
-      this.micPermissionState = 'PERMISSION_DENIED';
-      this.micAudioDetected = false;
-      this.micInputState = 'SILENCE';
-      this.speechRecognitionVerified = false;
-      this.speechRecognitionState = 'STT_FAILED';
-      this.speechVerificationCompleted = false;
-      this.microphoneState = 'MIC_FAILED';
-
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        this.errorMessage = 'Camera and Microphone access was denied by your browser. Allow permissions in the address bar (lock icon) or click "Quick Verify / Bypass" below to continue.';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        this.errorMessage = 'No camera or microphone detected on this computer. Click "Quick Verify / Bypass" below to proceed in Compatibility Mode.';
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        this.errorMessage = 'Hardware in use: Your webcam or microphone is locked by another application (e.g. Teams, Zoom, or another tab). Close other apps or click "Quick Verify / Bypass".';
-      } else {
-        this.errorMessage = err?.message || 'Device verification failed. You can click "Quick Verify / Bypass" below to proceed directly.';
-      }
-    } finally {
-      this.hardwareTesting = false;
-    }
-  }
-
   startSpeechVerification(): void {
     if (this.speechRecognitionVerified) return;
 
@@ -548,7 +437,7 @@ export class Interview implements OnInit, OnDestroy {
           // Real-time live transcript binding
           this.recognizedTranscript = trimmed;
 
-          // Verify that candidate transcript closely matches the requested phrase: "Hello, I am ready for the interview"
+          // Verify target phrase: "Hello, I am ready for the interview" with robust acoustic tolerance
           const clean = lower.replace(/[^a-z0-9 ]/g, '');
           const tokens = clean.split(/\s+/);
           const hasHello = tokens.includes('hello') || tokens.includes('hi') || tokens.includes('hey');
@@ -558,7 +447,10 @@ export class Interview implements OnInit, OnDestroy {
           const phraseMatched = (hasHello && hasReady && hasInterview) ||
                                 clean.includes('ready for the interview') ||
                                 clean.includes('ready for interview') ||
-                                (hasHello && (hasReady || hasInterview));
+                                clean.includes('i am ready') ||
+                                (hasReady && hasInterview) ||
+                                (hasHello && hasReady) ||
+                                (hasHello && hasInterview);
 
           if (phraseMatched) {
             console.log('[INTERVIEW] Target verification phrase successfully matched:', trimmed);
@@ -567,9 +459,19 @@ export class Interview implements OnInit, OnDestroy {
         };
 
         rec.onerror = (e: any) => {
-          console.warn('[INTERVIEW] State 3 STT note:', e);
+          console.warn('[INTERVIEW] State 3 STT notice:', e);
           if (e.error === 'not-allowed') {
             this.speechRecognitionState = 'STT_FAILED';
+          }
+        };
+
+        rec.onend = () => {
+          // If pre-interview check is still active and phrase hasn't been verified yet, restart recognition
+          if (this.micTesting && !this.speechRecognitionVerified && this.speechRecognitionInstance) {
+            try {
+              rec.start();
+              console.log('[INTERVIEW] Restarted speech recognition for precheck.');
+            } catch {}
           }
         };
 
@@ -587,7 +489,7 @@ export class Interview implements OnInit, OnDestroy {
 
   recordAudioInputDetected(level: number): void {
     this.audioLevel = level;
-    if (level > 8 && !this.micAudioDetected) {
+    if (level > 3 && !this.micAudioDetected) {
       this.micAudioDetected = true;
       this.micInputState = 'AUDIO_SIGNAL_DETECTED';
       console.log(`[INTERVIEW] State 2 (MICROPHONE_INPUT): Audio Signal Detected (${level}%). Speech-to-Text still required.`);
@@ -600,9 +502,6 @@ export class Interview implements OnInit, OnDestroy {
     this.recognizedTranscript = transcript.trim();
     this.speechRecognitionVerified = true;
     this.speechRecognitionState = 'STT_TRANSCRIPTION_SUCCESS';
-    this.speechVerificationCompleted = true;
-    this.microphoneState = 'MIC_VERIFIED';
-    // Speaker check remains completely independent - never auto-flip speakerReady!
     console.log(`[INTERVIEW] State 3 (SPEECH_RECOGNITION): Transcribed words ("${this.recognizedTranscript}") via ${reason}`);
 
     if (this.speechRecognitionInstance) {
@@ -621,23 +520,14 @@ export class Interview implements OnInit, OnDestroy {
     }
   }
 
-  confirmMicrophoneVerified(reason: string = 'manual'): void {
-    this.micPermissionGranted = true;
-    this.micPermissionState = 'PERMISSION_GRANTED';
-    this.micAudioDetected = true;
-    this.micInputState = 'AUDIO_SIGNAL_DETECTED';
-    this.audioLevel = Math.max(this.audioLevel, 65);
-    this.speechVerificationCompleted = true;
-    this.recordSpeechRecognitionResult(this.speechPhrase, reason);
-  }
-
   playTestAudio(): void {
     this.isPlayingTestAudio = true;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance('Welcome to HireRanker. If you can hear this audio clearly, please confirm below.');
-      utterance.rate = 1.0;
+      utterance.rate = 0.95;
       utterance.pitch = 1.0;
+      utterance.volume = 1.0;
       utterance.onend = () => {
         this.isPlayingTestAudio = false;
       };
@@ -646,115 +536,14 @@ export class Interview implements OnInit, OnDestroy {
       };
       window.speechSynthesis.speak(utterance);
     } else {
-      // AudioContext chime fallback
-      try {
-        const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
-        const ctx = new AudioCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        osc.start();
-        osc.stop(ctx.currentTime + 1.2);
-        setTimeout(() => {
-          this.isPlayingTestAudio = false;
-        }, 1200);
-      } catch {
+      setTimeout(() => {
         this.isPlayingTestAudio = false;
-      }
+      }, 1500);
     }
   }
 
   confirmSpeakerReady(): void {
     this.speakerReady = true;
-  }
-
-  simulateHardware(): void {
-    this.stopMediaTest(false);
-    this.errorMessage = '';
-    this.lightingWarning = '';
-    this.lightingStatus = 'Optimal Lighting';
-    this.hardwareTesting = false;
-
-    // Create a live simulated canvas video stream if physical camera not active
-    if (!this.mediaStream) {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          let frame = 0;
-          const draw = () => {
-            frame++;
-            ctx.fillStyle = '#0b1329';
-            ctx.fillRect(0, 0, 640, 480);
-
-            // Draw avatar silhouette
-            ctx.fillStyle = '#1e293b';
-            ctx.beginPath();
-            ctx.arc(320, 190, 65, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.ellipse(320, 370, 130, 100, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Proctoring badge
-            ctx.fillStyle = '#10b981';
-            ctx.font = 'bold 18px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🟢 AI Proctoring Camera Verified', 320, 48);
-
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '13px sans-serif';
-            ctx.fillText('Verified Hardware Compatibility Feed', 320, 78);
-
-            const timeStr = new Date().toLocaleTimeString();
-            ctx.fillStyle = '#38bdf8';
-            ctx.font = '13px monospace';
-            ctx.fillText(`STREAM-SYNC: ${timeStr}`, 320, 440);
-
-            requestAnimationFrame(draw);
-          };
-          draw();
-
-          const canvasStream = (canvas as any).captureStream ? (canvas as any).captureStream(25) : null;
-          if (canvasStream) {
-            this.mediaStream = canvasStream;
-          }
-        }
-      } catch {}
-    }
-
-    if (this.mediaStream) {
-      this.interviewMediaService.setActiveStream(this.mediaStream);
-      this.interviewService.setMediaStream(this.mediaStream);
-      setTimeout(() => {
-        const videoEl = document.getElementById('testVideoPreview') as HTMLVideoElement;
-        if (videoEl && this.mediaStream) {
-          videoEl.srcObject = this.mediaStream;
-          videoEl.play().catch(() => {});
-        }
-      }, 50);
-    }
-
-    this.cameraVerified = true;
-    this.cameraState = 'CAMERA_VERIFIED';
-    this.micPermissionGranted = true;
-    this.micPermissionState = 'PERMISSION_GRANTED';
-    this.micAudioDetected = true;
-    this.micInputState = 'AUDIO_SIGNAL_DETECTED';
-    this.speechRecognitionVerified = true;
-    this.speechRecognitionState = 'STT_TRANSCRIPTION_SUCCESS';
-    this.recognizedTranscript = this.speechPhrase;
-    this.speechVerificationCompleted = true;
-    this.microphoneState = 'MIC_VERIFIED';
-    this.speakerReady = true;
-    this.audioLevel = 75;
-    console.log('[INTERVIEW] Hardware simulated / quick verified across all independent states.');
   }
 
   private checkAmbientLighting(videoEl: HTMLVideoElement): void {
@@ -796,6 +585,10 @@ export class Interview implements OnInit, OnDestroy {
         return;
       }
 
+      if (this.audioContext && this.audioContext.state !== 'closed') {
+        try { this.audioContext.close(); } catch {}
+      }
+
       this.audioContext = new AudioCtx();
       if (this.audioContext.state === 'suspended') {
         this.audioContext.resume();
@@ -823,7 +616,7 @@ export class Interview implements OnInit, OnDestroy {
         this.audioLevel = pct;
 
         // State 2: MICROPHONE_INPUT detection (Audio Signal only - does NOT verify Speech-to-Text!)
-        if (pct > 6) {
+        if (pct > 3) {
           this.recordAudioInputDetected(pct);
         }
 
