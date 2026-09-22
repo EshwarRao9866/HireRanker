@@ -247,7 +247,9 @@
 
 .modal-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 660px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: #ffffff;
   border-radius: var(--radius-lg);
   padding: 28px;
@@ -290,11 +292,25 @@
   color: var(--text-secondary);
 }
 
-.form-group input, .form-group select {
+.form-group input, .form-group select, .form-group textarea {
   padding: 9px 12px;
   border: 1.5px solid var(--border-light);
   border-radius: var(--radius-md);
   font-size: 13.5px;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color: #4f46e5;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 95px;
+  line-height: 1.5;
 }
 
 .form-row {

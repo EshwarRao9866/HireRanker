@@ -738,23 +738,13 @@
 }
 
 .skills-donut {
-  background: conic-gradient(
-    #3b82f6 0% 32%,
-    #10b981 32% 56%,
-    #f59e0b 56% 74%,
-    #6366f1 74% 86%,
-    #06b6d4 86% 94%,
-    #94a3b8 94% 100%
-  );
+  background: conic-gradient(#e2e8f0 0% 100%);
+  transition: background 0.3s ease;
 }
 
 .status-donut {
-  background: conic-gradient(
-    #3b82f6 0% 28%,
-    #10b981 28% 78%,
-    #8b5cf6 78% 91%,
-    #f43f5e 91% 100%
-  );
+  background: conic-gradient(#e2e8f0 0% 100%);
+  transition: background 0.3s ease;
 }
 
 .donut-inner {

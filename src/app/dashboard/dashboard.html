@@ -177,7 +177,7 @@
           @if (adminAvatar) {
             <img [src]="adminAvatar" alt="Admin Avatar" class="admin-avatar-img" />
           } @else {
-            <div class="admin-avatar">{{ adminName.charAt(0).toUpperCase() || 'A' }}</div>
+            <div class="admin-avatar">{{ adminInitial }}</div>
           }
           <div class="admin-meta">
             <strong>{{ adminName }}</strong>
@@ -250,7 +250,7 @@
               <h3>Applicants & Screening Velocity</h3>
               <p>Comparison between submitted applications vs AI-screened profiles</p>
             </div>
-            <select [(ngModel)]="selectedPeriod" class="period-select">
+            <select [(ngModel)]="selectedPeriod" (ngModelChange)="onPeriodChange()" class="period-select">
               <option value="This Week">This Week</option>
               <option value="This Month">This Month</option>
               <option value="This Year">This Year</option>
@@ -259,11 +259,11 @@
 
           <div class="chart-wrapper">
             <div class="y-axis">
-              <span>100</span>
-              <span>80</span>
-              <span>60</span>
-              <span>40</span>
-              <span>20</span>
+              <span>Max</span>
+              <span>80%</span>
+              <span>60%</span>
+              <span>40%</span>
+              <span>20%</span>
               <span>0</span>
             </div>
 
@@ -291,11 +291,11 @@
 
                 <!-- Applied Area & Line -->
                 <polygon
-                  points="0,220 0,140 100,110 200,65 300,90 400,35 500,95 600,100 700,50 700,220"
+                  [attr.points]="appliedPolygonPoints"
                   fill="url(#appliedGrad)"
                 />
                 <polyline
-                  points="0,140 100,110 200,65 300,90 400,35 500,95 600,100 700,50"
+                  [attr.points]="appliedPolylinePoints"
                   fill="none"
                   stroke="#4f46e5"
                   stroke-width="3.5"
@@ -305,11 +305,11 @@
 
                 <!-- Screened Area & Line -->
                 <polygon
-                  points="0,220 0,180 100,160 200,120 300,140 400,100 500,130 600,170 700,130 700,220"
+                  [attr.points]="screenedPolygonPoints"
                   fill="url(#screenedGrad)"
                 />
                 <polyline
-                  points="0,180 100,160 200,120 300,140 400,100 500,130 600,170 700,130"
+                  [attr.points]="screenedPolylinePoints"
                   fill="none"
                   stroke="#10b981"
                   stroke-width="3"
@@ -319,13 +319,9 @@
               </svg>
 
               <div class="x-axis">
-                <span>Mon</span>
-                <span>Tue</span>
-                <span>Wed</span>
-                <span>Thu</span>
-                <span>Fri</span>
-                <span>Sat</span>
-                <span>Sun</span>
+                @for (label of velocityLabels; track $index) {
+                  <span>{{ label }}</span>
+                }
               </div>
             </div>
           </div>
@@ -333,11 +329,11 @@
           <div class="chart-legend">
             <span class="legend-item">
               <i class="legend-dot dot-applied"></i>
-              Applications Submitted (Total: 248)
+              Applications Submitted (Total: {{ stats.totalApplicants }})
             </span>
             <span class="legend-item">
               <i class="legend-dot dot-screened"></i>
-              AI Screened Resumes (Total: 186)
+              AI Screened Resumes (Total: {{ stats.screenedResumes }})
             </span>
           </div>
         </div>
@@ -352,19 +348,25 @@
           </div>
 
           <div class="donut-content">
-            <div class="donut-graphic skills-donut">
+            <div class="donut-graphic skills-donut" [style.background]="skillsDonutGradient">
               <div class="donut-inner">
-                <strong>100%</strong>
+                <strong>{{ topSkills.length > 0 ? '100%' : '0%' }}</strong>
                 <small>Skills</small>
               </div>
             </div>
 
             <div class="skills-metrics-list">
-              @for (s of topSkills; track s.name) {
-                <div class="skill-stat-row">
-                  <span class="skill-dot" [class]="s.class"></span>
-                  <span class="skill-name">{{ s.name }}</span>
-                  <strong class="skill-val">{{ s.percent }}%</strong>
+              @if (topSkills.length > 0) {
+                @for (s of topSkills; track s.name) {
+                  <div class="skill-stat-row">
+                    <span class="skill-dot" [class]="s.class"></span>
+                    <span class="skill-name">{{ s.name }}</span>
+                    <strong class="skill-val">{{ s.percent }}%</strong>
+                  </div>
+                }
+              } @else {
+                <div class="empty-stat-notice">
+                  <small style="color: #64748b;">No skill data available</small>
                 </div>
               }
             </div>
@@ -381,19 +383,25 @@
           </div>
 
           <div class="donut-content">
-            <div class="donut-graphic status-donut">
+            <div class="donut-graphic status-donut" [style.background]="statusDonutGradient">
               <div class="donut-inner">
-                <strong>248</strong>
+                <strong>{{ stats.totalApplicants }}</strong>
                 <small>Total Apps</small>
               </div>
             </div>
 
             <div class="skills-metrics-list">
-              @for (st of statusBreakdown; track st.label) {
-                <div class="skill-stat-row">
-                  <span class="status-dot" [class]="st.class"></span>
-                  <span class="skill-name">{{ st.label }} ({{ st.count }})</span>
-                  <strong class="skill-val">{{ st.percent }}%</strong>
+              @if (statusBreakdown.length > 0 && stats.totalApplicants > 0) {
+                @for (st of statusBreakdown; track st.label) {
+                  <div class="skill-stat-row">
+                    <span class="status-dot" [class]="st.class"></span>
+                    <span class="skill-name">{{ st.label }} ({{ st.count }})</span>
+                    <strong class="skill-val">{{ st.percent }}%</strong>
+                  </div>
+                }
+              } @else {
+                <div class="empty-stat-notice">
+                  <small style="color: #64748b;">No application records yet</small>
                 </div>
               }
             </div>
@@ -415,56 +423,62 @@
           </button>
         </div>
 
-        <div class="top-cards-grid">
-          @for (tc of topThreeCandidates; track (tc.id + '_' + $index); let i = $index) {
-            <div class="top-candidate-card" [class.rank-gold]="i === 0" [class.rank-silver]="i === 1" [class.rank-bronze]="i === 2">
-              <div class="top-card-rank">
-                @if (i === 0) { 🥇 1st Place • Top Match }
-                @else if (i === 1) { 🥈 2nd Place • Shortlisted }
-                @else { 🥉 3rd Place • Qualified }
-              </div>
-
-              <div class="top-card-body">
-                <div class="top-avatar" [class.gold-avatar]="i === 0">{{ tc.name.charAt(0) }}</div>
-                
-                <div class="top-details">
-                  <h3>{{ tc.name }}</h3>
-                  <p class="role-title">{{ tc.appliedRole }}</p>
-                  <small class="email-sub">{{ tc.email }}</small>
+        @if (candidates.length > 0) {
+          <div class="top-candidates-grid">
+            @for (tc of topCandidates; track (tc.id + '_' + $index); let i = $index) {
+              <div class="top-candidate-card" [class.gold-card]="i === 0">
+                <div class="card-badge">
+                  @if (i === 0) { 🥇 Top Match }
+                  @else if (i === 1) { 🥈 Strong Candidate }
+                  @else { 🥉 Qualified }
                 </div>
 
-                <div class="match-score-badge">
-                  <span class="score-percent">{{ tc.matchScore }}%</span>
-                  <span class="score-sub">AI Match</span>
-                </div>
-              </div>
+                <div class="top-card-body">
+                  <div class="top-avatar" [class.gold-avatar]="i === 0">{{ tc.name.charAt(0) }}</div>
+                  
+                  <div class="top-details">
+                    <h3>{{ tc.name }}</h3>
+                    <p class="role-title">{{ tc.appliedRole }}</p>
+                    <small class="email-sub">{{ tc.email }}</small>
+                  </div>
 
-              <div class="top-metrics-row">
-                <div class="metric-box">
-                  <span class="metric-lbl">Skills Match</span>
-                  <strong>{{ tc.skills }}%</strong>
+                  <div class="match-score-badge">
+                    <span class="score-percent">{{ tc.matchScore }}%</span>
+                    <span class="score-sub">AI Match</span>
+                  </div>
                 </div>
-                <div class="metric-box">
-                  <span class="metric-lbl">Experience</span>
-                  <strong>{{ tc.experience }}</strong>
-                </div>
-                <div class="metric-box">
-                  <span class="metric-lbl">Education</span>
-                  <strong>{{ tc.education }}%</strong>
-                </div>
-              </div>
 
-              <div class="top-card-footer">
-                <button class="btn-card-resume" (click)="viewResume(tc)">
-                  📄 View Resume
-                </button>
-                <button class="btn-card-schedule" (click)="scheduleInterview(tc)">
-                  📅 Schedule Interview
-                </button>
+                <div class="top-metrics-row">
+                  <div class="metric-box">
+                    <span class="metric-lbl">Skills Match</span>
+                    <strong>{{ tc.skills }}%</strong>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-lbl">Experience</span>
+                    <strong>{{ tc.experience }}</strong>
+                  </div>
+                  <div class="metric-box">
+                    <span class="metric-lbl">Education</span>
+                    <strong>{{ tc.education }}%</strong>
+                  </div>
+                </div>
+
+                <div class="top-card-footer">
+                  <button class="btn-card-resume" (click)="viewResume(tc)">
+                    📄 View Resume
+                  </button>
+                  <button class="btn-card-schedule" (click)="scheduleInterview(tc)">
+                    📅 Schedule Interview
+                  </button>
+                </div>
               </div>
-            </div>
-          }
-        </div>
+            }
+          </div>
+        } @else {
+          <div style="background: rgba(30, 41, 59, 0.5); border: 1px dashed rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 2rem; text-align: center; color: #94a3b8;">
+            <p style="margin: 0; font-size: 0.95rem;">No candidate screening records available yet.</p>
+          </div>
+        }
       </section>
 
       <!-- CANDIDATE PIPELINE TABLE CARD -->
@@ -586,6 +600,14 @@
                         📅 Schedule
                       </button>
                     </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="10" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                    <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">👥</span>
+                    <p style="margin: 0; font-size: 1rem; color: #cbd5e1;">No candidates available yet.</p>
+                    <small style="color: #64748b;">Candidates who submit resumes or apply will appear here.</small>
                   </td>
                 </tr>
               }

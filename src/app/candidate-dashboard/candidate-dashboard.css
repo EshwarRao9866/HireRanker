@@ -230,6 +230,40 @@
   background: #f59e0b;
 }
 
+.backend-offline-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.backend-offline-banner .offline-icon {
+  font-size: 20px;
+}
+
+.backend-offline-banner .offline-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backend-offline-banner .offline-text strong {
+  color: #92400e;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.backend-offline-banner .offline-text small {
+  color: #b45309;
+  font-size: 12px;
+}
+
 .notification-wrapper {
   position: relative;
 }

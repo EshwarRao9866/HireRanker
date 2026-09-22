@@ -32,6 +32,11 @@ export const routes: Routes = [
   // ================= ADMIN PUBLIC ROUTES =================
   {
     path: '',
+    redirectTo: '/login',
+    pathMatch: 'full'
+  },
+  {
+    path: 'login',
     component: HomePage
   },
   {
@@ -164,13 +169,21 @@ export const routes: Routes = [
     redirectTo: 'interviews'
   },
   {
+    path: 'candidate_login',
+    redirectTo: '/candidate-login'
+  },
+  {
+    path: 'candidate/login',
+    redirectTo: '/candidate-login'
+  },
+  {
     path: 'candidate/dashboard',
-    redirectTo: 'candidate-dashboard'
+    redirectTo: '/candidate-dashboard'
   },
 
   // ================= WILDCARD CATCH-ALL (MUST BE LAST) =================
   {
     path: '**',
-    redirectTo: ''
+    redirectTo: '/login'
   }
 ];

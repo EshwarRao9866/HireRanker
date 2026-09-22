@@ -23,11 +23,14 @@ export class JobPostings implements OnInit {
   newJobType = 'Full Time';
   newJobTags = '';
   newJob = {
+    company: '',
     title: '',
     department: 'Engineering',
     location: 'Hyderabad',
-    experience: '3-5 Yrs',
-    salary: '₹10 - 15 LPA',
+    experience: '2-4 Years',
+    salary: '₹8 - 14 LPA',
+    description: '',
+    responsibilities: '',
     status: 'Active' as 'Active' | 'Closed' | 'Draft'
   };
 
@@ -48,6 +51,14 @@ export class JobPostings implements OnInit {
 
   loadJobs(): void {
     this.jobs = this.jobService.getJobs();
+    this.jobService.fetchJobsFromBackend().subscribe({
+      next: (backendJobs) => {
+        if (backendJobs) {
+          this.jobs = backendJobs;
+        }
+      },
+      error: () => {}
+    });
   }
 
   get activeJobsCount(): number {
@@ -58,10 +69,20 @@ export class JobPostings implements OnInit {
     return this.jobs.reduce((sum, j) => sum + (j.applicants || 0), 0);
   }
 
+  get averageMatchDisplay(): string {
+    if (!this.jobs || this.jobs.length === 0) {
+      return '—';
+    }
+    const totalScore = this.jobs.reduce((sum, j) => sum + (j.matchScore || 0), 0);
+    const avg = Math.round(totalScore / this.jobs.length);
+    return `${avg}%`;
+  }
+
   get filteredJobs(): JobItem[] {
     return this.jobs.filter(j => {
       const matchesSearch = !this.searchText ||
         j.title.toLowerCase().includes(this.searchText.toLowerCase()) ||
+        j.company.toLowerCase().includes(this.searchText.toLowerCase()) ||
         j.location.toLowerCase().includes(this.searchText.toLowerCase());
 
       const matchesDept = this.selectedDepartment === 'All' || j.department === this.selectedDepartment;
@@ -85,6 +106,7 @@ export class JobPostings implements OnInit {
   showEditModal = false;
   editingJob: JobItem | null = null;
   editJobTags = '';
+  editValidationError = '';
 
   saveNewJob(event?: Event): void {
     if (event) {
@@ -92,8 +114,33 @@ export class JobPostings implements OnInit {
     }
     this.validationError = '';
 
-    if (!this.newJob.title || !this.newJob.title.trim()) {
+    const company = (this.newJob.company || '').trim();
+    const title = (this.newJob.title || '').trim();
+    const description = (this.newJob.description || '').trim();
+    const responsibilities = (this.newJob.responsibilities || '').trim();
+
+    if (!company) {
+      this.validationError = 'Company Name is required. Please enter a company name.';
+      return;
+    }
+
+    if (!title) {
       this.validationError = 'Job Title is required. Please enter a job title.';
+      return;
+    }
+
+    if (!description) {
+      this.validationError = 'Job Description is required. Please enter a job description.';
+      return;
+    }
+
+    if (description.length < 20) {
+      this.validationError = 'Job Description must contain enough information (at least 20 characters).';
+      return;
+    }
+
+    if (!responsibilities) {
+      this.validationError = 'Responsibilities are required. Please enter key responsibilities for this role.';
       return;
     }
 
@@ -102,23 +149,29 @@ export class JobPostings implements OnInit {
       : [];
 
     const created = this.jobService.addJob({
-      title: this.newJob.title.trim(),
+      company: company,
+      title: title,
       department: this.newJob.department || 'Engineering',
       location: this.newJob.location || 'Hyderabad',
-      experience: this.newJob.experience || '3-5 Yrs',
-      salary: this.newJob.salary || '₹10 - 16 LPA',
+      experience: this.newJob.experience || '2-4 Years',
+      salary: this.newJob.salary || '₹8 - 14 LPA',
       type: this.newJobType || 'Full Time',
       tags: tags,
+      description: description,
+      responsibilities: responsibilities,
       status: 'Active'
     });
 
     this.loadJobs();
     this.newJob = {
+      company: '',
       title: '',
       department: 'Engineering',
       location: 'Hyderabad',
-      experience: '3-5 Yrs',
-      salary: '₹10 - 15 LPA',
+      experience: '2-4 Years',
+      salary: '₹8 - 14 LPA',
+      description: '',
+      responsibilities: '',
       status: 'Active'
     };
     this.newJobTags = '';
@@ -133,6 +186,7 @@ export class JobPostings implements OnInit {
     this.editingJob = { ...job };
     this.editJobTags = job.tags ? job.tags.join(', ') : '';
     this.showEditModal = true;
+    this.editValidationError = '';
     this.saveSuccessMessage = '';
   }
 
@@ -140,11 +194,40 @@ export class JobPostings implements OnInit {
     this.showEditModal = false;
     this.editingJob = null;
     this.editJobTags = '';
+    this.editValidationError = '';
   }
 
   saveEditJob(): void {
-    if (!this.editingJob || !this.editingJob.title || !this.editingJob.title.trim()) {
-      alert('Please enter a valid Job Title');
+    this.editValidationError = '';
+    if (!this.editingJob) return;
+
+    const company = (this.editingJob.company || '').trim();
+    const title = (this.editingJob.title || '').trim();
+    const description = (this.editingJob.description || '').trim();
+    const responsibilities = (this.editingJob.responsibilities || '').trim();
+
+    if (!company) {
+      this.editValidationError = 'Company Name is required.';
+      return;
+    }
+
+    if (!title) {
+      this.editValidationError = 'Job Title is required.';
+      return;
+    }
+
+    if (!description) {
+      this.editValidationError = 'Job Description is required.';
+      return;
+    }
+
+    if (description.length < 20) {
+      this.editValidationError = 'Job Description must contain enough information (at least 20 characters).';
+      return;
+    }
+
+    if (!responsibilities) {
+      this.editValidationError = 'Responsibilities are required.';
       return;
     }
 
@@ -154,7 +237,10 @@ export class JobPostings implements OnInit {
 
     const updated: JobItem = {
       ...this.editingJob,
-      title: this.editingJob.title.trim(),
+      company: company,
+      title: title,
+      description: description,
+      responsibilities: responsibilities,
       tags: tags
     };
 

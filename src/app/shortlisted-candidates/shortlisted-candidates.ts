@@ -23,41 +23,7 @@ interface ShortlistedCandidate {
   styleUrl: './shortlisted-candidates.css'
 })
 export class ShortlistedCandidates implements OnInit {
-  candidates: ShortlistedCandidate[] = [
-    {
-      id: 1,
-      name: 'Eshwar Rao',
-      email: 'eshwar.rao@email.com',
-      appliedRole: 'Java Full Stack Developer',
-      matchScore: 95,
-      experience: '4.5 Yrs Experience',
-      skills: ['Java 21', 'Spring Boot', 'Angular', 'Microservices', 'PostgreSQL'],
-      resumeFileName: 'Eshwar_Rao_Resume.pdf',
-      interviewStatus: 'Not Scheduled'
-    },
-    {
-      id: 2,
-      name: 'Krupa Jyothi',
-      email: 'krupa.jyothi@email.com',
-      appliedRole: 'Senior Angular Developer',
-      matchScore: 89,
-      experience: '3.8 Yrs Experience',
-      skills: ['Angular 18', 'TypeScript', 'RxJS', 'NgRx', 'Tailwind'],
-      resumeFileName: 'Krupa_Jyothi_Resume.pdf',
-      interviewStatus: 'Scheduled'
-    },
-    {
-      id: 3,
-      name: 'Durga Rohith',
-      email: 'durga.rohith@email.com',
-      appliedRole: 'Java Developer',
-      matchScore: 84,
-      experience: '3.2 Yrs Experience',
-      skills: ['Java 17', 'Spring Boot', 'REST APIs', 'MySQL'],
-      resumeFileName: 'Durga_Rohith_Resume.pdf',
-      interviewStatus: 'Not Scheduled'
-    }
-  ];
+  candidates: ShortlistedCandidate[] = [];
 
   constructor(
     private readonly router: Router,

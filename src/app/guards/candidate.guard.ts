@@ -21,11 +21,17 @@ export const candidateGuard: CanActivateFn = () => {
 
   // If logged in as admin, redirect to admin dashboard
   if (authService.isAdmin()) {
-    router.navigate(['/dashboard']);
+    const currentUrl = router.url.split('?')[0];
+    if (currentUrl !== '/dashboard') {
+      router.navigate(['/dashboard']);
+    }
     return false;
   }
 
   // Not logged in, redirect to candidate login
-  router.navigate(['/candidate-login']);
+  const currentUrl = router.url.split('?')[0];
+  if (currentUrl !== '/candidate-login') {
+    router.navigate(['/candidate-login']);
+  }
   return false;
 };

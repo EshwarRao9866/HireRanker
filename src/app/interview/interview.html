@@ -273,9 +273,6 @@
                   <button type="button" class="btn-back-link" (click)="backToInstructions()">
                     ← Review Instructions
                   </button>
-                  <button type="button" class="btn-bypass-link" (click)="simulateHardware()" title="Skip device test and verify immediately">
-                    ⚡ Quick Verify / Bypass
-                  </button>
                 </div>
               </div>
 
@@ -409,11 +406,6 @@
                     <button type="button" class="btn btn-test-mic" (click)="testMicrophone()" [disabled]="micTesting">
                       {{ micTesting ? '⏳ Testing Microphone...' : (speechVerificationCompleted ? '🔄 Retest Microphone' : '🎙️ Test Microphone') }}
                     </button>
-                    @if (!speechVerificationCompleted && micAudioDetected) {
-                      <button type="button" class="btn btn-sm-verify" (click)="confirmMicrophoneVerified('manual')">
-                        🎙️ Confirm Spoken Sentence (Bypass STT)
-                      </button>
-                    }
                   </div>
 
                   @if (microphoneError) {
@@ -459,9 +451,6 @@
               @if (errorMessage) {
                 <div class="alert-error-box">
                   <div class="error-text">⚠️ {{ errorMessage }}</div>
-                  <div class="error-actions-row">
-                    <button type="button" class="btn btn-bypass-action" (click)="simulateHardware()">⚡ Quick Verify All (Compatibility Mode)</button>
-                  </div>
                 </div>
               }
 
@@ -549,6 +538,52 @@
               <div class="eval-meta">
                 <strong>Zero-Bias AI Recommendation:</strong>
                 <span>Candidate met benchmark requirements for {{ selectedInterview?.jobTitle }}. Performance evaluation confirms competency in required core skills.</span>
+              </div>
+            </div>
+
+            <!-- AI INTERVIEW INTEGRITY MONITORING (HR / ADMIN REVIEW) -->
+            <div class="integrity-scorecard-section" style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 18px 20px; margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.4rem;">🛡️</span>
+                  <div>
+                    <h4 style="margin: 0; font-size: 1rem; font-weight: 700; color: #f8fafc;">AI Interview Integrity Signals</h4>
+                    <span style="font-size: 0.78rem; color: #94a3b8;">Continuously monitored camera, tab-focus, and acoustic signals</span>
+                  </div>
+                </div>
+                <span class="integrity-status-pill" [style.padding]="'4px 12px'" [style.borderRadius]="'9999px'" [style.fontSize]="'0.8rem'" [style.fontWeight]="'700'"
+                      [style.background]="selectedScorecard.integrityStatus === 'REVIEW_REQUIRED' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(16, 185, 129, 0.18)'"
+                      [style.color]="selectedScorecard.integrityStatus === 'REVIEW_REQUIRED' ? '#fbbf24' : '#34d399'"
+                      [style.border]="selectedScorecard.integrityStatus === 'REVIEW_REQUIRED' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(16, 185, 129, 0.4)'">
+                  ● {{ selectedScorecard.integrityStatus === 'REVIEW_REQUIRED' ? 'Review Required by HR' : 'Integrity Signals Normal' }}
+                </span>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                <div style="background: #0f172a; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+                  <span style="display: block; font-size: 0.72rem; color: #94a3b8;">Multiple People</span>
+                  <strong style="font-size: 1.25rem; color: #f1f5f9;">{{ selectedScorecard.multiplePersonEvents ?? 0 }}</strong>
+                  <span style="display: block; font-size: 0.7rem; color: #64748b;">2+ faces visible</span>
+                </div>
+                <div style="background: #0f172a; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+                  <span style="display: block; font-size: 0.72rem; color: #94a3b8;">Tab Switches</span>
+                  <strong style="font-size: 1.25rem; color: #f1f5f9;">{{ selectedScorecard.tabSwitchEvents ?? 0 }}</strong>
+                  <span style="display: block; font-size: 0.7rem; color: #64748b;">Window blurs</span>
+                </div>
+                <div style="background: #0f172a; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+                  <span style="display: block; font-size: 0.72rem; color: #94a3b8;">Attention Signals</span>
+                  <strong style="font-size: 1.25rem; color: #f1f5f9;">{{ selectedScorecard.attentionAwayEvents ?? 0 }}</strong>
+                  <span style="display: block; font-size: 0.7rem; color: #64748b;">Gaze diverted</span>
+                </div>
+                <div style="background: #0f172a; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+                  <span style="display: block; font-size: 0.72rem; color: #94a3b8;">Audio Anomalies</span>
+                  <strong style="font-size: 1.25rem; color: #f1f5f9;">{{ selectedScorecard.audioAnomalyEvents ?? 0 }}</strong>
+                  <span style="display: block; font-size: 0.7rem; color: #64748b;">Vocal activity</span>
+                </div>
+              </div>
+
+              <div style="font-size: 0.76rem; color: #93c5fd; background: rgba(56, 189, 248, 0.08); padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                ℹ️ <strong>HR Review Policy:</strong> Technical evaluation is scored strictly independently. "Review Required" indicates that recorded camera/tab activity should be verified by a human reviewer.
               </div>
             </div>
           }

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of, timeout, catchError } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface AdminDashboardData {
@@ -109,17 +109,81 @@ export class DashboardService {
 
   constructor(private readonly http: HttpClient) {}
 
+  private getMockAdminDashboard(): AdminDashboardData {
+    return {
+      totalCandidates: 0,
+      totalApplications: 0,
+      totalJobs: 0,
+      screenedResumes: 0,
+      shortlistedCandidates: 0,
+      averageMatchScore: 0,
+      totalInterviews: 0,
+      totalUsers: 0,
+      applicantsOverview: {
+        totalApplicants: 0,
+        screenedResumes: 0,
+        shortlisted: 0,
+        interviewsScheduled: 0,
+        labels: [],
+        applicationsSeries: [],
+        screenedSeries: []
+      },
+      applicationStatus: [],
+      topSkills: [],
+      topRankedCandidates: []
+    };
+  }
+
+  private getMockCandidateDashboard(): CandidateDashboardData {
+    return {
+      candidateProfile: {
+        id: 0,
+        userId: 0,
+        email: '',
+        fullName: '',
+        phone: '',
+        location: '',
+        skills: '',
+        experience: '',
+        education: ''
+      },
+      totalApplications: 0,
+      totalResumes: 0,
+      screenedApplications: 0,
+      shortlistedApplications: 0,
+      upcomingInterviews: [],
+      recentApplications: [],
+      applicationStatuses: {},
+      recommendedJobs: []
+    };
+  }
+
   /**
    * Retrieves the comprehensive admin dashboard metrics (GET /api/admin/dashboard)
    */
-  getAdminDashboard(): Observable<AdminDashboardData> {
-    return this.http.get<AdminDashboardData>(`${this.apiUrl}/admin/dashboard`);
+  getAdminDashboard(period?: string): Observable<AdminDashboardData> {
+    if ((environment as any).useMockData || (environment as any).useBackend === false) {
+      return of(this.getMockAdminDashboard());
+    }
+
+    const query = period ? `?period=${encodeURIComponent(period)}` : '';
+    return this.http.get<AdminDashboardData>(`${this.apiUrl}/admin/dashboard${query}`).pipe(
+      timeout(6000),
+      catchError(() => of(this.getMockAdminDashboard()))
+    );
   }
 
   /**
    * Retrieves the candidate's personalized dashboard (GET /api/candidates/me/dashboard)
    */
   getCandidateDashboard(): Observable<CandidateDashboardData> {
-    return this.http.get<CandidateDashboardData>(`${this.apiUrl}/candidates/me/dashboard`);
+    if ((environment as any).useMockData || (environment as any).useBackend === false) {
+      return of(this.getMockCandidateDashboard());
+    }
+
+    return this.http.get<CandidateDashboardData>(`${this.apiUrl}/candidates/me/dashboard`).pipe(
+      timeout(6000),
+      catchError(() => of(this.getMockCandidateDashboard()))
+    );
   }
 }

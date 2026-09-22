@@ -41,34 +41,27 @@ export class CandidateProfile implements OnInit {
 
   // Profile Data
   profile: ProfileData = {
-    fullName: 'Eshwar Rao',
-    email: 'eshwar@candidate.com',
-    mobile: '+91 98765 43210',
-    location: 'Hyderabad, Telangana, India',
-    education: 'B.Tech in Computer Science & Engineering - Centurion University (CGPA: 8.9 / 10)',
-    dateOfBirth: '1998-05-14',
-    linkedIn: 'https://linkedin.com/in/eshwar-rao',
-    gitHub: 'https://github.com/eshwar-rao',
-    currentTitle: 'Full Stack Java & Angular Developer',
-    experienceYears: 4.5,
-    preferredRole: 'Senior Full Stack Engineer / Tech Lead',
-    preferredLocation: 'Hyderabad / Bangalore / Hybrid',
-    expectedSalary: '₹14 - 18 LPA',
-    aboutMe: 'Passionate Full Stack Engineer with 4.5+ years of experience designing high-performance web applications using Angular, TypeScript, Java, and Spring Boot. Strong track record in developing RESTful microservices, AI-driven recruitment platforms, and responsive user interfaces with top-tier accessibility standards.',
-    resumeName: 'Eshwar_Rao_Senior_Developer_Resume.pdf',
-    resumeUpdatedDate: new Date(Date.now() - 5 * 86400000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    fullName: '',
+    email: '',
+    mobile: '',
+    location: '',
+    education: '',
+    dateOfBirth: '',
+    linkedIn: '',
+    gitHub: '',
+    currentTitle: '',
+    experienceYears: 0,
+    preferredRole: '',
+    preferredLocation: '',
+    expectedSalary: '',
+    aboutMe: '',
+    resumeName: '',
+    resumeUpdatedDate: '',
     profilePicture: '',
-    completionPercentage: 85
+    completionPercentage: 0
   };
 
-  skills: string[] = [
-    'Java',
-    'Spring Boot',
-    'Angular',
-    'TypeScript',
-    'SQL',
-    'Microservices'
-  ];
+  skills: string[] = [];
 
   newSkill: string = '';
 

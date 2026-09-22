@@ -151,6 +151,14 @@
                 {{ job.saved ? '★ Saved' : '☆ Save' }}
               </button>
 
+              <button
+                class="btn-details"
+                (click)="viewDetails(job)"
+                title="View Job Details & Responsibilities"
+              >
+                View Details
+              </button>
+
               @if (job.applied) {
                 <button class="btn-applied" disabled>
                   ✓ Applied
@@ -167,5 +175,67 @@
 
     </div>
   </main>
+
+  <!-- CANDIDATE JOB DETAILS MODAL -->
+  @if (selectedJob) {
+    <div class="modal-backdrop" (click)="closeDetails()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <div class="details-head-meta">
+            <div class="company-logo">{{ selectedJob.company.charAt(0) }}</div>
+            <div>
+              <h3>{{ selectedJob.title }}</h3>
+              <p class="company-name">{{ selectedJob.company }} • <span>{{ selectedJob.postedDate }}</span></p>
+            </div>
+          </div>
+          <button class="close-modal" (click)="closeDetails()">×</button>
+        </div>
+
+        <div class="details-body">
+          <div class="job-details-row">
+            <span>📍 {{ selectedJob.location }}</span>
+            <span>💼 {{ selectedJob.experience }}</span>
+            <span>💰 {{ selectedJob.salary }}</span>
+            <span>⚡ {{ selectedJob.type }}</span>
+          </div>
+
+          <div class="tags-row">
+            @for (tag of selectedJob.tags; track tag) {
+              <span class="tech-tag">{{ tag }}</span>
+            }
+          </div>
+
+          @if (selectedJob.description) {
+            <div class="details-section">
+              <h4>Job Description</h4>
+              <p class="section-text">{{ selectedJob.description }}</p>
+            </div>
+          }
+
+          @if (selectedJob.responsibilities) {
+            <div class="details-section">
+              <h4>Responsibilities</h4>
+              <ul class="responsibilities-list">
+                @for (item of getResponsibilitiesList(selectedJob.responsibilities); track item) {
+                  <li>{{ item }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div class="modal-actions">
+            <button type="button" class="btn-save" (click)="toggleSave(selectedJob)">
+              {{ selectedJob.saved ? '★ Saved' : '☆ Save Job' }}
+            </button>
+            @if (selectedJob.applied) {
+              <button class="btn-applied" disabled>✓ Applied</button>
+            } @else {
+              <button class="btn-apply" (click)="applyToJob(selectedJob)">Apply Now ⚡</button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 
 </div>

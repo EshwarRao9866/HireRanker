@@ -71,13 +71,13 @@
           All ({{ applications.length }})
         </button>
         <button class="tab-btn" [class.active]="activeFilter === 'SHORTLISTED'" (click)="setFilter('SHORTLISTED')">
-          ⭐ Shortlisted (1)
+          ⭐ Shortlisted ({{ shortlistedCount }})
         </button>
         <button class="tab-btn" [class.active]="activeFilter === 'INTERVIEW'" (click)="setFilter('INTERVIEW')">
-          🎤 Interview (1)
+          🎤 Interview ({{ interviewCount }})
         </button>
         <button class="tab-btn" [class.active]="activeFilter === 'REVIEW'" (click)="setFilter('REVIEW')">
-          ⏳ In Review (3)
+          ⏳ In Review ({{ reviewCount }})
         </button>
       </div>
 
@@ -130,6 +130,14 @@
                       <button class="btn-action-view" (click)="viewDetails(app)">View</button>
                       <button class="btn-action-withdraw" (click)="withdrawApplication(app)" title="Withdraw">×</button>
                     </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 3rem; color: #94a3b8;">
+                    <span style="font-size: 2.2rem; display: block; margin-bottom: 0.5rem;">📋</span>
+                    <p style="margin: 0; font-size: 1rem; color: #cbd5e1; font-weight: 500;">No applications yet.</p>
+                    <small style="color: #64748b;">When you submit job applications, they will be listed here.</small>
                   </td>
                 </tr>
               }

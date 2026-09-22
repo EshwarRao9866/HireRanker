@@ -1,4 +1,8 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8080/api'
+  apiUrl: (typeof window !== 'undefined' && (window as any).__API_URL__)
+    ? (window as any).__API_URL__
+    : '/api',
+  useMockData: false,
+  useBackend: true
 };
