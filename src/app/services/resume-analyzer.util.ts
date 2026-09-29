@@ -228,8 +228,9 @@ export function calculateAtsScore(
     });
   });
 
-  const skillMatchRatio = targetSkills.length > 0 ? (matchedTargetSkills.length / targetSkills.length) : 0.9;
-  const jobSkillScore = Math.min(98, Math.max(60, Math.round(74 + (skillMatchRatio * 23.5))));
+  const skillMatchRatio = targetSkills.length > 0 ? (matchedTargetSkills.length / targetSkills.length) : 0.0;
+  // Strictly tied to verified skill ratio with heavy penalty for missing skills (0 matched = 0 score)
+  const jobSkillScore = Math.min(100, Math.max(0, Math.round(skillMatchRatio * 100)));
 
   // Missing Skills & Recommended
   const missingSkills = targetSkills.filter(ts => !matchedTargetSkills.includes(ts));
@@ -354,7 +355,9 @@ export function calculateAtsScore(
     (5 * achievementScore) +
     (5 * completenessScore);
 
-  const overallScore = Math.round(weightedSum / 95);
+  const baseOverall = weightedSum / 95;
+  // Missing skills heavily penalize overall score. If 0 skills match, overall match is 0%.
+  const overallScore = skillMatchRatio <= 0.0 ? 0 : Math.round(baseOverall * Math.pow(skillMatchRatio, 0.75));
 
   let matchTier: 'Strong Match' | 'Moderate Match' | 'Weak Match' = 'Strong Match';
   if (overallScore >= 80) matchTier = 'Strong Match';
@@ -503,13 +506,13 @@ export function calculateJobCapabilities(
     }
 
     // Use unified calculateAtsScore to determine capability match for this specific job
-    let capabilityPercentage = 85;
+    let capabilityPercentage = 0;
+    const skillRatio = jobTags.length > 0 ? (matchingSkills.length / jobTags.length) : 0;
     if (resumeText && resumeText.trim().length > 30) {
       const jobAts = calculateAtsScore(resumeText, job.title, job.tags, job.description, 2);
       capabilityPercentage = jobAts.breakdown.overallScore;
     } else {
-      const skillRatio = jobTags.length > 0 ? (matchingSkills.length / jobTags.length) : 0.85;
-      capabilityPercentage = Math.min(98, Math.max(40, Math.round((skillRatio * 75) + 20)));
+      capabilityPercentage = skillRatio <= 0 ? 0 : Math.min(100, Math.round(Math.pow(skillRatio, 1.2) * 100));
     }
 
     let capabilityTier: 'High Capability' | 'Moderate Capability' | 'Growth Opportunity' = 'High Capability';

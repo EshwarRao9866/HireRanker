@@ -208,7 +208,7 @@ export class AuthService {
     const storedAdmin = this.getStoredAdmin();
 
     // Default admin account if not registered yet
-    if (!storedAdmin && email.toLowerCase() === 'admin@hireranker.com' && (password === 'admin123' || password === 'AdminPass123!')) {
+    if (!storedAdmin && email.toLowerCase() === 'admin@hireranker.com' && (password === 'admin123' || password === 'AdminPass123!' || password === 'Admin@123')) {
       const defaultAdmin = {
         fullName: 'Admin Recruiter',
         email: 'admin@hireranker.com',
@@ -407,4 +407,19 @@ export class AuthService {
     }
     return null;
   }
+
+  /**
+   * Request a password reset link (POST /api/auth/forgot-password)
+   */
+  forgotPassword(email: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.API_URL}/auth/forgot-password`, { email });
+  }
+
+  /**
+   * Reset password with secure token (POST /api/auth/reset-password)
+   */
+  resetPassword(token: string, newPassword: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${this.API_URL}/auth/reset-password`, { token, newPassword });
+  }
 }
+

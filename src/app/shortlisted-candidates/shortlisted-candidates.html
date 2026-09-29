@@ -8,60 +8,68 @@
     </div>
   </header>
 
-  <!-- CANDIDATE CARDS GRID -->
-  <div class="shortlisted-grid">
-    @for (c of candidates; track (c.id + '_' + $index)) {
-      <div class="candidate-3d-card">
-        
-        <div class="card-head-row">
-          <div class="avatar">{{ c.name.charAt(0) }}</div>
-          <div class="cand-meta">
-            <h3>{{ c.name }}</h3>
-            <p class="role-text">{{ c.appliedRole }}</p>
-            <small class="email-text">✉ {{ c.email }}</small>
+  @if (candidates.length === 0) {
+    <div style="text-align: center; padding: 60px 24px; background: white; border-radius: 12px; border: 1px dashed #cbd5e1; margin-top: 24px;">
+      <div style="font-size: 40px; margin-bottom: 12px;">📋</div>
+      <h3 style="margin-bottom: 8px; color: #1e293b;">No shortlisted candidates yet</h3>
+      <p style="color: #64748b; margin: 0;">Candidates will appear here once they apply, complete screening, and are shortlisted by the recruitment team.</p>
+    </div>
+  } @else {
+    <!-- CANDIDATE CARDS GRID -->
+    <div class="shortlisted-grid">
+      @for (c of candidates; track (c.id + '_' + $index)) {
+        <div class="candidate-3d-card">
+          
+          <div class="card-head-row">
+            <div class="avatar">{{ c.name.charAt(0) }}</div>
+            <div class="cand-meta">
+              <h3>{{ c.name }}</h3>
+              <p class="role-text">{{ c.appliedRole }}</p>
+              <small class="email-text">✉ {{ c.email }}</small>
+            </div>
+            <div class="score-badge">
+              <strong>{{ c.matchScore }}%</strong>
+              <small>AI Match</small>
+            </div>
           </div>
-          <div class="score-badge">
-            <strong>{{ c.matchScore }}%</strong>
-            <small>AI Match</small>
+
+          <div class="info-row">
+            <span>💼 {{ c.experience }}</span>
+            <span>📄 {{ c.resumeFileName }}</span>
           </div>
+
+          <div class="skills-chips">
+            @for (skill of c.skills; track skill) {
+              <span class="skill-tag">{{ skill }}</span>
+            }
+          </div>
+
+          <div class="interview-status-row">
+            <span class="status-label">Interview Status:</span>
+            @if (c.interviewStatus === 'Scheduled') {
+              <span class="status-badge badge-purple">🎤 Scheduled</span>
+            } @else {
+              <span class="status-badge badge-amber">⏳ Pending Schedule</span>
+            }
+          </div>
+
+          <div class="card-action-buttons">
+            <button class="btn btn-contact" (click)="contactCandidate(c)">
+              💬 Message
+            </button>
+
+            <button class="btn btn-schedule" (click)="scheduleInterview(c)">
+              📅 Schedule Interview
+            </button>
+
+            <button class="btn-remove" (click)="removeFromShortlist(c.id)" title="Remove from shortlist">
+              ×
+            </button>
+          </div>
+
         </div>
-
-        <div class="info-row">
-          <span>💼 {{ c.experience }}</span>
-          <span>📄 {{ c.resumeFileName }}</span>
-        </div>
-
-        <div class="skills-chips">
-          @for (skill of c.skills; track skill) {
-            <span class="skill-tag">{{ skill }}</span>
-          }
-        </div>
-
-        <div class="interview-status-row">
-          <span class="status-label">Interview Status:</span>
-          @if (c.interviewStatus === 'Scheduled') {
-            <span class="status-badge badge-purple">🎤 Scheduled</span>
-          } @else {
-            <span class="status-badge badge-amber">⏳ Pending Schedule</span>
-          }
-        </div>
-
-        <div class="card-action-buttons">
-          <button class="btn btn-contact" (click)="contactCandidate(c)">
-            💬 Message
-          </button>
-
-          <button class="btn btn-schedule" (click)="scheduleInterview(c)">
-            📅 Schedule Interview
-          </button>
-
-          <button class="btn-remove" (click)="removeFromShortlist(c.id)" title="Remove from shortlist">
-            ×
-          </button>
-        </div>
-
-      </div>
-    }
-  </div>
+      }
+    </div>
+  }
 
 </div>

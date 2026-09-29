@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Observable, BehaviorSubject, of, map, catchError } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
 export interface InterviewRequest {
@@ -111,12 +112,17 @@ export interface ScheduledInterview {
 })
 export class InterviewService {
   private readonly apiUrl = `${environment.apiUrl}/interviews`;
+  private readonly platformId = inject(PLATFORM_ID);
 
   // Shared reactive state - Single Source of Truth for Scheduler, Timeline, and Roster
-  private readonly interviewsSubject = new BehaviorSubject<ScheduledInterview[]>(this.initDefaultInterviews());
+  private readonly interviewsSubject = new BehaviorSubject<ScheduledInterview[]>([]);
   readonly interviews$ = this.interviewsSubject.asObservable();
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {
+    if (isPlatformBrowser(this.platformId)) {
+      this.refreshInterviewsFromBackend().subscribe({ error: () => {} });
+    }
+  }
 
   formatDateKey(date: Date): string {
     const year = date.getFullYear();
@@ -125,79 +131,48 @@ export class InterviewService {
     return `${year}-${month}-${day}`;
   }
 
-  private initDefaultInterviews(): ScheduledInterview[] {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const stored = localStorage.getItem('hireRankerScheduledInterviews');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
-          }
+  /**
+   * Refreshes interviews from Spring Boot backend MySQL database.
+   */
+  refreshInterviewsFromBackend(): Observable<ScheduledInterview[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    return this.http.get<InterviewResponse[]>(this.apiUrl).pipe(
+      map(list => {
+        if (!list || !Array.isArray(list)) {
+          this.interviewsSubject.next([]);
+          return [];
         }
-      } catch {}
-    }
+        const mapped: ScheduledInterview[] = list.map(item => {
+          const d = item.scheduledDateTime ? new Date(item.scheduledDateTime) : new Date();
+          const dateKey = this.formatDateKey(d);
+          const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+          const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    const today = new Date();
-    const todayKey = this.formatDateKey(today);
-    const todayFormatted = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    const tomorrowKey = this.formatDateKey(tomorrow);
-    const tomorrowFormatted = tomorrow.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    const pastDate = new Date(today);
-    pastDate.setDate(today.getDate() - 3);
-    const pastKey = this.formatDateKey(pastDate);
-    const pastFormatted = pastDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    const defaults: ScheduledInterview[] = [
-      {
-        id: 1,
-        candidate: 'Eshwar Rao',
-        job: 'Java Full Stack Developer',
-        date: `Today, ${todayFormatted}`,
-        dateKey: todayKey,
-        time: '10:30 AM',
-        interviewer: 'HireRanker AI Bot',
-        type: 'AI Assessment',
-        status: 'Scheduled',
-        applicationId: 1
-      },
-      {
-        id: 2,
-        candidate: 'Krupa Jyothi',
-        job: 'Senior Angular Developer',
-        date: tomorrowFormatted,
-        dateKey: tomorrowKey,
-        time: '02:00 PM',
-        interviewer: 'Frontend Team Lead',
-        type: 'Live Technical',
-        status: 'Scheduled',
-        applicationId: 2
-      },
-      {
-        id: 3,
-        candidate: 'Durga Rohith',
-        job: 'Java Developer',
-        date: pastFormatted,
-        dateKey: pastKey,
-        time: '03:30 PM',
-        interviewer: 'Engineering Manager',
-        type: 'HR Round',
-        status: 'Completed',
-        applicationId: 3
-      }
-    ];
-
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        localStorage.setItem('hireRankerScheduledInterviews', JSON.stringify(defaults));
-      } catch {}
-    }
-
-    return defaults;
+          return {
+            id: item.id,
+            candidate: item.candidateName || `Candidate #${item.candidateId}`,
+            job: item.jobTitle || 'Position',
+            date: dateStr,
+            dateKey: dateKey,
+            time: timeStr,
+            interviewer: 'Recruitment Team',
+            type: item.type === 'ONLINE' ? 'AI Assessment' : 'Live Technical',
+            status: item.status === 'SCHEDULED' ? 'Scheduled' : item.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
+            applicationId: item.applicationId,
+            meetingLink: item.meetingLink,
+            notes: item.notes
+          };
+        });
+        this.interviewsSubject.next(mapped);
+        return mapped;
+      }),
+      catchError(() => {
+        this.interviewsSubject.next([]);
+        return of([]);
+      })
+    );
   }
 
   private persistInterviews(list: ScheduledInterview[]): void {

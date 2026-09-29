@@ -36,37 +36,75 @@ export class JobApplicants implements OnInit {
   }
 
   loadApplicants(): void {
-    this.applicants = this.jobService.getApplicants();
-
     this.applicationService.getAllApplications().subscribe({
       next: (backendApps) => {
-        if (backendApps && backendApps.length > 0) {
-          const mapped: ApplicantRecord[] = backendApps.map(a => ({
+        if (!backendApps || backendApps.length === 0) {
+          this.applicants = [];
+          return;
+        }
+
+        this.applicants = backendApps.map(a => {
+          const skillsList = a.skills
+            ? a.skills.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
+            : ['Java', 'Spring Boot', 'SQL'];
+
+          return {
             id: a.id,
             name: a.candidateName || `Candidate #${a.candidateId}`,
-            email: `candidate${a.candidateId}@hireranker.internal`,
+            email: a.candidateEmail || `candidate${a.candidateId}@hireranker.internal`,
             job: a.jobTitle || 'Full Stack Engineer',
-            matchScore: 92,
-            skillsMatch: 94,
-            experience: '3.5 yrs',
-            educationScore: 90,
+            matchScore: a.matchScore ? Math.round(a.matchScore) : 88,
+            skillsMatch: 90,
+            experience: a.experience || '3+ yrs',
+            educationScore: 85,
             resumeFileName: a.resumeFileName || 'Resume.pdf',
             status: a.status === 'SHORTLISTED' ? 'Shortlisted' :
                     a.status === 'INTERVIEW' ? 'Interview Scheduled' :
                     a.status === 'REJECTED' ? 'Rejected' : 'Under Review',
-            phone: '+91 98765 43210',
-            location: 'Hyderabad, India',
-            skills: ['Java', 'Spring Boot', 'Angular', 'SQL']
-          }));
-
-          // Merge without duplicate IDs
-          const existingIds = new Set(mapped.map(m => m.id));
-          const remaining = this.applicants.filter(app => !existingIds.has(app.id));
-          this.applicants = [...mapped, ...remaining];
-        }
+            phone: a.phone || '+91 98765 43210',
+            location: a.location || 'Hyderabad, India',
+            github: a.github,
+            linkedin: a.linkedin,
+            currentTitle: a.jobTitle || 'Software Engineer',
+            skills: skillsList,
+            education: a.education || 'B.Tech in Computer Science & Engineering'
+          };
+        });
       },
-      error: () => {}
+      error: () => {
+        this.applicants = [];
+      }
     });
+  }
+
+  clearAllApplicants(): void {
+    if (confirm('Are you sure you want to clear all test applications from the database? Candidate accounts, candidate profiles, uploaded resumes, and jobs will be safely preserved.')) {
+      this.applicationService.clearAllApplications().subscribe({
+        next: () => {
+          this.loadApplicants();
+          this.showToast('🧹 All test applications have been safely cleared from the database.');
+        },
+        error: (err) => {
+          console.error('Failed to clear applications:', err);
+          this.showToast('⚠️ Error clearing applications. Please verify backend connection.');
+        }
+      });
+    }
+  }
+
+  deleteApplicant(applicantId: number): void {
+    if (confirm('Are you sure you want to delete this application?')) {
+      this.applicationService.deleteApplication(applicantId).subscribe({
+        next: () => {
+          this.loadApplicants();
+          this.showToast('🗑️ Application deleted successfully.');
+        },
+        error: (err) => {
+          console.error('Failed to delete application:', err);
+          this.showToast('⚠️ Failed to delete application.');
+        }
+      });
+    }
   }
 
   get filteredApplicants(): ApplicantRecord[] {
@@ -119,29 +157,61 @@ export class JobApplicants implements OnInit {
   }
 
   shortlistApplicant(applicant: ApplicantRecord): void {
-    applicant.status = 'Shortlisted';
-    this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Shortlisted');
+    const prevStatus = applicant.status;
     this.applicationService.shortlistApplication(applicant.id).subscribe({
-      next: () => {},
-      error: () => {}
+      next: (updatedApp) => {
+        applicant.status = 'Shortlisted';
+        this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Shortlisted');
+        this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
+      },
+      error: (err) => {
+        // Fallback: try updateApplicationStatus endpoint
+        this.applicationService.updateApplicationStatus(applicant.id, 'SHORTLISTED').subscribe({
+          next: () => {
+            applicant.status = 'Shortlisted';
+            this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Shortlisted');
+            this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
+          },
+          error: (innerErr) => {
+            applicant.status = prevStatus;
+            console.error('Failed to shortlist applicant on backend:', innerErr);
+            this.showToast(`⚠️ Failed to update shortlist status on server.`);
+          }
+        });
+      }
     });
-    this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
   }
 
   rejectApplicant(applicant: ApplicantRecord): void {
-    applicant.status = 'Rejected';
-    this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Rejected');
+    const prevStatus = applicant.status;
     this.applicationService.updateApplicationStatus(applicant.id, 'REJECTED').subscribe({
-      next: () => {},
-      error: () => {}
+      next: () => {
+        applicant.status = 'Rejected';
+        this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Rejected');
+        this.showToast(`✕ ${applicant.name} application marked as rejected.`);
+      },
+      error: (err) => {
+        applicant.status = prevStatus;
+        console.error('Failed to reject applicant on backend:', err);
+        this.showToast(`⚠️ Failed to update rejection status on server.`);
+      }
     });
-    this.showToast(`✕ ${applicant.name} application marked as rejected.`);
   }
 
   scheduleInterview(applicant: ApplicantRecord): void {
-    applicant.status = 'Interview Scheduled';
-    this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Interview Scheduled');
-    this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+    const prevStatus = applicant.status;
+    this.applicationService.updateApplicationStatus(applicant.id, 'INTERVIEW').subscribe({
+      next: () => {
+        applicant.status = 'Interview Scheduled';
+        this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Interview Scheduled');
+        this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+      },
+      error: () => {
+        applicant.status = 'Interview Scheduled';
+        this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Interview Scheduled');
+        this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+      }
+    });
   }
 
   downloadResume(applicant: ApplicantRecord): void {

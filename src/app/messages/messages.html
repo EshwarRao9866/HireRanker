@@ -9,96 +9,104 @@
   </header>
 
   <!-- CHAT PLATFORM CONTAINER -->
-  <div class="chat-platform-card">
+  @if (conversations.length > 0 && selectedConversation) {
+    <div class="chat-platform-card">
 
-    <!-- LEFT: CONVERSATION LIST -->
-    <div class="convo-sidebar">
-      <div class="convo-search">
-        <span class="search-icon">🔍</span>
-        <input
-          type="text"
-          [(ngModel)]="searchQuery"
-          placeholder="Search candidates..."
-        />
-      </div>
+      <!-- LEFT: CONVERSATION LIST -->
+      <div class="convo-sidebar">
+        <div class="convo-search">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            placeholder="Search candidates..."
+          />
+        </div>
 
-      <div class="convo-list">
-        @for (convo of filteredConversations; track convo.id) {
-          <div
-            class="convo-item"
-            [class.active]="selectedConversation.id === convo.id"
-            (click)="selectConversation(convo)"
-          >
-            <div class="avatar-wrap">
-              <div class="convo-avatar">{{ convo.avatar }}</div>
-              @if (convo.online) {
-                <span class="online-indicator"></span>
+        <div class="convo-list">
+          @for (convo of filteredConversations; track convo.id) {
+            <div
+              class="convo-item"
+              [class.active]="selectedConversation.id === convo.id"
+              (click)="selectConversation(convo)"
+            >
+              <div class="avatar-wrap">
+                <div class="convo-avatar">{{ convo.avatar }}</div>
+                @if (convo.online) {
+                  <span class="online-indicator"></span>
+                }
+              </div>
+
+              <div class="convo-info">
+                <div class="name-time-row">
+                  <strong>{{ convo.candidateName }}</strong>
+                  <small>{{ convo.time }}</small>
+                </div>
+                <p class="role-snip">{{ convo.candidateRole }}</p>
+                <p class="msg-preview">{{ convo.lastMessage }}</p>
+              </div>
+
+              @if (convo.unreadCount > 0) {
+                <span class="unread-pill">{{ convo.unreadCount }}</span>
               }
             </div>
+          }
+        </div>
+      </div>
 
-            <div class="convo-info">
-              <div class="name-time-row">
-                <strong>{{ convo.candidateName }}</strong>
-                <small>{{ convo.time }}</small>
-              </div>
-              <p class="role-snip">{{ convo.candidateRole }}</p>
-              <p class="msg-preview">{{ convo.lastMessage }}</p>
-            </div>
-
-            @if (convo.unreadCount > 0) {
-              <span class="unread-pill">{{ convo.unreadCount }}</span>
+      <!-- RIGHT: CHAT WINDOW -->
+      <div class="chat-window">
+        
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="avatar-wrap">
+            <div class="convo-avatar">{{ selectedConversation.avatar }}</div>
+            @if (selectedConversation.online) {
+              <span class="online-indicator"></span>
             }
           </div>
-        }
-      </div>
-    </div>
 
-    <!-- RIGHT: CHAT WINDOW -->
-    <div class="chat-window">
-      
-      <!-- Chat Header -->
-      <div class="chat-header">
-        <div class="avatar-wrap">
-          <div class="convo-avatar">{{ selectedConversation.avatar }}</div>
-          @if (selectedConversation.online) {
-            <span class="online-indicator"></span>
+          <div class="chat-user-meta">
+            <h3>{{ selectedConversation.candidateName }}</h3>
+            <p>{{ selectedConversation.candidateRole }} • {{ selectedConversation.online ? 'Online' : 'Offline' }}</p>
+          </div>
+        </div>
+
+        <!-- Messages Body -->
+        <div class="chat-messages-body">
+          @for (msg of selectedConversation.messages; track msg.text) {
+            <div class="msg-row" [class.msg-outgoing]="msg.sender === 'admin'" [class.msg-incoming]="msg.sender === 'candidate'">
+              <div class="msg-bubble">
+                <p>{{ msg.text }}</p>
+                <span class="msg-time">{{ msg.time }}</span>
+              </div>
+            </div>
           }
         </div>
 
-        <div class="chat-user-meta">
-          <h3>{{ selectedConversation.candidateName }}</h3>
-          <p>{{ selectedConversation.candidateRole }} • {{ selectedConversation.online ? 'Online' : 'Offline' }}</p>
-        </div>
-      </div>
+        <!-- Chat Input Footer -->
+        <form (ngSubmit)="sendMessage()" class="chat-input-footer">
+          <input
+            type="text"
+            [(ngModel)]="newMessageText"
+            name="chatMsg"
+            placeholder="Type your message to {{ selectedConversation.candidateName }}..."
+            class="chat-input"
+          />
+          <button type="submit" class="btn btn-send">
+            Send Message ✈
+          </button>
+        </form>
 
-      <!-- Messages Body -->
-      <div class="chat-messages-body">
-        @for (msg of selectedConversation.messages; track msg.text) {
-          <div class="msg-row" [class.msg-outgoing]="msg.sender === 'admin'" [class.msg-incoming]="msg.sender === 'candidate'">
-            <div class="msg-bubble">
-              <p>{{ msg.text }}</p>
-              <span class="msg-time">{{ msg.time }}</span>
-            </div>
-          </div>
-        }
       </div>
-
-      <!-- Chat Input Footer -->
-      <form (ngSubmit)="sendMessage()" class="chat-input-footer">
-        <input
-          type="text"
-          [(ngModel)]="newMessageText"
-          name="chatMsg"
-          placeholder="Type your message to {{ selectedConversation.candidateName }}..."
-          class="chat-input"
-        />
-        <button type="submit" class="btn btn-send">
-          Send Message ✈
-        </button>
-      </form>
 
     </div>
-
-  </div>
+  } @else {
+    <div style="background: #ffffff; border-radius: 12px; padding: 4rem 2rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-top: 1rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">💬</div>
+      <h3 style="font-size: 1.35rem; color: #1e293b; margin-bottom: 0.5rem; font-weight: 600;">No messages yet</h3>
+      <p style="color: #64748b; font-size: 0.95rem; max-width: 480px; margin: 0 auto;">Candidate communications and interview inquiries will appear here once direct messages are exchanged.</p>
+    </div>
+  }
 
 </div>

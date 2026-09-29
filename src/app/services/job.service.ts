@@ -18,6 +18,7 @@ export interface JobItem {
   matchScore: number;
   tags: string[];
   description?: string;
+  responsibilities?: string;
   applicants: number;
   status: 'Active' | 'Closed' | 'Draft';
   postedDate: string;
@@ -283,14 +284,14 @@ export class JobService {
   fetchJobsFromBackend(): Observable<JobItem[]> {
     return this.http.get<any[]>(this.apiUrl).pipe(
       map(backendJobs => {
-        if (!backendJobs || !Array.isArray(backendJobs) || backendJobs.length === 0) {
+        if (!backendJobs || !Array.isArray(backendJobs)) {
           return this.getJobs();
         }
         const mapped: JobItem[] = backendJobs.map(bj => ({
           id: bj.id,
           title: cleanJobTitle(bj.title),
           company: bj.company || 'HireRanker Technologies',
-          department: 'Engineering',
+          department: bj.department || 'Engineering',
           location: bj.location || 'Hyderabad',
           experience: bj.experienceRequired || '3-5 Yrs',
           type: bj.employmentType === 'FULL_TIME' ? 'Full Time' : bj.employmentType || 'Full Time',
@@ -298,6 +299,7 @@ export class JobService {
           matchScore: 92,
           tags: bj.requiredSkills ? bj.requiredSkills.split(',').map((s: string) => s.trim()) : ['Java', 'Spring Boot'],
           description: bj.description,
+          responsibilities: bj.responsibilities,
           applicants: 0,
           status: bj.status === 'ACTIVE' ? 'Active' : bj.status === 'CLOSED' ? 'Closed' : 'Draft',
           postedDate: bj.createdAt ? new Date(bj.createdAt).toLocaleDateString() : 'Recently'
@@ -333,17 +335,14 @@ export class JobService {
   }
 
   getJobs(): JobItem[] {
-    if (!this.isBrowser()) return [...this.defaultJobs];
+    if (!this.isBrowser()) return [];
 
     try {
       const raw = localStorage.getItem(this.STORAGE_JOBS);
-      let jobs: JobItem[];
-      if (raw) {
+      let jobs: JobItem[] = [];
+      if (raw !== null) {
         const parsed = JSON.parse(raw);
-        jobs = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...this.defaultJobs];
-      } else {
-        jobs = [...this.defaultJobs];
-        this.saveJobsToStorage(jobs);
+        jobs = Array.isArray(parsed) ? parsed : [];
       }
 
       // Overlay saved/applied state for current candidate session
@@ -358,7 +357,7 @@ export class JobService {
       }));
     } catch (err) {
       console.error('Failed to parse jobs from localStorage:', err);
-      return [...this.defaultJobs];
+      return [];
     }
   }
 
@@ -375,6 +374,8 @@ export class JobService {
     type?: string;
     tags?: string[];
     company?: string;
+    description?: string;
+    responsibilities?: string;
     status?: 'Active' | 'Closed' | 'Draft';
   }): JobItem {
     const jobs = this.getJobs();
@@ -405,6 +406,8 @@ export class JobService {
       salary: formatSalaryToLpa(jobData.salary),
       matchScore: Math.floor(Math.random() * 15) + 85, // Generates realistic 85-99% match
       tags: tags,
+      description: jobData.description,
+      responsibilities: jobData.responsibilities,
       applicants: 0,
       status: jobData.status || 'Active',
       postedDate: 'Just now',
@@ -425,8 +428,10 @@ export class JobService {
     this.createJobBackend({
       title: newJob.title,
       company: newJob.company,
+      department: newJob.department,
       location: newJob.location,
-      description: newJob.title + ' role at ' + newJob.company,
+      description: jobData.description || (newJob.title + ' role at ' + newJob.company),
+      responsibilities: jobData.responsibilities || ('Core technical responsibilities and execution for ' + newJob.title),
       requiredSkills: tags.join(', '),
       experienceRequired: newJob.experience,
       salaryRange: newJob.salary,
@@ -439,7 +444,9 @@ export class JobService {
           this.saveJobsToStorage(this.jobsSignal());
         }
       },
-      error: () => {}
+      error: (err) => {
+        console.warn('Could not sync created job to backend:', err?.status);
+      }
     });
 
     return newJob;
@@ -452,12 +459,15 @@ export class JobService {
       jobs[index] = {
         ...jobs[index],
         title: cleanJobTitle(updatedJob.title),
+        company: updatedJob.company,
         department: updatedJob.department,
         location: updatedJob.location,
         experience: updatedJob.experience,
         salary: formatSalaryToLpa(updatedJob.salary),
         type: updatedJob.type,
         tags: updatedJob.tags,
+        description: updatedJob.description,
+        responsibilities: updatedJob.responsibilities,
         status: updatedJob.status
       };
       this.saveJobsToStorage(jobs);
@@ -466,8 +476,10 @@ export class JobService {
       this.updateJobBackend(updatedJob.id, {
         title: cleanJobTitle(updatedJob.title),
         company: updatedJob.company,
+        department: updatedJob.department,
         location: updatedJob.location,
         description: updatedJob.description || (updatedJob.title + ' position'),
+        responsibilities: updatedJob.responsibilities || ('Core technical responsibilities and execution for ' + updatedJob.title),
         requiredSkills: updatedJob.tags ? updatedJob.tags.join(', ') : 'Java, Angular',
         experienceRequired: updatedJob.experience,
         salaryRange: formatSalaryToLpa(updatedJob.salary),
@@ -494,13 +506,15 @@ export class JobService {
     }
   }
 
-  deleteJob(id: number): void {
-    let jobs = this.getJobs();
-    jobs = jobs.filter(j => j.id !== id);
-    this.saveJobsToStorage(jobs);
-    this.jobsSignal.set(jobs);
-
-    this.deleteJobBackend(id).subscribe({ error: () => {} });
+  deleteJob(id: number): Observable<any> {
+    return this.deleteJobBackend(id).pipe(
+      map(res => {
+        let jobs = this.getJobs().filter(j => j.id !== id);
+        this.saveJobsToStorage(jobs);
+        this.jobsSignal.set(jobs);
+        return res;
+      })
+    );
   }
 
   applyToJob(jobId: number, candidateName?: string, candidateEmail?: string): boolean {
@@ -579,19 +593,18 @@ export class JobService {
   }
 
   getCandidateApplications(): CandidateApplication[] {
-    if (!this.isBrowser()) return [...this.defaultApplications];
+    if (!this.isBrowser()) return [];
 
     const raw = localStorage.getItem(this.STORAGE_APPLICATIONS);
     if (raw) {
       try {
         return JSON.parse(raw);
       } catch {
-        return [...this.defaultApplications];
+        return [];
       }
     }
 
-    localStorage.setItem(this.STORAGE_APPLICATIONS, JSON.stringify(this.defaultApplications));
-    return [...this.defaultApplications];
+    return [];
   }
 
   saveCandidateApplications(apps: CandidateApplication[]): void {

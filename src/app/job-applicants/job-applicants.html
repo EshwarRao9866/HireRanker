@@ -24,10 +24,15 @@
         <select [(ngModel)]="selectedFilter">
           <option value="All">All Statuses</option>
           <option value="Shortlisted">Shortlisted</option>
+          <option value="Interview Scheduled">Interview Scheduled</option>
           <option value="Under Review">Under Review</option>
           <option value="Rejected">Rejected</option>
         </select>
       </div>
+
+      <button class="btn-clear-test-apps" (click)="clearAllApplicants()" title="Safely clear test applications from MySQL">
+        🧹 Clear Test Applicants
+      </button>
     </div>
 
     <div class="table-wrap">
@@ -87,6 +92,7 @@
                   <button class="btn-shortlist" (click)="shortlistApplicant(a)" title="Shortlist Candidate">⭐</button>
                   <button class="btn-reject" (click)="rejectApplicant(a)" title="Reject Candidate">✕</button>
                   <button class="btn-view" (click)="openCandidateProfile(a)" title="View Candidate Profile & Details">👁️</button>
+                  <button class="btn-delete-row" (click)="deleteApplicant(a.id)" title="Delete Application">🗑️</button>
                 </div>
               </td>
             </tr>

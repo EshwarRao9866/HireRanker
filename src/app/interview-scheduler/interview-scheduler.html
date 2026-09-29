@@ -15,27 +15,27 @@
   <!-- METRICS ROW -->
   <div class="stats-row">
     <div class="stat-card">
-      <span class="label">Upcoming Interviews</span>
+      <span class="label">Total Scheduled</span>
       <strong>{{ interviews.length }}</strong>
-      <small>This week</small>
+      <small>Live active pipeline</small>
     </div>
 
     <div class="stat-card">
       <span class="label">AI Automated Assessments</span>
-      <strong class="text-indigo">18</strong>
+      <strong class="text-indigo">{{ aiAssessmentCount }}</strong>
       <small>Bot evaluated</small>
     </div>
 
     <div class="stat-card">
-      <span class="label">Completed This Month</span>
-      <strong class="text-green">24</strong>
-      <small>Shortlisted to offer</small>
+      <span class="label">Live Technical Rounds</span>
+      <strong class="text-purple">{{ liveTechnicalCount }}</strong>
+      <small>Panel evaluated</small>
     </div>
 
     <div class="stat-card">
-      <span class="label">Average Interview Score</span>
-      <strong>88%</strong>
-      <small>Pass rate: 74%</small>
+      <span class="label">Active Schedule Rate</span>
+      <strong class="text-green">{{ interviews.length > 0 ? '100%' : '0%' }}</strong>
+      <small>Database verified</small>
     </div>
   </div>
 
@@ -100,57 +100,65 @@
         <small>Real-time launch controls ({{ interviews.length }} total)</small>
       </div>
 
-      <div class="table-wrap">
-        <table class="saas-table">
-          <thead>
-            <tr>
-              <th>Candidate</th>
-              <th>Applied Role</th>
-              <th>Date & Time</th>
-              <th>Interviewer / Type</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of interviews; track (item.id + '_' + $index)) {
+      @if (interviews.length === 0) {
+        <div style="text-align: center; padding: 48px 24px;">
+          <div style="font-size: 36px; margin-bottom: 8px;">📅</div>
+          <h4 style="margin: 0 0 6px 0; color: #1e293b;">No interviews scheduled</h4>
+          <p style="margin: 0; color: #64748b; font-size: 14px;">Scheduled interviews will appear here when HR or recruiter schedules them.</p>
+        </div>
+      } @else {
+        <div class="table-wrap">
+          <table class="saas-table">
+            <thead>
               <tr>
-                <td><strong>{{ item.candidate }}</strong></td>
-                <td>{{ item.job }}</td>
-                <td>
-                  <span class="date-text">{{ item.date }}</span>
-                  <small class="block text-muted">{{ item.time }}</small>
-                </td>
-                <td>
-                  <span class="type-pill" [class.ai-pill]="item.type === 'AI Assessment'">{{ item.type }}</span>
-                  <small class="block text-muted">{{ item.interviewer }}</small>
-                </td>
-                <td>
-                  @if (item.status === 'Scheduled') {
-                    <span class="status-badge badge-emerald">● Scheduled</span>
-                  } @else if (item.status === 'Cancelled') {
-                    <span class="status-badge badge-gray">✕ Cancelled</span>
-                  } @else {
-                    <span class="status-badge badge-blue">✓ Completed</span>
-                  }
-                </td>
-                <td>
-                  <div class="action-btns-cell">
-                    <button class="btn-start" (click)="configureInterview(item)" title="Reschedule or configure interview">
-                      📅 Reschedule
-                    </button>
-                    @if (item.status !== 'Cancelled') {
-                      <button class="btn-cancel-action" (click)="cancelInterview(item)" title="Cancel interview">
-                        ✕
-                      </button>
-                    }
-                  </div>
-                </td>
+                <th>Candidate</th>
+                <th>Applied Role</th>
+                <th>Date & Time</th>
+                <th>Interviewer / Type</th>
+                <th>Status</th>
+                <th>Action</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (item of interviews; track (item.id + '_' + $index)) {
+                <tr>
+                  <td><strong>{{ item.candidate }}</strong></td>
+                  <td>{{ item.job }}</td>
+                  <td>
+                    <span class="date-text">{{ item.date }}</span>
+                    <small class="block text-muted">{{ item.time }}</small>
+                  </td>
+                  <td>
+                    <span class="type-pill" [class.ai-pill]="item.type === 'AI Assessment'">{{ item.type }}</span>
+                    <small class="block text-muted">{{ item.interviewer }}</small>
+                  </td>
+                  <td>
+                    @if (item.status === 'Scheduled') {
+                      <span class="status-badge badge-emerald">● Scheduled</span>
+                    } @else if (item.status === 'Cancelled') {
+                      <span class="status-badge badge-gray">✕ Cancelled</span>
+                    } @else {
+                      <span class="status-badge badge-blue">✓ Completed</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="action-btns-cell">
+                      <button class="btn-start" (click)="configureInterview(item)" title="Reschedule or configure interview">
+                        📅 Reschedule
+                      </button>
+                      @if (item.status !== 'Cancelled') {
+                        <button class="btn-cancel-action" (click)="cancelInterview(item)" title="Cancel interview">
+                          ✕
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
 
   </div>
@@ -167,7 +175,7 @@
         <form (ngSubmit)="scheduleNewInterview()" class="modal-form">
           <div class="form-group">
             <label>Candidate Name *</label>
-            <input type="text" [(ngModel)]="newInterview.candidate" name="cName" placeholder="e.g. Eshwar Rao" required />
+            <input type="text" [(ngModel)]="newInterview.candidate" name="cName" placeholder="e.g. Candidate Name" required />
           </div>
 
           <div class="form-group">

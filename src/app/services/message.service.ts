@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
 export interface MessageResponse {
@@ -19,6 +20,7 @@ export interface MessageResponse {
 })
 export class MessageService {
   private readonly apiUrl = `${environment.apiUrl}/messages`;
+  private readonly platformId = inject(PLATFORM_ID);
 
   constructor(private readonly http: HttpClient) {}
 
@@ -33,6 +35,9 @@ export class MessageService {
    * Get messages for current authenticated user (GET /api/messages)
    */
   getMessages(): Observable<MessageResponse[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
     return this.http.get<MessageResponse[]>(this.apiUrl);
   }
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, timeout, catchError, throwError } from 'rxjs';
+import { Observable, timeout, catchError, throwError, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface ScreeningResultResponse {
@@ -57,7 +57,15 @@ export class ScreeningService {
   /**
    * Get screening results for an application (GET /api/screenings/application/{applicationId})
    */
-  getScreeningResult(applicationId: number): Observable<ScreeningResultResponse> {
-    return this.http.get<ScreeningResultResponse>(`${this.apiUrl}/application/${applicationId}`);
+  getScreeningResult(applicationId: number): Observable<ScreeningResultResponse | null> {
+    return this.http.get<ScreeningResultResponse>(`${this.apiUrl}/application/${applicationId}`).pipe(
+      catchError((err) => {
+        if (err?.status === 404) {
+          // Gracefully return null if application does not exist or has not been screened yet
+          return of(null);
+        }
+        return throwError(() => err);
+      })
+    );
   }
 }

@@ -123,6 +123,16 @@ export class JobList implements OnInit {
     this.loadJobs();
   }
 
+  selectedJob: JobItem | null = null;
+
+  openJobDetails(job: JobItem): void {
+    this.selectedJob = job;
+  }
+
+  closeJobDetails(): void {
+    this.selectedJob = null;
+  }
+
   goDashboard(): void {
     this.router.navigate(['/candidate-dashboard']);
   }

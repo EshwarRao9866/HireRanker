@@ -18,16 +18,19 @@ export class JobPostings implements OnInit {
   validationError = '';
   saveSuccessMessage = '';
 
-  departments = ['All', 'Engineering', 'Product', 'Design', 'Data & AI'];
+  departments = ['All', 'Engineering', 'Software Development', 'Product', 'Design', 'Data & AI', 'Human Resources', 'Finance', 'Marketing', 'Sales', 'Operations'];
 
   newJobType = 'Full Time';
   newJobTags = '';
   newJob = {
+    company: '',
     title: '',
     department: 'Engineering',
-    location: 'Hyderabad',
-    experience: '3-5 Yrs',
-    salary: '₹10 - 15 LPA',
+    location: '',
+    experience: '',
+    salary: '',
+    description: '',
+    responsibilities: '',
     status: 'Active' as 'Active' | 'Closed' | 'Draft'
   };
 
@@ -48,6 +51,13 @@ export class JobPostings implements OnInit {
 
   loadJobs(): void {
     this.jobs = this.jobService.getJobs();
+    this.jobService.fetchJobsFromBackend().subscribe({
+      next: (backendJobs) => {
+        if (backendJobs) {
+          this.jobs = backendJobs;
+        }
+      }
+    });
   }
 
   get activeJobsCount(): number {
@@ -62,6 +72,7 @@ export class JobPostings implements OnInit {
     return this.jobs.filter(j => {
       const matchesSearch = !this.searchText ||
         j.title.toLowerCase().includes(this.searchText.toLowerCase()) ||
+        j.company.toLowerCase().includes(this.searchText.toLowerCase()) ||
         j.location.toLowerCase().includes(this.searchText.toLowerCase());
 
       const matchesDept = this.selectedDepartment === 'All' || j.department === this.selectedDepartment;
@@ -85,6 +96,7 @@ export class JobPostings implements OnInit {
   showEditModal = false;
   editingJob: JobItem | null = null;
   editJobTags = '';
+  editValidationError = '';
 
   saveNewJob(event?: Event): void {
     if (event) {
@@ -92,8 +104,36 @@ export class JobPostings implements OnInit {
     }
     this.validationError = '';
 
+    if (!this.newJob.company || !this.newJob.company.trim()) {
+      this.validationError = 'Company Name is required.';
+      return;
+    }
     if (!this.newJob.title || !this.newJob.title.trim()) {
-      this.validationError = 'Job Title is required. Please enter a job title.';
+      this.validationError = 'Job Title is required.';
+      return;
+    }
+    if (!this.newJob.department || !this.newJob.department.trim()) {
+      this.validationError = 'Department is required.';
+      return;
+    }
+    if (!this.newJob.location || !this.newJob.location.trim()) {
+      this.validationError = 'Location is required.';
+      return;
+    }
+    if (!this.newJob.experience || !this.newJob.experience.trim()) {
+      this.validationError = 'Experience Required is required.';
+      return;
+    }
+    if (!this.newJobTags || !this.newJobTags.trim()) {
+      this.validationError = 'Key Skills / Tags are required.';
+      return;
+    }
+    if (!this.newJob.description || !this.newJob.description.trim()) {
+      this.validationError = 'Job Description is required.';
+      return;
+    }
+    if (!this.newJob.responsibilities || !this.newJob.responsibilities.trim()) {
+      this.validationError = 'Responsibilities are required.';
       return;
     }
 
@@ -102,23 +142,29 @@ export class JobPostings implements OnInit {
       : [];
 
     const created = this.jobService.addJob({
+      company: this.newJob.company.trim(),
       title: this.newJob.title.trim(),
-      department: this.newJob.department || 'Engineering',
-      location: this.newJob.location || 'Hyderabad',
-      experience: this.newJob.experience || '3-5 Yrs',
-      salary: this.newJob.salary || '₹10 - 16 LPA',
+      department: this.newJob.department.trim(),
+      location: this.newJob.location.trim(),
+      experience: this.newJob.experience.trim(),
+      salary: this.newJob.salary ? this.newJob.salary.trim() : '',
       type: this.newJobType || 'Full Time',
       tags: tags,
+      description: this.newJob.description.trim(),
+      responsibilities: this.newJob.responsibilities.trim(),
       status: 'Active'
     });
 
     this.loadJobs();
     this.newJob = {
+      company: '',
       title: '',
       department: 'Engineering',
-      location: 'Hyderabad',
-      experience: '3-5 Yrs',
-      salary: '₹10 - 15 LPA',
+      location: '',
+      experience: '',
+      salary: '',
+      description: '',
+      responsibilities: '',
       status: 'Active'
     };
     this.newJobTags = '';
@@ -132,6 +178,7 @@ export class JobPostings implements OnInit {
   openEditModal(job: JobItem): void {
     this.editingJob = { ...job };
     this.editJobTags = job.tags ? job.tags.join(', ') : '';
+    this.editValidationError = '';
     this.showEditModal = true;
     this.saveSuccessMessage = '';
   }
@@ -140,11 +187,43 @@ export class JobPostings implements OnInit {
     this.showEditModal = false;
     this.editingJob = null;
     this.editJobTags = '';
+    this.editValidationError = '';
   }
 
   saveEditJob(): void {
-    if (!this.editingJob || !this.editingJob.title || !this.editingJob.title.trim()) {
-      alert('Please enter a valid Job Title');
+    if (!this.editingJob) return;
+
+    this.editValidationError = '';
+    if (!this.editingJob.company || !this.editingJob.company.trim()) {
+      this.editValidationError = 'Company Name is required.';
+      return;
+    }
+    if (!this.editingJob.title || !this.editingJob.title.trim()) {
+      this.editValidationError = 'Job Title is required.';
+      return;
+    }
+    if (!this.editingJob.department || !this.editingJob.department.trim()) {
+      this.editValidationError = 'Department is required.';
+      return;
+    }
+    if (!this.editingJob.location || !this.editingJob.location.trim()) {
+      this.editValidationError = 'Location is required.';
+      return;
+    }
+    if (!this.editingJob.experience || !this.editingJob.experience.trim()) {
+      this.editValidationError = 'Experience Required is required.';
+      return;
+    }
+    if (!this.editJobTags || !this.editJobTags.trim()) {
+      this.editValidationError = 'Key Skills / Tags are required.';
+      return;
+    }
+    if (!this.editingJob.description || !this.editingJob.description.trim()) {
+      this.editValidationError = 'Job Description is required.';
+      return;
+    }
+    if (!this.editingJob.responsibilities || !this.editingJob.responsibilities.trim()) {
+      this.editValidationError = 'Responsibilities are required.';
       return;
     }
 
@@ -154,7 +233,14 @@ export class JobPostings implements OnInit {
 
     const updated: JobItem = {
       ...this.editingJob,
+      company: this.editingJob.company.trim(),
       title: this.editingJob.title.trim(),
+      department: this.editingJob.department.trim(),
+      location: this.editingJob.location.trim(),
+      experience: this.editingJob.experience.trim(),
+      salary: this.editingJob.salary ? this.editingJob.salary.trim() : '',
+      description: this.editingJob.description.trim(),
+      responsibilities: this.editingJob.responsibilities.trim(),
       tags: tags
     };
 
@@ -176,11 +262,19 @@ export class JobPostings implements OnInit {
   }
 
   deleteJob(id: number): void {
-    if (confirm('Are you sure you want to delete this job posting? It will also be removed from the candidate portal.')) {
-      this.jobService.deleteJob(id);
-      this.loadJobs();
-      this.saveSuccessMessage = 'Job posting removed and changes saved.';
-      setTimeout(() => (this.saveSuccessMessage = ''), 3000);
+    if (confirm('Are you sure you want to delete this job posting? It will also be removed from the candidate portal and MySQL database.')) {
+      this.jobService.deleteJob(id).subscribe({
+        next: () => {
+          this.loadJobs();
+          this.saveSuccessMessage = 'Job posting removed and changes saved.';
+          setTimeout(() => (this.saveSuccessMessage = ''), 3000);
+        },
+        error: (err) => {
+          console.error('Failed to delete job:', err);
+          this.saveSuccessMessage = 'Failed to delete job. Please try again.';
+          setTimeout(() => (this.saveSuccessMessage = ''), 4000);
+        }
+      });
     }
   }
 

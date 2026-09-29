@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
 export interface AdminDashboardData {
@@ -46,6 +47,8 @@ export interface AdminDashboardData {
     educationScore: number;
     applicationStatus: string;
     resumeFileName: string;
+    resumeId?: number;
+    applicationId?: number;
   }>;
 }
 
@@ -91,6 +94,7 @@ export interface CandidateDashboardData {
   applicationStatuses: Record<string, number>;
   recommendedJobs: Array<{
     jobId: number;
+    id?: number;
     title: string;
     company: string;
     location: string;
@@ -99,6 +103,8 @@ export interface CandidateDashboardData {
     requiredSkills?: string;
     matchScore?: number;
   }>;
+  activeResumeFileName?: string;
+  activeResumeScore?: number;
 }
 
 @Injectable({
@@ -106,20 +112,72 @@ export interface CandidateDashboardData {
 })
 export class DashboardService {
   private readonly apiUrl = environment.apiUrl;
+  private readonly platformId = inject(PLATFORM_ID);
 
   constructor(private readonly http: HttpClient) {}
 
   /**
-   * Retrieves the comprehensive admin dashboard metrics (GET /api/admin/dashboard)
+   * Retrieves the comprehensive admin dashboard metrics (GET /api/admin/dashboard?period=...)
+   * Only makes network call on browser platform where auth token is available.
    */
-  getAdminDashboard(): Observable<AdminDashboardData> {
-    return this.http.get<AdminDashboardData>(`${this.apiUrl}/admin/dashboard`);
+  getAdminDashboard(period: string = 'This Week'): Observable<AdminDashboardData> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of({
+        totalCandidates: 0,
+        totalApplications: 0,
+        totalJobs: 0,
+        screenedResumes: 0,
+        shortlistedCandidates: 0,
+        averageMatchScore: 0,
+        totalInterviews: 0,
+        totalUsers: 0,
+        applicantsOverview: {
+          totalApplicants: 0,
+          screenedResumes: 0,
+          shortlisted: 0,
+          interviewsScheduled: 0,
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          applicationsSeries: [0, 0, 0, 0, 0, 0, 0],
+          screenedSeries: [0, 0, 0, 0, 0, 0, 0]
+        },
+        applicationStatus: [],
+        topSkills: [],
+        topRankedCandidates: []
+      });
+    }
+    return this.http.get<AdminDashboardData>(`${this.apiUrl}/admin/dashboard`, {
+      params: { period }
+    });
   }
 
   /**
    * Retrieves the candidate's personalized dashboard (GET /api/candidates/me/dashboard)
+   * Only makes network call on browser platform where candidate auth token is available.
    */
   getCandidateDashboard(): Observable<CandidateDashboardData> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of({
+        candidateProfile: {
+          id: 0,
+          userId: 0,
+          email: '',
+          fullName: '',
+          phone: '',
+          location: '',
+          skills: '',
+          experience: '',
+          education: ''
+        },
+        totalApplications: 0,
+        totalResumes: 0,
+        screenedApplications: 0,
+        shortlistedApplications: 0,
+        upcomingInterviews: [],
+        recentApplications: [],
+        applicationStatuses: {},
+        recommendedJobs: []
+      });
+    }
     return this.http.get<CandidateDashboardData>(`${this.apiUrl}/candidates/me/dashboard`);
   }
 }

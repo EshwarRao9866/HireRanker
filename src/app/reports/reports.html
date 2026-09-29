@@ -70,18 +70,25 @@
         </div>
       </div>
 
-      <div class="sources-list">
-        @for (src of sources; track src.source) {
-          <div class="source-item">
-            <div class="source-icon" [style.background]="src.color"></div>
-            <div class="source-meta">
-              <strong>{{ src.source }}</strong>
-              <small>{{ src.count }} applicants</small>
+      @if (sources.length > 0) {
+        <div class="sources-list">
+          @for (src of sources; track src.source) {
+            <div class="source-item">
+              <div class="source-icon" [style.background]="src.color"></div>
+              <div class="source-meta">
+                <strong>{{ src.source }}</strong>
+                <small>{{ src.count }} applicants</small>
+              </div>
+              <span class="source-percent">{{ src.percentage }}%</span>
             </div>
-            <span class="source-percent">{{ src.percentage }}%</span>
-          </div>
-        }
-      </div>
+          }
+        </div>
+      } @else {
+        <div style="padding: 2.5rem 1rem; text-align: center; color: #64748b;">
+          <p style="font-size: 1.1rem; margin-bottom: 0.25rem;">📊 No acquisition source data available.</p>
+          <small>Candidate source analytics will appear once direct applications or referrals are logged.</small>
+        </div>
+      }
     </div>
 
   </div>
@@ -95,20 +102,27 @@
       </div>
     </div>
 
-    <div class="skills-distribution-grid">
-      @for (skill of skillsDemand; track skill.skill) {
-        <div class="skill-demand-box">
-          <div class="skill-header">
-            <strong>{{ skill.skill }}</strong>
-            <span>{{ skill.applicants }} Candidates</span>
+    @if (skillsDemand.length > 0) {
+      <div class="skills-distribution-grid">
+        @for (skill of skillsDemand; track skill.skill) {
+          <div class="skill-demand-box">
+            <div class="skill-header">
+              <strong>{{ skill.skill }}</strong>
+              <span>{{ skill.applicants }} Candidates</span>
+            </div>
+            <div class="bar-wrap">
+              <div class="bar-fill" [style.width.%]="skill.demand"></div>
+            </div>
+            <small class="demand-label">Platform Match Demand: {{ skill.demand }}%</small>
           </div>
-          <div class="bar-wrap">
-            <div class="bar-fill" [style.width.%]="skill.demand"></div>
-          </div>
-          <small class="demand-label">Platform Match Demand: {{ skill.demand }}%</small>
-        </div>
-      }
-    </div>
+        }
+      </div>
+    } @else {
+      <div style="padding: 3rem 1rem; text-align: center; color: #64748b;">
+        <p style="font-size: 1.1rem; margin-bottom: 0.25rem;">💡 No skill data available.</p>
+        <small>Skills distribution will populate as resumes are submitted and processed by the AI screener.</small>
+      </div>
+    }
   </div>
 
 </div>

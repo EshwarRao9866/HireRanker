@@ -42,3 +42,24 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Java & Spring Boot backend
+hireranker-backend/target/
+hireranker-backend/*.log
+hireranker-backend/uploads/
+hireranker-backend/scratch/
+hireranker-backend/.classpath
+hireranker-backend/.project
+hireranker-backend/.settings/
+hireranker-backend/.vscode/
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+uploads/
+scratch/
+application-local.properties
+.env
+

@@ -17,17 +17,38 @@ import { cleanJobTitle, formatSalaryToLpa } from '../services/salary-formatter.u
   styleUrl: './candidate-dashboard.css'
 })
 export class CandidateDashboard implements OnInit {
-  candidateName = 'Eshwar Rao';
-  candidateEmail = 'eshwar@candidate.com';
+  candidateName = '';
+  candidateEmail = '';
   candidateAvatar = '';
 
-  appliedJobs = 5;
-  screenedJobs = 3;
-  shortlistedJobs = 1;
-  interviews = 1;
+  appliedJobs = 0;
+  screenedJobs = 0;
+  shortlistedJobs = 0;
+  interviews = 0;
 
-  readonly applicationDateFormatted: string = new Date(Date.now() - 3 * 86400000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  readonly shortlistedDateFormatted: string = new Date(Date.now() - 1 * 86400000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  activeApplication: {
+    jobTitle: string;
+    company: string;
+    status: string;
+    appliedDate: string;
+    screenedDate?: string;
+    shortlistedDate?: string;
+    matchScore?: number;
+    timelineStep: number;
+    interviewDate?: string;
+  } | null = null;
+
+  upcomingInterview: {
+    jobTitle: string;
+    scheduledDateTime: string;
+    type: string;
+    meetingLink?: string;
+  } | null = null;
+
+  resumeStatus: {
+    fileName: string;
+    screeningScore: number;
+  } | null = null;
 
   recommendedJobs: JobItem[] = [];
 
@@ -56,56 +77,117 @@ export class CandidateDashboard implements OnInit {
 
   ngOnInit(): void {
     this.assistantModeService.setMode('CANDIDATE');
+    const user = this.authService.currentUser();
+    if (user) {
+      this.candidateName = user.fullName || 'Candidate';
+      this.candidateEmail = user.email || '';
+    }
     const saved = this.authService.getCandidateProfile();
     if (saved) {
       if (saved.fullName) this.candidateName = saved.fullName;
       if (saved.email) this.candidateEmail = saved.email;
       if (saved.profilePicture) this.candidateAvatar = saved.profilePicture;
-    } else {
-      const user = this.authService.currentUser();
-      if (user) {
-        this.candidateName = user.fullName;
-        this.candidateEmail = user.email;
-      }
     }
 
-    this.recommendedJobs = this.jobService.getActiveJobs().slice(0, 3);
-    this.appliedJobs = this.jobService.getAppliedJobsCount();
     this.loadNotifications();
 
     // Fetch live candidate metrics from backend
     this.dashboardService.getCandidateDashboard().subscribe({
       next: (data) => {
+        if (!data) return;
+
         if (data.candidateProfile) {
           if (data.candidateProfile.fullName) this.candidateName = data.candidateProfile.fullName;
           if (data.candidateProfile.email) this.candidateEmail = data.candidateProfile.email;
         }
-        if (typeof data.totalApplications === 'number') this.appliedJobs = data.totalApplications;
-        if (typeof data.screenedApplications === 'number') this.screenedJobs = data.screenedApplications;
-        if (typeof data.shortlistedApplications === 'number') this.shortlistedJobs = data.shortlistedApplications;
-        if (Array.isArray(data.upcomingInterviews)) this.interviews = data.upcomingInterviews.length;
+
+        this.appliedJobs = typeof data.totalApplications === 'number' ? data.totalApplications : 0;
+        this.screenedJobs = typeof data.screenedApplications === 'number' ? data.screenedApplications : 0;
+        this.shortlistedJobs = typeof data.shortlistedApplications === 'number' ? data.shortlistedApplications : 0;
+        this.interviews = Array.isArray(data.upcomingInterviews) ? data.upcomingInterviews.length : 0;
+
+        // Populate active application tracker from latest real submission
+        if (data.recentApplications && data.recentApplications.length > 0) {
+          const latest = data.recentApplications[0];
+          const st = (latest.status || 'APPLIED').toUpperCase();
+          let step = 1;
+          if (st === 'SCREENING' || st === 'SCREENED') step = 2;
+          else if (st === 'SHORTLISTED') step = 3;
+          else if (st === 'INTERVIEW' || st === 'HIRED') step = 4;
+
+          const appliedFormatted = latest.appliedAt
+            ? new Date(latest.appliedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+            : 'Submitted';
+
+          this.activeApplication = {
+            jobTitle: cleanJobTitle(latest.jobTitle || 'Role'),
+            company: latest.company && latest.company.trim().length > 0 ? latest.company : 'HireRanker Technologies',
+            status: latest.status || 'Applied',
+            appliedDate: appliedFormatted,
+            matchScore: latest.matchScore ? Math.round(latest.matchScore) : undefined,
+            timelineStep: step
+          };
+        } else {
+          this.activeApplication = null;
+        }
+
+        // Populate upcoming interview
+        if (data.upcomingInterviews && data.upcomingInterviews.length > 0) {
+          const iv = data.upcomingInterviews[0];
+          const dtFormatted = iv.scheduledDateTime
+            ? new Date(iv.scheduledDateTime).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+            : 'Date to be confirmed';
+          this.upcomingInterview = {
+            jobTitle: cleanJobTitle(iv.jobTitle || 'Technical Interview'),
+            scheduledDateTime: dtFormatted,
+            type: iv.type || 'Technical Round',
+            meetingLink: iv.meetingLink
+          };
+        } else {
+          this.upcomingInterview = null;
+        }
+
+        // Populate active resume status
+        if (data.activeResumeFileName) {
+          this.resumeStatus = {
+            fileName: data.activeResumeFileName,
+            screeningScore: data.activeResumeScore ? Math.round(data.activeResumeScore) : 0
+          };
+        } else {
+          this.resumeStatus = null;
+        }
+
+        // Populate recommended jobs
         if (data.recommendedJobs && data.recommendedJobs.length > 0) {
           this.recommendedJobs = data.recommendedJobs.map((j) => ({
-            id: Number(j.jobId),
+            id: Number(j.id || j.jobId),
             title: cleanJobTitle(j.title),
-            company: j.company,
+            company: j.company && j.company.trim().length > 0 ? j.company : 'HireRanker Technologies',
             department: 'Engineering',
-            location: j.location,
+            location: j.location || 'Remote',
             experience: '3-5 Yrs',
             type: j.employmentType || 'Full Time',
             salary: formatSalaryToLpa(j.salaryRange),
-            matchScore: j.matchScore || 85,
-            tags: j.requiredSkills ? j.requiredSkills.split(',').map((s) => s.trim()) : ['Java', 'Spring Boot'],
-            applicants: 12,
+            matchScore: j.matchScore ? Math.round(j.matchScore) : 80,
+            tags: j.requiredSkills ? j.requiredSkills.split(',').map((s) => s.trim()) : [],
+            applicants: 0,
             status: 'Active',
-            postedDate: 'Recent',
+            postedDate: 'Verified',
             description: ''
           }));
+        } else {
+          this.recommendedJobs = [];
         }
       },
       error: (err) => {
-        // Fallback gracefully to default local data if backend is offline or unauthorized
-        console.warn('Backend candidate dashboard not accessible, using cached state:', err?.status);
+        console.warn('Backend candidate dashboard error:', err?.status);
+        this.appliedJobs = 0;
+        this.screenedJobs = 0;
+        this.shortlistedJobs = 0;
+        this.interviews = 0;
+        this.activeApplication = null;
+        this.upcomingInterview = null;
+        this.recommendedJobs = [];
       }
     });
   }

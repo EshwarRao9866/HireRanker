@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, timeout, tap, catchError, of } from 'rxjs';
 import { environment } from '../../environments/environment';
 
+import { AuthService } from './auth.service';
+
 export interface ResumeResponse {
   id: number;
   candidateId: number;
@@ -81,7 +83,10 @@ export class ResumeService {
     return this.cachedResumeFile;
   }
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(
+    private readonly http: HttpClient,
+    private readonly authService: AuthService
+  ) {}
 
   /**
    * Initializes initial active resume from persistent storage or candidate profile
@@ -286,27 +291,9 @@ export class ResumeService {
   getMyResume(): Observable<ResumeResponse> {
     return this.http.get<ResumeResponse>(`${this.apiUrl}/my-resume`).pipe(
       timeout(6000),
-      catchError((err) => {
+      catchError(() => {
         const current = this.getActiveResumeSnapshot();
-        if (current) {
-          return of(current);
-        }
-        return of({
-          id: 1,
-          candidateId: 1,
-          fileName: 'my_resume (1).pdf',
-          fileType: 'application/pdf',
-          fileSize: 245760,
-          uploadedAt: new Date().toISOString(),
-          screeningScore: 83,
-          technicalSkillsScore: 85,
-          experienceScore: 80,
-          educationScore: 85,
-          detectedSkills: ['Java', 'Spring Boot', 'Angular', 'TypeScript', 'SQL', 'Microservices'],
-          technologies: ['REST API', 'MySQL', 'RxJS', 'Docker'],
-          strengths: ['Full Stack Architecture', 'Microservices Design', 'Clean Code Practices'],
-          aiStatus: 'COMPLETED'
-        } as ResumeResponse);
+        return of(current as any);
       }),
       tap((res) => {
         if (res && res.id) {
@@ -437,23 +424,23 @@ export class ResumeService {
   }
 
   private fallbackDownloadResumeBlob(id: number, fileName?: string): Observable<Blob> {
-    // 1. Try candidate's active resume endpoint
-    return this.http.get(`${this.apiUrl}/my-resume/file`, { responseType: 'blob' }).pipe(
-      catchError(() => {
-        // 2. Try default active resume in backend (Resume ID 2 for resume.pdf, or Resume ID 1)
-        const targetId = (fileName && fileName.toLowerCase().includes('resume.pdf')) ? 2 : 1;
-        return this.http.get(`${this.apiUrl}/${targetId}/file`, { responseType: 'blob' }).pipe(
-          catchError(() => {
-            // 3. Return cached resume blob from upload if present
-            if (this.cachedResumeBlob) {
-              return of(this.cachedResumeBlob);
-            }
-            // 4. Generate structured ATS candidate profile PDF
-            return of(this.createFallbackPdfBlob(id, fileName || `Resume_${id}.pdf`));
-          })
-        );
-      })
-    );
+    // 1. Only candidates have a personal resume endpoint; admins must never call /my-resume/file (prevents 403 Forbidden)
+    if (this.authService.isCandidate()) {
+      return this.http.get(`${this.apiUrl}/my-resume/file`, { responseType: 'blob' }).pipe(
+        catchError(() => this.fallbackResumeByIdOrGenerated(id, fileName))
+      );
+    }
+
+    return this.fallbackResumeByIdOrGenerated(id, fileName);
+  }
+
+  private fallbackResumeByIdOrGenerated(id: number, fileName?: string): Observable<Blob> {
+    // Try cached resume blob from upload if present
+    if (this.cachedResumeBlob) {
+      return of(this.cachedResumeBlob);
+    }
+    // Return generated structured ATS candidate profile PDF to gracefully render without breaking
+    return of(this.createFallbackPdfBlob(id, fileName || `Resume_${id}.pdf`));
   }
 
   /**

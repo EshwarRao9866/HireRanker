@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 
 import { HomePage } from './home-page/home-page';
 import { Register } from './register/register';
+import { ForgotPassword } from './forgot-password/forgot-password';
+import { ResetPassword } from './reset-password/reset-password';
 import { Dashboard } from './dashboard/dashboard';
 
 import { JobPostings } from './job-postings/job-postings';
@@ -37,6 +39,14 @@ export const routes: Routes = [
   {
     path: 'register',
     component: Register
+  },
+  {
+    path: 'forgot-password',
+    component: ForgotPassword
+  },
+  {
+    path: 'reset-password',
+    component: ResetPassword
   },
 
   // ================= ADMIN PROTECTED ROUTES =================

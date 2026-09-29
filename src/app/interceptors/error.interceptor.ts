@@ -12,25 +12,35 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       if (isPlatformBrowser(platformId)) {
         if (error.status === 401) {
-          // Token expired or invalid: clean session and redirect
-          localStorage.removeItem('hireRankerToken');
-          localStorage.removeItem('isLoggedIn');
-          localStorage.removeItem('userRole');
-          localStorage.removeItem('hireRankerSession');
+          // Do NOT clear session if the 401 comes from auth login/register endpoints
+          // (those are expected to return 401 for invalid credentials)
+          const isAuthRequest = req.url.includes('/auth/login') ||
+                                req.url.includes('/auth/register') ||
+                                req.url.includes('/auth/forgot-password') ||
+                                req.url.includes('/auth/reset-password') ||
+                                req.url.includes('/health');
 
-          // Do not redirect if user was already on login/register pages
-          const currentUrl = router.url;
-          if (!currentUrl.includes('login') && !currentUrl.includes('register') && currentUrl !== '/') {
-            const isCandidateRoute = currentUrl.includes('candidate') ||
-                                     currentUrl.includes('my-resume') ||
-                                     currentUrl.includes('my-profile') ||
-                                     currentUrl.includes('my-applications') ||
-                                     currentUrl.includes('interviews') ||
-                                     currentUrl.includes('find-jobs');
-            if (isCandidateRoute) {
-              router.navigate(['/candidate-login']);
-            } else {
-              router.navigate(['/']);
+          if (!isAuthRequest) {
+            // Token expired or invalid for a protected resource: clean session and redirect
+            localStorage.removeItem('hireRankerToken');
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('hireRankerSession');
+
+            // Do not redirect if user was already on login/register pages
+            const currentUrl = router.url;
+            if (!currentUrl.includes('login') && !currentUrl.includes('register') && currentUrl !== '/') {
+              const isCandidateRoute = currentUrl.includes('candidate') ||
+                                       currentUrl.includes('my-resume') ||
+                                       currentUrl.includes('my-profile') ||
+                                       currentUrl.includes('my-applications') ||
+                                       currentUrl.includes('interviews') ||
+                                       currentUrl.includes('find-jobs');
+              if (isCandidateRoute) {
+                router.navigate(['/candidate-login']);
+              } else {
+                router.navigate(['/']);
+              }
             }
           }
         } else if (error.status === 403) {

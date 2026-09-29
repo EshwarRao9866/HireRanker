@@ -60,6 +60,14 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     return `Timeline (${dateLabel})`;
   }
 
+  get aiAssessmentCount(): number {
+    return this.interviews.filter(i => (i.type || '').toLowerCase().includes('ai')).length;
+  }
+
+  get liveTechnicalCount(): number {
+    return this.interviews.filter(i => (i.type || '').toLowerCase().includes('technical') || (i.type || '').toLowerCase().includes('live')).length;
+  }
+
   constructor(
     private readonly router: Router,
     readonly interviewService: InterviewService,

@@ -151,6 +151,14 @@
                 {{ job.saved ? '★ Saved' : '☆ Save' }}
               </button>
 
+              <button
+                class="btn-details"
+                (click)="openJobDetails(job)"
+                title="View Full Job Details"
+              >
+                View Details 👁️
+              </button>
+
               @if (job.applied) {
                 <button class="btn-applied" disabled>
                   ✓ Applied
@@ -167,5 +175,79 @@
 
     </div>
   </main>
+
+  <!-- CANDIDATE JOB DETAILS MODAL -->
+  @if (selectedJob) {
+    <div class="modal-backdrop" (click)="closeJobDetails()">
+      <div class="modal-card modal-card-scrollable" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <h3>{{ selectedJob.title }}</h3>
+            <p class="company-sub">{{ selectedJob.company }} • <span class="dept-tag">{{ selectedJob.department || 'Engineering' }}</span></p>
+          </div>
+          <button class="close-modal" (click)="closeJobDetails()">×</button>
+        </div>
+
+        <div class="job-detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">🏢 Company Name</span>
+            <strong>{{ selectedJob.company }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">💼 Department</span>
+            <strong>{{ selectedJob.department || 'Engineering' }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">📍 Location</span>
+            <strong>{{ selectedJob.location }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">⏱️ Experience Required</span>
+            <strong>{{ selectedJob.experience }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">💰 Salary Package</span>
+            <strong>{{ selectedJob.salary || 'Not specified' }}</strong>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">⚡ Work Mode / Type</span>
+            <strong>{{ selectedJob.type }}</strong>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <span class="detail-label">🛠️ Key Skills</span>
+          <div class="tags-row" style="margin-top: 6px;">
+            @for (tag of selectedJob.tags; track tag) {
+              <span class="tech-tag">{{ tag }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <span class="detail-label">📋 Job Description</span>
+          <div class="pre-text-box">
+            {{ selectedJob.description || (selectedJob.title + ' position at ' + selectedJob.company) }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <span class="detail-label">🎯 Responsibilities</span>
+          <div class="pre-text-box">
+            {{ selectedJob.responsibilities || ('Core responsibilities for the ' + selectedJob.title + ' role.') }}
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 24px;">
+          <button type="button" class="btn btn-outline" (click)="closeJobDetails()">Close</button>
+          @if (selectedJob.applied) {
+            <button type="button" class="btn btn-applied" disabled>✓ Already Applied</button>
+          } @else {
+            <button type="button" class="btn btn-apply" (click)="applyToJob(selectedJob)">Apply for this Role ⚡</button>
+          }
+        </div>
+      </div>
+    </div>
+  }
 
 </div>

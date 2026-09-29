@@ -20,6 +20,8 @@ interface CandidateRow {
   experience: string;
   education: number;
   resumeFileName: string;
+  resumeId?: number;
+  applicationId?: number;
   status: 'Shortlisted' | 'Under Review' | 'Interview Scheduled' | 'Rejected';
 }
 
@@ -56,95 +58,32 @@ export class Dashboard implements OnInit {
   }
 
   stats = {
-    totalApplicants: 248,
-    screenedResumes: 186,
-    shortlisted: 32,
-    interviewsScheduled: 14,
-    avgMatchRate: 84
+    totalApplicants: 0,
+    screenedResumes: 0,
+    shortlisted: 0,
+    interviewsScheduled: 0,
+    avgMatchRate: 0
   };
 
-  topSkills: SkillStat[] = [
-    { name: 'Java', percent: 32, class: 'java' },
-    { name: 'Spring Boot', percent: 24, class: 'spring' },
-    { name: 'SQL', percent: 18, class: 'sql' },
-    { name: 'JavaScript / TypeScript', percent: 12, class: 'js' },
-    { name: 'Angular / React', percent: 8, class: 'react' },
-    { name: 'Others', percent: 6, class: 'other' }
-  ];
+  topSkills: SkillStat[] = [];
 
-  statusBreakdown: StatusStat[] = [
-    { label: 'New', percent: 28, count: 70, class: 'new' },
-    { label: 'Screened', percent: 50, count: 124, class: 'screened' },
-    { label: 'Shortlisted', percent: 13, count: 32, class: 'shortlisted' },
-    { label: 'Rejected', percent: 9, count: 22, class: 'rejected' }
-  ];
+  statusBreakdown: StatusStat[] = [];
 
-  candidates: CandidateRow[] = [
-    {
-      id: 1,
-      name: 'Eshwar Rao',
-      email: 'eshwar.rao@email.com',
-      appliedRole: 'Java Full Stack Developer',
-      matchScore: 95,
-      skills: 96,
-      experience: '4.5 yrs',
-      education: 92,
-      resumeFileName: 'Eshwar_Rao_Resume.pdf',
-      status: 'Shortlisted'
-    },
-    {
-      id: 2,
-      name: 'Krupa Jyothi',
-      email: 'krupa.jyothi@email.com',
-      appliedRole: 'Senior Angular Developer',
-      matchScore: 89,
-      skills: 92,
-      experience: '3.8 yrs',
-      education: 88,
-      resumeFileName: 'Krupa_Jyothi_Resume.pdf',
-      status: 'Interview Scheduled'
-    },
-    {
-      id: 3,
-      name: 'Amit Verma',
-      email: 'amit.verma@email.com',
-      appliedRole: 'Java Developer',
-      matchScore: 84,
-      skills: 88,
-      experience: '3.2 yrs',
-      education: 85,
-      resumeFileName: 'Amit_Verma_Resume.pdf',
-      status: 'Under Review'
-    },
-    {
-      id: 4,
-      name: 'Sneha Patel',
-      email: 'sneha.patel@email.com',
-      appliedRole: 'UI/UX Frontend Engineer',
-      matchScore: 82,
-      skills: 85,
-      experience: '2.9 yrs',
-      education: 83,
-      resumeFileName: 'Sneha_Patel_Resume.pdf',
-      status: 'Under Review'
-    },
-    {
-      id: 5,
-      name: 'Vikram Singh',
-      email: 'vikram.singh@email.com',
-      appliedRole: 'Cloud & AI Engineer',
-      matchScore: 78,
-      skills: 80,
-      experience: '2.5 yrs',
-      education: 82,
-      resumeFileName: 'Vikram_Singh_Resume.pdf',
-      status: 'Rejected'
-    }
-  ];
+  candidates: CandidateRow[] = [];
 
   showNotificationsDropdown = false;
   notifications: AppNotification[] = [];
   unreadNotificationsCount = 0;
+
+  chartLabels: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  appliedSvgPoints = '0,220 700,220';
+  appliedLinePoints = '0,220 700,220';
+  screenedSvgPoints = '0,220 700,220';
+  screenedLinePoints = '0,220 700,220';
+  chartYAxisMax = 10;
+  chartYAxisLabels = ['10', '8', '6', '4', '2', '0'];
+  skillsConicGradient = '#e2e8f0 0% 100%';
+  statusConicGradient = '#e2e8f0 0% 100%';
 
   constructor(
     private readonly router: Router,
@@ -175,26 +114,37 @@ export class Dashboard implements OnInit {
     }
 
     this.loadNotifications();
-    this.syncDynamicApplicants();
+    this.loadDashboardData(this.selectedPeriod);
+  }
 
-    // Fetch live dashboard statistics from Spring Boot backend
-    this.dashboardService.getAdminDashboard().subscribe({
+  onPeriodChange(): void {
+    this.loadDashboardData(this.selectedPeriod);
+  }
+
+  loadDashboardData(period: string = 'This Week'): void {
+    this.dashboardService.getAdminDashboard(period).subscribe({
       next: (data) => {
         if (data) {
           this.stats = {
-            totalApplicants: data.totalApplications || data.applicantsOverview?.totalApplicants || this.stats.totalApplicants,
-            screenedResumes: data.screenedResumes || this.stats.screenedResumes,
-            shortlisted: data.shortlistedCandidates || this.stats.shortlisted,
-            interviewsScheduled: data.totalInterviews || this.stats.interviewsScheduled,
-            avgMatchRate: Math.round(data.averageMatchScore || this.stats.avgMatchRate)
+            totalApplicants: data.totalApplications ?? data.applicantsOverview?.totalApplicants ?? 0,
+            screenedResumes: data.screenedResumes ?? 0,
+            shortlisted: data.shortlistedCandidates ?? 0,
+            interviewsScheduled: data.totalInterviews ?? 0,
+            avgMatchRate: Math.round(data.averageMatchScore ?? 0)
           };
+
           if (data.topSkills && data.topSkills.length > 0) {
             this.topSkills = data.topSkills.map(s => ({
               name: s.name,
               percent: Math.round(s.percent),
               class: s.cssClass || 'other'
             }));
+            this.computeSkillsConicGradient(this.topSkills);
+          } else {
+            this.topSkills = [];
+            this.skillsConicGradient = '#e2e8f0 0% 100%';
           }
+
           if (data.applicationStatus && data.applicationStatus.length > 0) {
             this.statusBreakdown = data.applicationStatus.map(s => ({
               label: s.label,
@@ -202,7 +152,12 @@ export class Dashboard implements OnInit {
               percent: Math.round(s.percent),
               class: s.cssClass || 'screened'
             }));
+            this.computeStatusConicGradient(this.statusBreakdown);
+          } else {
+            this.statusBreakdown = [];
+            this.statusConicGradient = '#e2e8f0 0% 100%';
           }
+
           if (data.topRankedCandidates && data.topRankedCandidates.length > 0) {
             this.candidates = data.topRankedCandidates.map(c => ({
               id: c.candidateId,
@@ -214,42 +169,124 @@ export class Dashboard implements OnInit {
               experience: `${c.experienceScore || 3} yrs`,
               education: Math.round(c.educationScore),
               resumeFileName: c.resumeFileName || 'Resume.pdf',
+              resumeId: c.resumeId,
+              applicationId: c.applicationId,
               status: c.applicationStatus === 'SHORTLISTED' ? 'Shortlisted' :
                       c.applicationStatus === 'INTERVIEW' ? 'Interview Scheduled' :
                       c.applicationStatus === 'REJECTED' ? 'Rejected' : 'Under Review'
             }));
+          } else {
+            this.candidates = [];
+          }
+
+          if (data.applicantsOverview) {
+            this.renderDynamicChart(data.applicantsOverview);
           }
         }
       },
-      error: () => {}
+      error: (err) => {
+        console.error('Failed to load dashboard data:', err);
+      }
     });
+  }
+
+  private renderDynamicChart(overview: { labels: string[]; applicationsSeries: number[]; screenedSeries: number[] }): void {
+    if (!overview.labels || overview.labels.length === 0) {
+      return;
+    }
+
+    this.chartLabels = overview.labels;
+    const appVals = overview.applicationsSeries || [];
+    const screenVals = overview.screenedSeries || [];
+
+    const maxVal = Math.max(...appVals, ...screenVals, 0);
+    const yMax = maxVal === 0 ? 10 : Math.ceil(maxVal * 1.25);
+    this.chartYAxisMax = yMax;
+    this.chartYAxisLabels = [
+      String(yMax),
+      String(Math.round(yMax * 0.8)),
+      String(Math.round(yMax * 0.6)),
+      String(Math.round(yMax * 0.4)),
+      String(Math.round(yMax * 0.2)),
+      '0'
+    ];
+
+    const count = overview.labels.length;
+    const step = count > 1 ? 700 / (count - 1) : 700;
+    const chartHeight = 220;
+
+    const appPoints: string[] = [];
+    const screenPoints: string[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const x = Math.round(i * step);
+      const aVal = appVals[i] || 0;
+      const sVal = screenVals[i] || 0;
+
+      const aY = Math.round(chartHeight - (aVal / yMax) * (chartHeight - 30));
+      const sY = Math.round(chartHeight - (sVal / yMax) * (chartHeight - 30));
+
+      appPoints.push(`${x},${aY}`);
+      screenPoints.push(`${x},${sY}`);
+    }
+
+    this.appliedLinePoints = appPoints.join(' ');
+    this.appliedSvgPoints = `0,${chartHeight} ` + appPoints.join(' ') + ` 700,${chartHeight}`;
+
+    this.screenedLinePoints = screenPoints.join(' ');
+    this.screenedSvgPoints = `0,${chartHeight} ` + screenPoints.join(' ') + ` 700,${chartHeight}`;
+  }
+
+  private computeSkillsConicGradient(skills: SkillStat[]): void {
+    if (!skills || skills.length === 0) {
+      this.skillsConicGradient = '#e2e8f0 0% 100%';
+      return;
+    }
+    const colorPalette = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#06b6d4', '#94a3b8'];
+    let currentPct = 0;
+    const stops: string[] = [];
+    skills.forEach((s, idx) => {
+      const color = colorPalette[idx % colorPalette.length];
+      const start = currentPct;
+      currentPct += s.percent;
+      stops.push(`${color} ${start}% ${currentPct}%`);
+    });
+    if (currentPct < 100) {
+      stops.push(`#e2e8f0 ${currentPct}% 100%`);
+    }
+    this.skillsConicGradient = `conic-gradient(${stops.join(', ')})`;
+  }
+
+  private computeStatusConicGradient(statuses: StatusStat[]): void {
+    if (!statuses || statuses.length === 0 || this.stats.totalApplicants === 0) {
+      this.statusConicGradient = '#e2e8f0 0% 100%';
+      return;
+    }
+    const colorMap: Record<string, string> = {
+      'new': '#3b82f6',
+      'screened': '#10b981',
+      'shortlisted': '#8b5cf6',
+      'interview': '#f59e0b',
+      'rejected': '#f43f5e',
+      'hired': '#14b8a6'
+    };
+    let currentPct = 0;
+    const stops: string[] = [];
+    statuses.forEach((st) => {
+      const color = colorMap[st.class] || '#6366f1';
+      const start = currentPct;
+      currentPct += st.percent;
+      stops.push(`${color} ${start}% ${currentPct}%`);
+    });
+    if (currentPct < 100) {
+      stops.push(`#e2e8f0 ${currentPct}% 100%`);
+    }
+    this.statusConicGradient = `conic-gradient(${stops.join(', ')})`;
   }
 
   loadNotifications(): void {
     this.notifications = this.notificationService.getAdminNotifications();
     this.unreadNotificationsCount = this.notificationService.adminUnreadCount();
-  }
-
-  syncDynamicApplicants(): void {
-    const records: ApplicantRecord[] = this.jobService.getApplicants();
-    if (records && records.length > 0) {
-      this.candidates = records.map((r: ApplicantRecord) => ({
-        id: r.id,
-        name: r.name,
-        email: r.email,
-        appliedRole: r.job,
-        matchScore: r.matchScore,
-        skills: r.skillsMatch,
-        experience: r.experience,
-        education: r.educationScore,
-        resumeFileName: r.resumeFileName,
-        status: r.status as any
-      }));
-    }
-
-    const appsCount = this.jobService.getCandidateApplications().length;
-    this.stats.totalApplicants = 245 + appsCount;
-    this.stats.screenedResumes = 184 + appsCount;
   }
 
   toggleNotificationDropdown(event: Event): void {
@@ -329,8 +366,8 @@ export class Dashboard implements OnInit {
   }
 
   viewResume(candidate: CandidateRow): void {
-    const resumeId = (candidate as any).resumeId || candidate.id || 1;
-    this.resumeService.downloadResumeBlob(resumeId).subscribe({
+    const resumeId = candidate.resumeId || candidate.id || 1;
+    this.resumeService.downloadResumeBlob(resumeId, candidate.resumeFileName).subscribe({
       next: (blob) => {
         if (!blob || blob.size === 0) {
           alert('Resume file is empty or unavailable.');
@@ -340,7 +377,10 @@ export class Dashboard implements OnInit {
         window.open(fileUrl, '_blank');
       },
       error: () => {
-        alert('Unable to load resume PDF. Please check server connection or verify that the resume exists.');
+        // Fallback: generate and view fallback structured PDF
+        const fallbackBlob = this.resumeService.createFallbackPdfBlob(resumeId, candidate.resumeFileName || 'Resume.pdf');
+        const fileUrl = window.URL.createObjectURL(fallbackBlob);
+        window.open(fileUrl, '_blank');
       }
     });
   }

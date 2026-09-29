@@ -1,13 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-candidate-login',
   standalone: true,
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, RouterModule],
   templateUrl: './candidate-login.html',
   styleUrl: './candidate-login.css'
 })
@@ -39,24 +39,20 @@ export class CandidateLogin implements OnInit {
     this.authService.login(this.email, this.password).subscribe({
       next: (res) => {
         this.isLoading = false;
-        if (res.token) {
+        if (res && res.token) {
           if (res.role === 'ADMIN') {
             this.router.navigate(['/dashboard']);
           } else {
             this.router.navigate(['/candidate-dashboard']);
           }
         } else {
-          this.errorMessage = res.message || 'Login failed.';
+          this.errorMessage = res?.message || 'Login failed.';
         }
       },
       error: (err) => {
-        const fallback = this.authService.candidateLogin(this.email, this.password);
         this.isLoading = false;
-        if (fallback.success) {
-          this.router.navigate(['/candidate-dashboard']);
-        } else {
-          this.errorMessage = err?.error?.message || fallback.message || 'Incorrect candidate email or password.';
-        }
+        const msg = err?.error?.message || err?.message || 'Incorrect candidate email or password. Please verify your credentials.';
+        this.errorMessage = msg;
       }
     });
   }

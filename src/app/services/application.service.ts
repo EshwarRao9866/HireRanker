@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
 export interface ApplicationResponse {
@@ -15,6 +16,14 @@ export interface ApplicationResponse {
   status: 'APPLIED' | 'SCREENING' | 'SHORTLISTED' | 'INTERVIEW' | 'REJECTED' | 'HIRED';
   appliedAt: string;
   updatedAt?: string;
+  phone?: string;
+  location?: string;
+  skills?: string;
+  experience?: string;
+  education?: string;
+  github?: string;
+  linkedin?: string;
+  matchScore?: number;
 }
 
 export interface ShortlistedCandidateResponse {
@@ -38,6 +47,7 @@ export interface ShortlistedCandidateResponse {
 export class ApplicationService {
   private readonly apiUrl = `${environment.apiUrl}/applications`;
   private readonly jobsApiUrl = `${environment.apiUrl}/jobs`;
+  private readonly platformId = inject(PLATFORM_ID);
 
   constructor(private readonly http: HttpClient) {}
 
@@ -91,10 +101,37 @@ export class ApplicationService {
   }
 
   /**
+   * Admin: Get all shortlisted candidates across all jobs (GET /api/applications/shortlisted)
+   */
+  getAllShortlisted(): Observable<ShortlistedCandidateResponse[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
+    return this.http.get<ShortlistedCandidateResponse[]>(`${this.apiUrl}/shortlisted`);
+  }
+
+  /**
    * Admin: Get all shortlisted candidates for a job (GET /api/jobs/{jobId}/shortlisted)
    */
   getShortlistedForJob(jobId: number): Observable<ShortlistedCandidateResponse[]> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return of([]);
+    }
     return this.http.get<ShortlistedCandidateResponse[]>(`${this.jobsApiUrl}/${jobId}/shortlisted`);
+  }
+
+  /**
+   * Admin: Safely clear all test applications and related interview/screening data (DELETE /api/applications/all)
+   */
+  clearAllApplications(): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/all`);
+  }
+
+  /**
+   * Admin: Delete single application (DELETE /api/applications/{id})
+   */
+  deleteApplication(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }
 
