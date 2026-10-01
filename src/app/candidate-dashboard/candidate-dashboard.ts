@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
@@ -26,6 +26,13 @@ export class CandidateDashboard implements OnInit {
   shortlistedJobs = 0;
   interviews = 0;
 
+  profileStrength = 0;
+  profileStrengthBadge = 'Incomplete';
+
+  isLoading = true;
+  isError = false;
+  errorMessage = '';
+
   activeApplication: {
     jobTitle: string;
     company: string;
@@ -47,7 +54,9 @@ export class CandidateDashboard implements OnInit {
 
   resumeStatus: {
     fileName: string;
-    screeningScore: number;
+    screeningScore?: number;
+    screeningStatus: string;
+    uploadedDate?: string;
   } | null = null;
 
   recommendedJobs: JobItem[] = [];
@@ -66,6 +75,7 @@ export class CandidateDashboard implements OnInit {
     private readonly jobService: JobService,
     private readonly notificationService: NotificationService,
     private readonly dashboardService: DashboardService,
+    private readonly cdr: ChangeDetectorRef,
     readonly aiChatService: AiChatService,
     private readonly assistantModeService: AssistantModeService
   ) {}
@@ -90,11 +100,26 @@ export class CandidateDashboard implements OnInit {
     }
 
     this.loadNotifications();
+    this.loadDashboardData();
+  }
 
-    // Fetch live candidate metrics from backend
+  loadDashboardData(): void {
+    this.isLoading = true;
+    this.isError = false;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+
+    // Fetch live candidate metrics from backend (strictly candidate-specific)
     this.dashboardService.getCandidateDashboard().subscribe({
       next: (data) => {
-        if (!data) return;
+        this.isLoading = false;
+        this.isError = false;
+        if (!data) {
+          this.cdr.markForCheck();
+          this.cdr.detectChanges();
+          return;
+        }
 
         if (data.candidateProfile) {
           if (data.candidateProfile.fullName) this.candidateName = data.candidateProfile.fullName;
@@ -104,7 +129,15 @@ export class CandidateDashboard implements OnInit {
         this.appliedJobs = typeof data.totalApplications === 'number' ? data.totalApplications : 0;
         this.screenedJobs = typeof data.screenedApplications === 'number' ? data.screenedApplications : 0;
         this.shortlistedJobs = typeof data.shortlistedApplications === 'number' ? data.shortlistedApplications : 0;
-        this.interviews = Array.isArray(data.upcomingInterviews) ? data.upcomingInterviews.length : 0;
+        this.interviews = typeof data.totalInterviews === 'number'
+          ? data.totalInterviews
+          : (Array.isArray(data.upcomingInterviews) ? data.upcomingInterviews.length : 0);
+
+        // Dynamic profile strength calculated from database
+        this.profileStrength = typeof data.profileCompletionPercentage === 'number'
+          ? data.profileCompletionPercentage
+          : (this.candidateName && this.candidateEmail ? 60 : 20);
+        this.profileStrengthBadge = data.profileStrengthBadge || (this.profileStrength >= 80 ? 'Profile Ready' : this.profileStrength >= 50 ? 'Good Progress' : 'Incomplete');
 
         // Populate active application tracker from latest real submission
         if (data.recentApplications && data.recentApplications.length > 0) {
@@ -149,15 +182,25 @@ export class CandidateDashboard implements OnInit {
 
         // Populate active resume status
         if (data.activeResumeFileName) {
+          let formattedDate: string | undefined = undefined;
+          if (data.activeResumeUploadedAt) {
+            try {
+              formattedDate = new Date(data.activeResumeUploadedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            } catch {
+              // ignore
+            }
+          }
           this.resumeStatus = {
-            fileName: data.activeResumeFileName,
-            screeningScore: data.activeResumeScore ? Math.round(data.activeResumeScore) : 0
+            fileName: data.activeResumeOriginalFileName || data.activeResumeFileName,
+            screeningScore: data.activeResumeScore ? Math.round(data.activeResumeScore) : undefined,
+            screeningStatus: data.activeResumeStatus || (data.activeResumeScore ? 'SCREENED' : 'UPLOADED'),
+            uploadedDate: formattedDate
           };
         } else {
           this.resumeStatus = null;
         }
 
-        // Populate recommended jobs
+        // Populate AI recommended jobs (excluding jobs already applied for)
         if (data.recommendedJobs && data.recommendedJobs.length > 0) {
           this.recommendedJobs = data.recommendedJobs.map((j) => ({
             id: Number(j.id || j.jobId),
@@ -178,16 +221,19 @@ export class CandidateDashboard implements OnInit {
         } else {
           this.recommendedJobs = [];
         }
+
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: (err) => {
-        console.warn('Backend candidate dashboard error:', err?.status);
-        this.appliedJobs = 0;
-        this.screenedJobs = 0;
-        this.shortlistedJobs = 0;
-        this.interviews = 0;
-        this.activeApplication = null;
-        this.upcomingInterview = null;
-        this.recommendedJobs = [];
+        console.error('Backend candidate dashboard error:', err);
+        this.isLoading = false;
+        this.isError = true;
+        this.errorMessage = err?.status === 401
+          ? 'Authentication expired. Please log in again to access candidate data.'
+          : 'Unable to connect to backend server. Please verify your connection.';
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -259,6 +305,10 @@ export class CandidateDashboard implements OnInit {
 
   openProfile(): void {
     this.router.navigate(['/my-profile']);
+  }
+
+  refreshDashboard(): void {
+    this.loadDashboardData();
   }
 
   logout(): void {

@@ -108,7 +108,13 @@ export interface CandidateDashboardData {
     matchScore?: number;
   }>;
   activeResumeFileName?: string;
+  activeResumeOriginalFileName?: string;
+  activeResumeUploadedAt?: string;
+  activeResumeStatus?: string;
   activeResumeScore?: number;
+  totalInterviews?: number;
+  profileCompletionPercentage?: number;
+  profileStrengthBadge?: string;
 }
 
 @Injectable({
@@ -120,7 +126,6 @@ export class DashboardService {
   private readonly http = inject(HttpClient);
 
   private readonly STORAGE_ADMIN_DASHBOARD_CACHE = 'hireRankerAdminDashboardCache';
-  private readonly STORAGE_CANDIDATE_DASHBOARD_CACHE = 'hireRankerCandidateDashboardCache';
 
   /**
    * Retrieves cached admin dashboard data from localStorage if available.
@@ -215,7 +220,7 @@ export class DashboardService {
 
   /**
    * Retrieves the candidate's personalized dashboard (GET /api/candidates/me/dashboard)
-   * Only makes network call on browser platform where candidate auth token is available.
+   * Strictly connects to MySQL backend without converting API errors into fake zeros.
    */
   getCandidateDashboard(): Observable<CandidateDashboardData> {
     if (!isPlatformBrowser(this.platformId)) {
@@ -235,6 +240,7 @@ export class DashboardService {
         totalResumes: 0,
         screenedApplications: 0,
         shortlistedApplications: 0,
+        totalInterviews: 0,
         upcomingInterviews: [],
         recentApplications: [],
         applicationStatuses: {},
@@ -242,51 +248,7 @@ export class DashboardService {
       });
     }
 
-    return this.http.get<CandidateDashboardData>(`${this.apiUrl}/candidates/me/dashboard`).pipe(
-      tap((data: CandidateDashboardData) => {
-        if (data && isPlatformBrowser(this.platformId)) {
-          try {
-            localStorage.setItem(this.STORAGE_CANDIDATE_DASHBOARD_CACHE, JSON.stringify(data));
-          } catch {
-            // ignore
-          }
-        }
-      }),
-      catchError((err) => {
-        console.warn('[DashboardService] getCandidateDashboard error, checking cache:', err);
-        if (isPlatformBrowser(this.platformId)) {
-          try {
-            const raw = localStorage.getItem(this.STORAGE_CANDIDATE_DASHBOARD_CACHE);
-            if (raw) {
-              return of(JSON.parse(raw));
-            }
-          } catch {
-            // ignore
-          }
-        }
-        return of({
-          candidateProfile: {
-            id: 0,
-            userId: 0,
-            email: '',
-            fullName: '',
-            phone: '',
-            location: '',
-            skills: '',
-            experience: '',
-            education: ''
-          },
-          totalApplications: 0,
-          totalResumes: 0,
-          screenedApplications: 0,
-          shortlistedApplications: 0,
-          upcomingInterviews: [],
-          recentApplications: [],
-          applicationStatuses: {},
-          recommendedJobs: []
-        });
-      })
-    );
+    return this.http.get<CandidateDashboardData>(`${this.apiUrl}/candidates/me/dashboard`);
   }
 }
 

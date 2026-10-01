@@ -182,10 +182,31 @@
           <h2>Welcome back, {{ candidateName }} 👋</h2>
           <p>Your resume has been indexed. Here is what is happening with your job matches today.</p>
         </div>
-        <button class="btn btn-find" (click)="openJobs()">
-          + Search Open Roles
-        </button>
+        <div class="banner-actions" style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn btn-outline" style="color: #fff; border-color: rgba(255,255,255,0.3); font-size: 13px; padding: 8px 14px;" (click)="refreshDashboard()" title="Refresh live database metrics">
+            ↻ Refresh
+          </button>
+          <button class="btn btn-find" (click)="openJobs()">
+            + Search Open Roles
+          </button>
+        </div>
       </section>
+
+      <!-- ERROR STATE BANNER -->
+      @if (isError) {
+        <div class="dashboard-error-banner" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; color: #fca5a5;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 20px;">⚠️</span>
+            <div>
+              <strong style="color: #f87171; display: block; font-size: 14px;">Error Loading Dashboard</strong>
+              <small style="color: #cbd5e1; font-size: 13px;">{{ errorMessage }}</small>
+            </div>
+          </div>
+          <button class="btn btn-outline" style="color: #f87171; border-color: rgba(248, 113, 113, 0.4); padding: 6px 14px; font-size: 12px;" (click)="refreshDashboard()">
+            ↻ Retry Connection
+          </button>
+        </div>
+      }
 
       <!-- STATS GRID -->
       <section class="stats-grid">
@@ -364,10 +385,14 @@
               <h3>Profile Strength</h3>
               <p>Completed profiles get 3.5x more screening visibility.</p>
             </div>
-            <span class="percentage-pill">Profile Ready</span>
+            <span class="percentage-pill"
+                  [style.background]="profileStrength >= 80 ? 'rgba(16, 185, 129, 0.15)' : (profileStrength >= 50 ? 'rgba(56, 189, 248, 0.15)' : 'rgba(239, 68, 68, 0.15)')"
+                  [style.color]="profileStrength >= 80 ? '#34d399' : (profileStrength >= 50 ? '#38bdf8' : '#f87171')">
+              {{ profileStrengthBadge }} ({{ profileStrength }}%)
+            </span>
           </div>
           <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" style="width: 100%;"></div>
+            <div class="progress-bar-fill" [style.width.%]="profileStrength"></div>
           </div>
           <button class="btn btn-outline" (click)="openProfile()">
             Update Profile & Skills →
@@ -380,7 +405,27 @@
             <h3>Resume Status</h3>
             @if (resumeStatus) {
               <p>{{ resumeStatus.fileName }}</p>
-              <small>AI Screening Score: <strong>{{ resumeStatus.screeningScore }}/100</strong></small>
+              @if (resumeStatus.screeningStatus === 'SCREENED' && resumeStatus.screeningScore !== null && resumeStatus.screeningScore !== undefined) {
+                <small>AI Screening Score: <strong>{{ resumeStatus.screeningScore }}/100</strong></small>
+                <div class="resume-meta-badge" style="font-size: 11px; margin-top: 4px; color: var(--text-muted);">
+                  <span style="color: #10b981; font-weight: 600;">✓ AI Screened</span>
+                  @if (resumeStatus.uploadedDate) {
+                    <span> • Uploaded: {{ resumeStatus.uploadedDate }}</span>
+                  }
+                </div>
+              } @else if (resumeStatus.screeningStatus === 'PROCESSING') {
+                <small style="color: #f59e0b; font-weight: 600;">⏳ AI Screening in progress...</small>
+                @if (resumeStatus.uploadedDate) {
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Uploaded: {{ resumeStatus.uploadedDate }}</div>
+                }
+              } @else if (resumeStatus.screeningStatus === 'FAILED') {
+                <small style="color: #ef4444; font-weight: 600;">✕ Screening analysis failed</small>
+              } @else {
+                <small style="color: var(--text-muted);">Uploaded (Pending AI Screening)</small>
+                @if (resumeStatus.uploadedDate) {
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Uploaded: {{ resumeStatus.uploadedDate }}</div>
+                }
+              }
             } @else {
               <p>No resume uploaded yet</p>
               <small style="color: var(--text-muted);">Upload a PDF resume to get screened</small>

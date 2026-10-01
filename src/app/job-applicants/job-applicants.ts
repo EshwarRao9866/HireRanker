@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -31,7 +31,8 @@ export class JobApplicants implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly jobService: JobService,
     private readonly applicationService: ApplicationService,
-    private readonly resumeService: ResumeService
+    private readonly resumeService: ResumeService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -39,7 +40,11 @@ export class JobApplicants implements OnInit {
     this.route.queryParams.subscribe(params => {
       if (params['jobId']) {
         this.selectedJobId = String(params['jobId']);
+      } else {
+        this.selectedJobId = 'All';
       }
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     });
 
     this.loadJobsList();
@@ -51,6 +56,8 @@ export class JobApplicants implements OnInit {
       next: (jobs) => {
         if (jobs && jobs.length > 0) {
           this.availableJobs = jobs.map(j => ({ id: j.id, title: j.title }));
+          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         }
       }
     });
@@ -61,6 +68,8 @@ export class JobApplicants implements OnInit {
       next: (backendApps) => {
         if (!backendApps || backendApps.length === 0) {
           this.applicants = [];
+          this.cdr.markForCheck();
+          this.cdr.detectChanges();
           return;
         }
 
@@ -80,6 +89,11 @@ export class JobApplicants implements OnInit {
             ? a.skills.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
             : ['Java', 'Spring Boot', 'SQL'];
 
+          const rawStatus = String(a.status || '').toUpperCase();
+          const status = rawStatus === 'SHORTLISTED' ? 'Shortlisted' :
+                         rawStatus === 'INTERVIEW' ? 'Interview Scheduled' :
+                         rawStatus === 'REJECTED' ? 'Rejected' : 'Under Review';
+
           return {
             id: a.id,
             jobId: a.jobId,
@@ -92,9 +106,7 @@ export class JobApplicants implements OnInit {
             experience: a.experience || '3+ yrs',
             educationScore: 85,
             resumeFileName: a.resumeFileName || 'Resume.pdf',
-            status: a.status === 'SHORTLISTED' ? 'Shortlisted' :
-                    a.status === 'INTERVIEW' ? 'Interview Scheduled' :
-                    a.status === 'REJECTED' ? 'Rejected' : 'Under Review',
+            status,
             phone: a.phone || '+91 98765 43210',
             location: a.location || 'Hyderabad, India',
             github: a.github,
@@ -104,9 +116,14 @@ export class JobApplicants implements OnInit {
             education: a.education || 'B.Tech in Computer Science & Engineering'
           };
         });
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err) => {
+        console.error('Failed to load applications from backend:', err);
         this.applicants = [];
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -161,19 +178,27 @@ export class JobApplicants implements OnInit {
   viewResume(applicant: ApplicantRecord): void {
     this.selectedProfileApplicant = null;
     this.selectedResumeApplicant = applicant;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   closeResumeModal(): void {
     this.selectedResumeApplicant = null;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   openCandidateProfile(applicant: ApplicantRecord): void {
     this.selectedResumeApplicant = null;
     this.selectedProfileApplicant = applicant;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   closeProfileModal(): void {
     this.selectedProfileApplicant = null;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   openResumeFromProfile(): void {
@@ -181,6 +206,8 @@ export class JobApplicants implements OnInit {
       const app = this.selectedProfileApplicant;
       this.selectedProfileApplicant = null;
       this.selectedResumeApplicant = app;
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }
   }
 
@@ -189,6 +216,8 @@ export class JobApplicants implements OnInit {
       const app = this.selectedResumeApplicant;
       this.selectedResumeApplicant = null;
       this.selectedProfileApplicant = app;
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }
   }
 
@@ -199,6 +228,8 @@ export class JobApplicants implements OnInit {
         applicant.status = 'Shortlisted';
         this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Shortlisted');
         this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         // Fallback: try updateApplicationStatus endpoint
@@ -207,11 +238,15 @@ export class JobApplicants implements OnInit {
             applicant.status = 'Shortlisted';
             this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Shortlisted');
             this.showToast(`⭐ ${applicant.name} has been shortlisted!`);
+            this.cdr.markForCheck();
+            this.cdr.detectChanges();
           },
           error: (innerErr) => {
             applicant.status = prevStatus;
             console.error('Failed to shortlist applicant on backend:', innerErr);
             this.showToast(`⚠️ Failed to update shortlist status on server.`);
+            this.cdr.markForCheck();
+            this.cdr.detectChanges();
           }
         });
       }
@@ -225,11 +260,15 @@ export class JobApplicants implements OnInit {
         applicant.status = 'Rejected';
         this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Rejected');
         this.showToast(`✕ ${applicant.name} application marked as rejected.`);
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         applicant.status = prevStatus;
         console.error('Failed to reject applicant on backend:', err);
         this.showToast(`⚠️ Failed to update rejection status on server.`);
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -241,11 +280,15 @@ export class JobApplicants implements OnInit {
         applicant.status = 'Interview Scheduled';
         this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Interview Scheduled');
         this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: () => {
         applicant.status = 'Interview Scheduled';
         this.jobService.updateApplicantStatus(applicant.id, applicant.email, applicant.job, 'Interview Scheduled');
         this.showToast(`🎤 Interview scheduled for ${applicant.name}!`);
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -289,9 +332,13 @@ export class JobApplicants implements OnInit {
 
   private showToast(msg: string): void {
     this.toastMessage = msg;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
     if (this.toastTimeout) clearTimeout(this.toastTimeout);
     this.toastTimeout = setTimeout(() => {
       this.toastMessage = '';
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }, 3000);
   }
 
