@@ -1,8 +1,18 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, map, catchError } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
+
+export interface JobApplicantOption {
+  candidateId: number;
+  candidateName: string;
+  candidateEmail?: string;
+  applicationId: number;
+  jobId: number;
+  jobTitle?: string;
+  status?: string;
+}
 
 export interface ApplicationResponse {
   id: number;
@@ -77,6 +87,36 @@ export class ApplicationService {
    */
   getApplicationsByJob(jobId: number): Observable<ApplicationResponse[]> {
     return this.http.get<ApplicationResponse[]>(`${this.apiUrl}/job/${jobId}`);
+  }
+
+  /**
+   * Get candidates who applied for a specific job (GET /api/applications/job/{jobId}/applicants)
+   */
+  getApplicantsByJob(jobId: number): Observable<JobApplicantOption[]> {
+    return this.http.get<JobApplicantOption[]>(`${this.apiUrl}/job/${jobId}/applicants`).pipe(
+      catchError(() => {
+        return this.getApplicationsByJob(jobId).pipe(
+          map(apps => {
+            const unique = new Map<number, JobApplicantOption>();
+            for (const a of apps) {
+              if (a.candidateId && !unique.has(a.candidateId)) {
+                unique.set(a.candidateId, {
+                  candidateId: a.candidateId,
+                  candidateName: a.candidateName || `Candidate #${a.candidateId}`,
+                  candidateEmail: a.candidateEmail,
+                  applicationId: a.id,
+                  jobId: a.jobId,
+                  jobTitle: a.jobTitle,
+                  status: a.status
+                });
+              }
+            }
+            return Array.from(unique.values());
+          }),
+          catchError(() => of([]))
+        );
+      })
+    );
   }
 
   /**

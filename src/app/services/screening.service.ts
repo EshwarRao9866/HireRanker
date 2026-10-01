@@ -6,6 +6,14 @@ import { environment } from '../../environments/environment';
 export interface ScreeningResultResponse {
   id: number;
   applicationId: number;
+  candidateId?: number;
+  candidateName?: string;
+  candidateEmail?: string;
+  jobId?: number;
+  jobTitle?: string;
+  resumeId?: number;
+  resumeFileName?: string;
+  status?: string;
   overallScore: number;
   skillsScore: number;
   experienceScore: number;
@@ -35,8 +43,26 @@ export class ScreeningService {
   constructor(private readonly http: HttpClient) {}
 
   /**
+   * Get all completed screening results from MySQL (GET /api/screenings)
+   */
+  getAllScreenings(): Observable<ScreeningResultResponse[]> {
+    return this.http.get<ScreeningResultResponse[]>(this.apiUrl).pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  /**
+   * Get screening results for a specific job (GET /api/jobs/{jobId}/screenings)
+   */
+  getScreeningsByJob(jobId: number): Observable<ScreeningResultResponse[]> {
+    return this.http.get<ScreeningResultResponse[]>(`${environment.apiUrl}/jobs/${jobId}/screenings`).pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  /**
    * Trigger AI screening for an application (POST /api/screenings/{applicationId}?force=true)
-   * Enforces a 15-second timeout to prevent indefinite pending states.
+   * Enforces a 30-second timeout to prevent indefinite pending states.
    */
   screenResume(applicationId: number, force: boolean = true): Observable<ScreeningResultResponse> {
     return this.http.post<ScreeningResultResponse>(`${this.apiUrl}/${applicationId}?force=${force}`, {}).pipe(

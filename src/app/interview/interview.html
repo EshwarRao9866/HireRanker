@@ -65,23 +65,50 @@
 
     <div class="content-scrollable">
 
+      <!-- INTERVIEW FILTER TABS -->
+      <div class="tabs-row">
+        <button class="tab-btn" [class.active]="activeFilter === 'UPCOMING'" (click)="setFilter('UPCOMING')">
+          📅 Upcoming ({{ upcomingInterviews.length }})
+        </button>
+        <button class="tab-btn" [class.active]="activeFilter === 'COMPLETED'" (click)="setFilter('COMPLETED')">
+          ✓ Completed ({{ completedInterviews.length }})
+        </button>
+        <button class="tab-btn" [class.active]="activeFilter === 'CANCELLED'" (click)="setFilter('CANCELLED')">
+          ✕ Cancelled ({{ cancelledInterviews.length }})
+        </button>
+        <button class="tab-btn" [class.active]="activeFilter === 'ALL'" (click)="setFilter('ALL')">
+          All ({{ interviews.length }})
+        </button>
+      </div>
+
       <!-- INTERVIEWS LIST -->
       @if (isLoadingInterviews) {
         <div class="interviews-loading-state">
           <div class="spinner-ring"></div>
           <p>Loading scheduled assessments...</p>
         </div>
-      } @else if (interviews.length === 0) {
+      } @else if (filteredInterviews.length === 0) {
         <div class="empty-interviews-card">
           <div class="empty-icon">📅</div>
-          <h3>No Scheduled Assessments Yet</h3>
-          <p>When recruiters review your job applications and schedule an AI assessment or technical interview, it will appear right here.</p>
+          @if (activeFilter === 'UPCOMING') {
+            <h3>No Upcoming Interviews</h3>
+            <p>You currently have no scheduled upcoming assessments. When recruiters schedule an interview for your applications, it will appear here.</p>
+          } @else if (activeFilter === 'COMPLETED') {
+            <h3>No Completed Interviews</h3>
+            <p>You have not completed any AI assessments or technical rounds yet.</p>
+          } @else if (activeFilter === 'CANCELLED') {
+            <h3>No Cancelled Interviews</h3>
+            <p>None of your scheduled interviews have been cancelled.</p>
+          } @else {
+            <h3>No Scheduled Assessments Yet</h3>
+            <p>When recruiters review your job applications and schedule an AI assessment or technical interview, it will appear right here.</p>
+          }
           <button class="btn btn-find-jobs" (click)="openJobs()">Explore Available Jobs</button>
         </div>
       } @else {
         <div class="interviews-grid">
-          @for (interview of interviews; track (interview.id + '_' + $index)) {
-            <div class="interview-3d-card" [class.completed]="interview.status === 'Completed'">
+          @for (interview of filteredInterviews; track (interview.id + '_' + $index)) {
+            <div class="interview-3d-card" [class.completed]="interview.status === 'Completed'" [class.cancelled]="interview.status === 'Cancelled'">
               
               <div class="card-top-row">
                 <div class="interview-badge">{{ interview.company.charAt(0) }}</div>
@@ -109,8 +136,10 @@
                   <span class="label">Status</span>
                   @if (interview.status === 'Upcoming') {
                     <span class="status-upcoming">● Ready to Join</span>
-                  } @else {
+                  } @else if (interview.status === 'Completed') {
                     <span class="status-completed">✓ Finished</span>
+                  } @else {
+                    <span class="status-cancelled">✕ Cancelled</span>
                   }
                 </div>
               </div>
@@ -120,10 +149,12 @@
                   <button class="btn btn-join-interview" (click)="joinInterview(interview)">
                     🚀 Join Assessment Room
                   </button>
-                } @else {
+                } @else if (interview.status === 'Completed') {
                   <button class="btn btn-view-feedback" (click)="viewResults(interview)">
                     📊 View Scorecard & Feedback
                   </button>
+                } @else {
+                  <span class="cancelled-badge">Cancelled by Recruiter</span>
                 }
               </div>
 

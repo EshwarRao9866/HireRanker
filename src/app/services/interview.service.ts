@@ -18,8 +18,10 @@ export interface InterviewResponse {
   applicationId: number;
   candidateId: number;
   candidateName: string;
+  candidateEmail?: string;
   jobId?: number;
   jobTitle: string;
+  companyName?: string;
   scheduledDateTime: string;
   type: string;
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
@@ -95,13 +97,14 @@ export interface LiveInterviewResult {
 export interface ScheduledInterview {
   id: number;
   candidate: string;
+  candidateEmail?: string;
   job: string;
   date: string;
   dateKey: string;
   time: string;
   interviewer: string;
-  type: 'AI Assessment' | 'Live Technical' | 'HR Round';
-  status: 'Scheduled' | 'Completed' | 'In Progress' | 'Cancelled';
+  type: 'AI Assessment' | 'Live Technical' | 'HR Round' | string;
+  status: 'Scheduled' | 'Completed' | 'In Progress' | 'Cancelled' | string;
   applicationId?: number;
   meetingLink?: string;
   notes?: string;
@@ -132,13 +135,37 @@ export class InterviewService {
   }
 
   /**
+   * Candidate: Get interviews for currently authenticated candidate (GET /api/interviews/my-interviews)
+   */
+  getMyInterviews(): Observable<InterviewResponse[]> {
+    return this.http.get<InterviewResponse[]>(`${this.apiUrl}/my-interviews`).pipe(
+      catchError((err) => {
+        console.warn('Failed to load candidate interviews from backend:', err);
+        return of([]);
+      })
+    );
+  }
+
+  /**
    * Refreshes interviews from Spring Boot backend MySQL database.
+   * Dynamically calls /api/interviews/my-interviews for candidate users and /api/interviews for admin users.
    */
   refreshInterviewsFromBackend(): Observable<ScheduledInterview[]> {
     if (!isPlatformBrowser(this.platformId)) {
       return of([]);
     }
-    return this.http.get<InterviewResponse[]>(this.apiUrl).pipe(
+
+    let userRole = 'CANDIDATE';
+    try {
+      const stored = localStorage.getItem('hireRankerUser');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u?.role) userRole = u.role;
+      }
+    } catch {}
+
+    const endpoint = userRole === 'ADMIN' ? this.apiUrl : `${this.apiUrl}/my-interviews`;
+    return this.http.get<InterviewResponse[]>(endpoint).pipe(
       map(list => {
         if (!list || !Array.isArray(list)) {
           this.interviewsSubject.next([]);
@@ -153,6 +180,7 @@ export class InterviewService {
           return {
             id: item.id,
             candidate: item.candidateName || `Candidate #${item.candidateId}`,
+            candidateEmail: item.candidateEmail || '',
             job: item.jobTitle || 'Position',
             date: dateStr,
             dateKey: dateKey,
@@ -242,7 +270,6 @@ export class InterviewService {
    * Admin: Reschedule interview (PUT /api/interviews/{id}/reschedule)
    */
   rescheduleInterview(id: number, scheduledDateTime: string): Observable<InterviewResponse> {
-    const res$ = this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/reschedule`, { scheduledDateTime });
     const parsedDate = new Date(scheduledDateTime);
     if (!isNaN(parsedDate.getTime())) {
       const dateKey = this.formatDateKey(parsedDate);
@@ -250,7 +277,12 @@ export class InterviewService {
       const timeStr = parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       this.rescheduleScheduledInterview(id, dateStr, timeStr, dateKey);
     }
-    return res$;
+    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/reschedule`, { scheduledDateTime }).pipe(
+      map(res => {
+        this.refreshInterviewsFromBackend().subscribe();
+        return res;
+      })
+    );
   }
 
   /**
@@ -258,7 +290,12 @@ export class InterviewService {
    */
   cancelInterview(id: number): Observable<InterviewResponse> {
     this.cancelScheduledInterview(id);
-    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/cancel`, {});
+    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/cancel`, {}).pipe(
+      map(res => {
+        this.refreshInterviewsFromBackend().subscribe();
+        return res;
+      })
+    );
   }
 
   /**

@@ -8,7 +8,20 @@
     </div>
   </header>
 
-  @if (candidates.length === 0) {
+  <!-- TOAST NOTIFICATION -->
+  @if (toastMessage) {
+    <div style="position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #ffffff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); font-size: 13.5px; z-index: 1000; display: flex; align-items: center; gap: 8px;">
+      <span>{{ toastMessage }}</span>
+    </div>
+  }
+
+  @if (isLoading) {
+    <div style="text-align: center; padding: 60px 24px; background: white; border-radius: 12px; border: 1px dashed #cbd5e1; margin-top: 24px;">
+      <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+      <h3 style="margin-bottom: 8px; color: #1e293b;">Loading shortlisted talent pool...</h3>
+      <p style="color: #64748b; margin: 0;">Retrieving real-time shortlisted records from database.</p>
+    </div>
+  } @else if (candidates.length === 0) {
     <div style="text-align: center; padding: 60px 24px; background: white; border-radius: 12px; border: 1px dashed #cbd5e1; margin-top: 24px;">
       <div style="font-size: 40px; margin-bottom: 12px;">📋</div>
       <h3 style="margin-bottom: 8px; color: #1e293b;">No shortlisted candidates yet</h3>
@@ -17,14 +30,14 @@
   } @else {
     <!-- CANDIDATE CARDS GRID -->
     <div class="shortlisted-grid">
-      @for (c of candidates; track (c.id + '_' + $index)) {
+      @for (c of candidates; track (c.applicationId + '_' + $index)) {
         <div class="candidate-3d-card">
           
           <div class="card-head-row">
             <div class="avatar">{{ c.name.charAt(0) }}</div>
             <div class="cand-meta">
               <h3>{{ c.name }}</h3>
-              <p class="role-text">{{ c.appliedRole }}</p>
+              <p class="role-text">{{ c.appliedRole }} <small style="color: #64748b; font-weight: normal;">• {{ c.companyName }}</small></p>
               <small class="email-text">✉ {{ c.email }}</small>
             </div>
             <div class="score-badge">
@@ -35,7 +48,14 @@
 
           <div class="info-row">
             <span>💼 {{ c.experience }}</span>
+            <span>📅 Shortlisted: {{ c.shortlistedDate }}</span>
+          </div>
+
+          <div class="info-row" style="margin-top: -6px;">
             <span>📄 {{ c.resumeFileName }}</span>
+            @if (c.phone) {
+              <span>📞 {{ c.phone }}</span>
+            }
           </div>
 
           <div class="skills-chips">
@@ -54,21 +74,69 @@
           </div>
 
           <div class="card-action-buttons">
-            <button class="btn btn-contact" (click)="contactCandidate(c)">
-              💬 Message
+            <button class="btn btn-contact" (click)="viewProfile(c)" title="View Candidate Profile">
+              👁️ Profile
+            </button>
+
+            <button class="btn btn-contact" (click)="downloadResume(c)" title="Download / View Original Resume PDF">
+              📄 Resume
             </button>
 
             <button class="btn btn-schedule" (click)="scheduleInterview(c)">
               📅 Schedule Interview
             </button>
 
-            <button class="btn-remove" (click)="removeFromShortlist(c.id)" title="Remove from shortlist">
+            <button class="btn-remove" (click)="removeFromShortlist(c)" title="Remove from shortlist">
               ×
             </button>
           </div>
 
         </div>
       }
+    </div>
+  }
+
+  <!-- PROFILE MODAL -->
+  @if (selectedProfileCandidate) {
+    <div style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 20px;">
+      <div style="background: #ffffff; border-radius: 16px; max-width: 520px; width: 100%; box-shadow: 0 20px 30px rgba(0,0,0,0.25); overflow: hidden;">
+        <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 18px; color: #0f172a; font-weight: 700;">Candidate Profile</h3>
+          <button (click)="closeProfileModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8;">✕</button>
+        </div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div class="avatar" style="width: 52px; height: 52px; font-size: 22px;">{{ selectedProfileCandidate.name.charAt(0) }}</div>
+            <div>
+              <h4 style="margin: 0; font-size: 17px; color: #0f172a;">{{ selectedProfileCandidate.name }}</h4>
+              <p style="margin: 2px 0 0 0; color: #4f46e5; font-size: 13px; font-weight: 600;">{{ selectedProfileCandidate.appliedRole }}</p>
+              <small style="color: #64748b;">{{ selectedProfileCandidate.companyName }}</small>
+            </div>
+          </div>
+          <div style="background: #f8fafc; padding: 14px; border-radius: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>Email:</strong> {{ selectedProfileCandidate.email }}</div>
+            @if (selectedProfileCandidate.phone) {
+              <div><strong>Phone:</strong> {{ selectedProfileCandidate.phone }}</div>
+            }
+            <div><strong>AI ATS Match:</strong> <span style="color: #166534; font-weight: 700;">{{ selectedProfileCandidate.matchScore }}%</span></div>
+            <div><strong>Experience:</strong> {{ selectedProfileCandidate.experience }}</div>
+            <div><strong>Original Resume:</strong> {{ selectedProfileCandidate.resumeFileName }}</div>
+            <div><strong>Status:</strong> {{ selectedProfileCandidate.status }}</div>
+          </div>
+          <div>
+            <strong style="font-size: 13px; display: block; margin-bottom: 6px;">Skills:</strong>
+            <div class="skills-chips">
+              @for (skill of selectedProfileCandidate.skills; track skill) {
+                <span class="skill-tag">{{ skill }}</span>
+              }
+            </div>
+          </div>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn btn-contact" (click)="downloadResume(selectedProfileCandidate)">📄 Download Resume</button>
+          <button class="btn btn-schedule" (click)="scheduleInterview(selectedProfileCandidate); closeProfileModal();">📅 Schedule Interview</button>
+        </div>
+      </div>
     </div>
   }
 

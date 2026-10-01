@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -9,12 +9,14 @@ import { AiChatService } from '../services/ai-chat.service';
 import { AssistantModeService } from '../services/assistant-mode.service';
 import { DashboardService } from '../services/dashboard.service';
 import { ResumeService } from '../services/resume.service';
+import { ApplicationService } from '../services/application.service';
 
 interface CandidateRow {
   id: number;
   name: string;
   email: string;
   appliedRole: string;
+  jobId?: number;
   matchScore: number;
   skills: number;
   experience: string;
@@ -22,7 +24,7 @@ interface CandidateRow {
   resumeFileName: string;
   resumeId?: number;
   applicationId?: number;
-  status: 'Shortlisted' | 'Under Review' | 'Interview Scheduled' | 'Rejected';
+  status: 'Shortlisted' | 'Under Review' | 'Interview Scheduled' | 'Rejected' | string;
 }
 
 interface SkillStat {
@@ -89,6 +91,12 @@ export class Dashboard implements OnInit {
   skillsConicGradient = '#e2e8f0 0% 100%';
   statusConicGradient = '#e2e8f0 0% 100%';
 
+  selectedLeaderboardJobId: number = 0; // 0 = All Jobs (Global Leaderboard)
+  availableJobs: Array<{ id: number; title: string }> = [];
+  selectedProfileCandidate: CandidateRow | null = null;
+  toastMessage = '';
+  private toastTimeout: any;
+
   constructor(
     private readonly router: Router,
     private readonly authService: AuthService,
@@ -97,7 +105,9 @@ export class Dashboard implements OnInit {
     readonly aiChatService: AiChatService,
     private readonly assistantModeService: AssistantModeService,
     private readonly dashboardService: DashboardService,
-    private readonly resumeService: ResumeService
+    private readonly resumeService: ResumeService,
+    private readonly applicationService: ApplicationService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   openAiAssistant(): void {
@@ -118,6 +128,17 @@ export class Dashboard implements OnInit {
     }
 
     this.loadNotifications();
+
+    // Preload available jobs for the dynamic Leaderboard Job filter
+    this.jobService.fetchJobsFromBackend().subscribe({
+      next: (jobs) => {
+        if (jobs && jobs.length > 0) {
+          this.availableJobs = jobs.map(j => ({ id: j.id, title: j.title }));
+          this.cdr.detectChanges();
+        }
+      },
+      error: () => {}
+    });
 
     // Immediately restore cached dashboard data so the UI displays instantly on page refresh
     const cached = this.dashboardService.getCachedAdminDashboard();
@@ -176,6 +197,7 @@ export class Dashboard implements OnInit {
         name: c.candidateName,
         email: c.email,
         appliedRole: c.appliedRole,
+        jobId: c.jobId,
         matchScore: Math.round(c.matchScore),
         skills: Math.round(c.skillsScore),
         experience: `${c.experienceScore || 3} yrs`,
@@ -187,6 +209,8 @@ export class Dashboard implements OnInit {
                 c.applicationStatus === 'INTERVIEW' ? 'Interview Scheduled' :
                 c.applicationStatus === 'REJECTED' ? 'Rejected' : 'Under Review'
       }));
+    } else {
+      this.candidates = [];
     }
 
     if (data.applicantsOverview) {
@@ -354,7 +378,19 @@ export class Dashboard implements OnInit {
   }
 
   get sortedCandidates(): CandidateRow[] {
-    return [...this.candidates].sort((a, b) => b.matchScore - a.matchScore);
+    const list = this.selectedLeaderboardJobId === 0
+      ? this.candidates
+      : this.candidates.filter(c => c.jobId === this.selectedLeaderboardJobId);
+
+    return [...list].sort((a, b) => {
+      const scoreDiff = b.matchScore - a.matchScore;
+      if (scoreDiff !== 0) return scoreDiff;
+      const skillsDiff = b.skills - a.skills;
+      if (skillsDiff !== 0) return skillsDiff;
+      const eduDiff = b.education - a.education;
+      if (eduDiff !== 0) return eduDiff;
+      return (a.applicationId || 0) - (b.applicationId || 0);
+    });
   }
 
   get topThreeCandidates(): CandidateRow[] {
@@ -376,20 +412,86 @@ export class Dashboard implements OnInit {
     });
   }
 
+  getSelectedJobTitle(): string {
+    if (this.selectedLeaderboardJobId === 0) return 'All Job Positions';
+    const found = this.availableJobs.find(j => j.id === this.selectedLeaderboardJobId);
+    return found ? found.title : 'Selected Job';
+  }
+
+  onLeaderboardJobChange(jobId: any): void {
+    this.selectedLeaderboardJobId = Number(jobId);
+    this.cdr.detectChanges();
+  }
+
   setCandidateTab(tab: 'all' | 'topListed'): void {
     this.selectedCandidateTab = tab;
   }
 
   shortlistCandidate(candidate: CandidateRow): void {
-    candidate.status = 'Shortlisted';
+    if (!candidate.applicationId) {
+      candidate.status = 'Shortlisted';
+      return;
+    }
+
+    this.applicationService.shortlistApplication(candidate.applicationId).subscribe({
+      next: () => {
+        candidate.status = 'Shortlisted';
+        this.stats.shortlisted++;
+        this.showToast(`⭐ ${candidate.name} has been successfully shortlisted in MySQL!`);
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.warn('Backend shortlist notification:', err);
+        candidate.status = 'Shortlisted';
+        this.showToast(`⭐ ${candidate.name} marked as shortlisted.`);
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   scheduleInterview(candidate: CandidateRow): void {
     candidate.status = 'Interview Scheduled';
-    this.router.navigate(['/interview-scheduler']);
+    this.router.navigate(['/interview-scheduler'], {
+      queryParams: {
+        candidateId: candidate.id,
+        applicationId: candidate.applicationId,
+        candidateName: candidate.name,
+        jobId: candidate.jobId
+      }
+    });
+  }
+
+  viewProfile(candidate: CandidateRow): void {
+    this.selectedProfileCandidate = candidate;
+    this.cdr.detectChanges();
+  }
+
+  closeProfileModal(): void {
+    this.selectedProfileCandidate = null;
+    this.cdr.detectChanges();
   }
 
   viewResume(candidate: CandidateRow): void {
+    if (candidate.applicationId) {
+      this.applicationService.getApplicationResumeFile(candidate.applicationId).subscribe({
+        next: (blob) => {
+          if (!blob || blob.size === 0) {
+            alert('Resume file is empty or unavailable.');
+            return;
+          }
+          const fileUrl = window.URL.createObjectURL(blob);
+          window.open(fileUrl, '_blank');
+        },
+        error: () => {
+          this.fallbackResumeDownload(candidate);
+        }
+      });
+    } else {
+      this.fallbackResumeDownload(candidate);
+    }
+  }
+
+  private fallbackResumeDownload(candidate: CandidateRow): void {
     const resumeId = candidate.resumeId || candidate.id || 1;
     this.resumeService.downloadResumeBlob(resumeId, candidate.resumeFileName).subscribe({
       next: (blob) => {
@@ -401,12 +503,21 @@ export class Dashboard implements OnInit {
         window.open(fileUrl, '_blank');
       },
       error: () => {
-        // Fallback: generate and view fallback structured PDF
         const fallbackBlob = this.resumeService.createFallbackPdfBlob(resumeId, candidate.resumeFileName || 'Resume.pdf');
         const fileUrl = window.URL.createObjectURL(fallbackBlob);
         window.open(fileUrl, '_blank');
       }
     });
+  }
+
+  showToast(msg: string): void {
+    this.toastMessage = msg;
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
+    this.toastTimeout = setTimeout(() => {
+      this.toastMessage = '';
+      this.cdr.detectChanges();
+    }, 4000);
+    this.cdr.detectChanges();
   }
 
   createJob(): void {

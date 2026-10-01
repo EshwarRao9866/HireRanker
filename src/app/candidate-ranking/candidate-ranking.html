@@ -1,18 +1,35 @@
 <div class="page-container">
 
-  <header class="page-header">
+  <header class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
     <div>
       <button class="back-link-btn" (click)="goBack()">← Back to Dashboard</button>
       <h1>AI Candidate Ranking Leaderboard</h1>
       <p>Candidates sorted by comprehensive weighted AI match scores across technical skill sets and experience.</p>
     </div>
+
+    <!-- JOB FILTER DROPDOWN -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <label style="font-size: 13.5px; font-weight: 600; color: #1e293b; white-space: nowrap;">Filter by Job:</label>
+      <select [ngModel]="selectedJobId" (ngModelChange)="onJobFilterChange($event)" style="padding: 9px 14px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13.5px; background: #ffffff; min-width: 240px; font-weight: 500;">
+        <option [value]="0">All Jobs (Global Ranking)</option>
+        @for (job of availableJobs; track job.id) {
+          <option [value]="job.id">{{ job.title }}</option>
+        }
+      </select>
+    </div>
   </header>
 
-  @if (candidates.length === 0) {
+  @if (isLoading) {
+    <div class="content-card" style="text-align: center; padding: 48px 24px;">
+      <div style="font-size: 36px; margin-bottom: 12px;">⏳</div>
+      <h3 style="margin-bottom: 8px; color: #1e293b;">Calculating real-time candidate rankings...</h3>
+      <p style="color: #64748b; margin: 0;">Retrieving actual screening and evaluation scores from database.</p>
+    </div>
+  } @else if (candidates.length === 0) {
     <div class="content-card" style="text-align: center; padding: 48px 24px;">
       <div style="font-size: 40px; margin-bottom: 12px;">🏆</div>
-      <h3 style="margin-bottom: 8px; color: #1e293b;">No candidates have applied for this job yet</h3>
-      <p style="color: #64748b; margin: 0;">Rankings will appear dynamically once candidates apply and undergo screening.</p>
+      <h3 style="margin-bottom: 8px; color: #1e293b;">No candidates have undergone screening for this selection</h3>
+      <p style="color: #64748b; margin: 0;">Rankings will appear dynamically once candidates apply and complete AI resume screening.</p>
     </div>
   } @else {
     <!-- TOP 3 PODIUM ROW (Displayed when at least 3 candidates exist) -->
@@ -24,6 +41,7 @@
           <div class="podium-avatar">{{ candidates[1].name.charAt(0) }}</div>
           <h3>{{ candidates[1].name }}</h3>
           <p>{{ candidates[1].role }}</p>
+          <small style="color: #64748b; display: block; margin-top: -4px; margin-bottom: 6px; font-size: 11.5px;">{{ candidates[1].email }}</small>
           <div class="podium-score">{{ candidates[1].overallScore }}%</div>
           <small>Skills: {{ candidates[1].skillsMatch }}% • Exp: {{ candidates[1].experience }}</small>
         </div>
@@ -34,6 +52,7 @@
           <div class="podium-avatar gold-avatar">{{ candidates[0].name.charAt(0) }}</div>
           <h3>{{ candidates[0].name }}</h3>
           <p>{{ candidates[0].role }}</p>
+          <small style="color: #64748b; display: block; margin-top: -4px; margin-bottom: 6px; font-size: 11.5px;">{{ candidates[0].email }}</small>
           <div class="podium-score gold-score">{{ candidates[0].overallScore }}%</div>
           <small>Skills: {{ candidates[0].skillsMatch }}% • Exp: {{ candidates[0].experience }}</small>
         </div>
@@ -44,6 +63,7 @@
           <div class="podium-avatar">{{ candidates[2].name.charAt(0) }}</div>
           <h3>{{ candidates[2].name }}</h3>
           <p>{{ candidates[2].role }}</p>
+          <small style="color: #64748b; display: block; margin-top: -4px; margin-bottom: 6px; font-size: 11.5px;">{{ candidates[2].email }}</small>
           <div class="podium-score">{{ candidates[2].overallScore }}%</div>
           <small>Skills: {{ candidates[2].skillsMatch }}% • Exp: {{ candidates[2].experience }}</small>
         </div>
@@ -53,8 +73,8 @@
     <!-- COMPLETE RANKINGS TABLE -->
     <div class="content-card">
       <div class="card-head">
-        <h3>Full Candidate Rankings Roster</h3>
-        <small>Calculated based on active evaluation criteria weights</small>
+        <h3>Full Candidate Rankings Roster ({{ candidates.length }} Screened Candidates)</h3>
+        <small>Ranked dynamically by MySQL ATS composite score</small>
       </div>
 
       <div class="table-wrap">
@@ -73,7 +93,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (c of candidates; track (c.name + '_' + $index)) {
+            @for (c of candidates; track (c.applicationId + '_' + $index)) {
               <tr>
                 <td>
                   <div class="rank-indicator" [class.gold-rank]="c.rank === 1" [class.silver-rank]="c.rank === 2" [class.bronze-rank]="c.rank === 3">
@@ -86,7 +106,8 @@
                 <td>
                   <div class="cand-info">
                     <strong>{{ c.name }}</strong>
-                    <small>{{ c.role }}</small>
+                    <small style="color: #4f46e5; font-weight: 500;">{{ c.role }}</small>
+                    <small style="color: #64748b; font-size: 11px;">✉ {{ c.email }}</small>
                   </div>
                 </td>
                 <td>
@@ -115,7 +136,7 @@
                 <td>
                   <div class="action-btns">
                     <button class="btn-sm btn-primary-sm" (click)="scheduleInterview(c)">📅 Schedule</button>
-                    <button class="btn-sm btn-outline-sm" (click)="viewProfile(c)">👁️ View</button>
+                    <button class="btn-sm btn-outline-sm" (click)="viewProfile(c)">👁️ Profile</button>
                   </div>
                 </td>
               </tr>
@@ -125,4 +146,43 @@
       </div>
     </div>
   }
+
+  <!-- PROFILE MODAL -->
+  @if (selectedProfileCandidate) {
+    <div style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 20px;">
+      <div style="background: #ffffff; border-radius: 16px; max-width: 500px; width: 100%; box-shadow: 0 20px 30px rgba(0,0,0,0.25); overflow: hidden;">
+        <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 18px; color: #0f172a; font-weight: 700;">Candidate Evaluation Profile</h3>
+          <button (click)="closeProfileModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8;">✕</button>
+        </div>
+        <div style="padding: 24px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div class="rank-indicator gold-rank" style="font-size: 16px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+              #{{ selectedProfileCandidate.rank }}
+            </div>
+            <div>
+              <h4 style="margin: 0; font-size: 17px; color: #0f172a;">{{ selectedProfileCandidate.name }}</h4>
+              <p style="margin: 2px 0 0 0; color: #4f46e5; font-size: 13px; font-weight: 600;">{{ selectedProfileCandidate.role }}</p>
+              <small style="color: #64748b;">✉ {{ selectedProfileCandidate.email }}</small>
+            </div>
+          </div>
+          <div style="background: #f8fafc; padding: 14px; border-radius: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+            <div><strong>ATS Overall Score:</strong> <span style="color: #166534; font-weight: 700;">{{ selectedProfileCandidate.overallScore }}%</span></div>
+            <div><strong>Skills Match:</strong> {{ selectedProfileCandidate.skillsMatch }}%</div>
+            <div><strong>Experience Relevance:</strong> {{ selectedProfileCandidate.experience }}</div>
+            <div><strong>Education Score:</strong> {{ selectedProfileCandidate.education }}%</div>
+            <div><strong>Application Status:</strong> {{ selectedProfileCandidate.status }}</div>
+            @if (selectedProfileCandidate.resumeFileName) {
+              <div><strong>Original Resume:</strong> {{ selectedProfileCandidate.resumeFileName }}</div>
+            }
+          </div>
+        </div>
+        <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn-sm btn-outline-sm" (click)="closeProfileModal()">Close</button>
+          <button class="btn-sm btn-primary-sm" (click)="scheduleInterview(selectedProfileCandidate); closeProfileModal();">📅 Schedule Interview</button>
+        </div>
+      </div>
+    </div>
+  }
+
 </div>

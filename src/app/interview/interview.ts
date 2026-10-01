@@ -15,9 +15,13 @@ interface CandidateInterview {
   time: string;
   duration: string;
   type: 'AI Assessment' | 'Live Technical' | 'HR Round';
-  status: 'Upcoming' | 'Completed' | 'Pending Review';
+  status: 'Upcoming' | 'Completed' | 'Cancelled' | 'Pending Review';
+  rawStatus?: string;
   score?: number;
   interviewer: string;
+  meetingLink?: string;
+  notes?: string;
+  applicationId?: number;
 }
 
 @Component({
@@ -33,6 +37,30 @@ export class Interview implements OnInit, OnDestroy {
 
   interviews: CandidateInterview[] = [];
   isLoadingInterviews = true;
+  activeFilter: 'UPCOMING' | 'COMPLETED' | 'CANCELLED' | 'ALL' = 'UPCOMING';
+
+  get upcomingInterviews(): CandidateInterview[] {
+    return this.interviews.filter(iv => iv.status === 'Upcoming');
+  }
+
+  get completedInterviews(): CandidateInterview[] {
+    return this.interviews.filter(iv => iv.status === 'Completed');
+  }
+
+  get cancelledInterviews(): CandidateInterview[] {
+    return this.interviews.filter(iv => iv.status === 'Cancelled');
+  }
+
+  get filteredInterviews(): CandidateInterview[] {
+    if (this.activeFilter === 'UPCOMING') return this.upcomingInterviews;
+    if (this.activeFilter === 'COMPLETED') return this.completedInterviews;
+    if (this.activeFilter === 'CANCELLED') return this.cancelledInterviews;
+    return this.interviews;
+  }
+
+  setFilter(filter: 'UPCOMING' | 'COMPLETED' | 'CANCELLED' | 'ALL'): void {
+    this.activeFilter = filter;
+  }
 
   selectedInterview: CandidateInterview | null = null;
   showPreInterviewModal = false;
@@ -128,56 +156,70 @@ export class Interview implements OnInit, OnDestroy {
   loadInterviews(): void {
     this.isLoadingInterviews = true;
 
-    // 1. Subscribe to shared reactive interviews$ state (Single Source of Truth with Admin Scheduler)
-    this.interviewsSub = this.interviewService.interviews$.subscribe((allScheduled) => {
-      const currentName = this.authService.currentUser()?.fullName || 'Eshwar Rao';
-      const candFirst = currentName.split(' ')[0].toLowerCase();
-
-      // Show active interviews matching the candidate name (excluding Cancelled)
-      const validScheduled = (allScheduled || []).filter(iv => iv && iv.status !== 'Cancelled');
-      const matched = validScheduled.filter((iv) => {
-        if (!iv.candidate) return true;
-        const cName = iv.candidate.toLowerCase();
-        return cName.includes(candFirst) || candFirst.includes(cName.split(' ')[0]);
-      });
-
-      const listToMap = matched.length > 0 ? matched : validScheduled;
-      this.interviews = listToMap.map((iv) => this.mapScheduledInterview(iv));
-
-      // Dismiss loading spinner immediately as local/shared state is available
-      this.isLoadingInterviews = false;
-    });
-
-    // 2. Fetch live data from backend dashboard in parallel with timeout & finalize
-    this.dashboardService.getCandidateDashboard().pipe(
-      timeout(4000),
-      catchError(() => of(null)),
+    // 1. Fetch real-time interviews directly from the candidate-specific endpoint (GET /api/interviews/my-interviews)
+    this.interviewService.getMyInterviews().pipe(
+      timeout(5000),
+      catchError((err) => {
+        console.warn('[INTERVIEW] Failed to load my-interviews from API:', err);
+        return of([]);
+      }),
       finalize(() => {
-        // Guaranteed fallback: spinner is always dismissed
         this.isLoadingInterviews = false;
       })
     ).subscribe({
-      next: (dash) => {
-        if (dash?.upcomingInterviews && Array.isArray(dash.upcomingInterviews) && dash.upcomingInterviews.length > 0) {
-          const backendMapped = dash.upcomingInterviews
-            .filter((iv: any) => iv && iv.status !== 'CANCELLED' && iv.status !== 'Cancelled')
-            .map((iv: any) => this.mapUpcomingInterview(iv));
-
-          if (backendMapped.length > 0) {
-            const existingIds = new Set(backendMapped.map((b) => b.id));
-            const remaining = this.interviews.filter((i) => !existingIds.has(i.id));
-            this.interviews = [...backendMapped, ...remaining];
+      next: (list) => {
+        if (list && Array.isArray(list) && list.length > 0) {
+          this.interviews = list.map(iv => this.mapInterviewResponse(iv));
+          // If no upcoming interviews but there are completed or cancelled ones, default to ALL tab
+          if (this.upcomingInterviews.length === 0 && this.interviews.length > 0) {
+            this.activeFilter = 'ALL';
           }
+        } else {
+          // Fallback: check candidate dashboard if my-interviews returned empty
+          this.checkDashboardFallback();
         }
       },
       error: () => {
         this.isLoadingInterviews = false;
       }
     });
+
+    // 2. Also listen for any local reactive scheduler updates if scheduled in the same browser session
+    if (!this.interviewsSub) {
+      this.interviewsSub = this.interviewService.interviews$.subscribe((allScheduled) => {
+        if (allScheduled && allScheduled.length > 0 && this.interviews.length === 0) {
+          const currentName = this.authService.currentUser()?.fullName || '';
+          const candFirst = currentName.split(' ')[0].toLowerCase();
+          const matched = allScheduled.filter(iv => {
+            if (!iv || !iv.candidate) return false;
+            const cName = iv.candidate.toLowerCase();
+            return candFirst && (cName.includes(candFirst) || candFirst.includes(cName.split(' ')[0]));
+          });
+          if (matched.length > 0) {
+            this.interviews = matched.map(si => this.mapScheduledInterview(si));
+          }
+        }
+      });
+    }
+  }
+
+  private checkDashboardFallback(): void {
+    this.dashboardService.getCandidateDashboard().pipe(
+      timeout(4000),
+      catchError(() => of(null))
+    ).subscribe({
+      next: (dash) => {
+        if (dash?.upcomingInterviews && Array.isArray(dash.upcomingInterviews) && dash.upcomingInterviews.length > 0) {
+          this.interviews = dash.upcomingInterviews.map((iv: any) => this.mapInterviewResponse(iv));
+        }
+      },
+      error: () => {}
+    });
   }
 
   private mapScheduledInterview(si: ScheduledInterview): CandidateInterview {
     const isCompleted = si.status === 'Completed';
+    const isCancelled = si.status === 'Cancelled';
     return {
       id: si.id,
       jobTitle: si.job || 'Java Full Stack Developer',
@@ -186,12 +228,15 @@ export class Interview implements OnInit, OnDestroy {
       time: si.time ? (si.time.includes('IST') ? si.time : `${si.time} IST`) : '10:30 AM IST',
       duration: '15 mins',
       type: (si.type || 'AI Assessment') as any,
-      status: isCompleted ? 'Completed' : 'Upcoming',
-      interviewer: si.interviewer || 'HireRanker AI Assessment'
+      status: isCancelled ? 'Cancelled' : isCompleted ? 'Completed' : 'Upcoming',
+      interviewer: si.interviewer || 'HireRanker AI Assessment',
+      meetingLink: si.meetingLink,
+      notes: si.notes,
+      applicationId: si.applicationId
     };
   }
 
-  private mapUpcomingInterview(iv: any): CandidateInterview {
+  private mapInterviewResponse(iv: any): CandidateInterview {
     let dateStr = this.todayStr;
     let timeStr = '10:30 AM IST';
 
@@ -217,28 +262,52 @@ export class Interview implements OnInit, OnDestroy {
       }
     }
 
-    const isCompleted = iv.status === 'COMPLETED' || iv.status === 'Completed';
+    const rawStatus = (iv.status || '').toUpperCase();
+    let displayStatus: 'Upcoming' | 'Completed' | 'Cancelled' = 'Upcoming';
+    if (rawStatus === 'CANCELLED' || rawStatus === 'REJECTED') {
+      displayStatus = 'Cancelled';
+    } else if (rawStatus === 'COMPLETED' || rawStatus === 'FINISHED') {
+      displayStatus = 'Completed';
+    } else {
+      displayStatus = 'Upcoming';
+    }
+
     const rawType = (iv.type || iv.interviewType || 'ONLINE').toUpperCase();
     const displayType: 'AI Assessment' | 'Live Technical' | 'HR Round' =
       rawType.includes('HR') || rawType === 'OFFLINE' || rawType === 'PHONE'
         ? 'HR Round'
         : (rawType.includes('TECH') ? 'Live Technical' : 'AI Assessment');
 
+    let interviewer = 'HireRanker AI Assessment';
+    if (iv.notes && iv.notes.includes('with ')) {
+      interviewer = iv.notes.split('with ')[1];
+    } else if (displayType === 'HR Round') {
+      interviewer = 'HR Talent Team';
+    }
+
     return {
       id: iv.id,
-      jobTitle: iv.jobTitle || 'Technical Role',
-      company: 'HireRanker Enterprise',
+      jobTitle: iv.jobTitle || 'Software Engineer',
+      company: iv.companyName || 'HireRanker Enterprise',
       date: dateStr,
       time: timeStr,
       duration: '15 mins',
       type: displayType,
-      status: isCompleted ? 'Completed' : 'Upcoming',
-      interviewer: 'HireRanker AI Assessment'
+      status: displayStatus,
+      rawStatus: rawStatus,
+      interviewer: interviewer,
+      meetingLink: iv.meetingLink,
+      notes: iv.notes,
+      applicationId: iv.applicationId
     };
   }
 
+  private mapUpcomingInterview(iv: any): CandidateInterview {
+    return this.mapInterviewResponse(iv);
+  }
+
   private mapInterview(iv: any): CandidateInterview {
-    return this.mapUpcomingInterview(iv);
+    return this.mapInterviewResponse(iv);
   }
 
   joinInterview(interview: CandidateInterview): void {

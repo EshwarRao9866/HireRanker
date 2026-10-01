@@ -122,7 +122,12 @@
             <tbody>
               @for (item of interviews; track (item.id + '_' + $index)) {
                 <tr>
-                  <td><strong>{{ item.candidate }}</strong></td>
+                  <td>
+                    <strong>{{ item.candidate }}</strong>
+                    @if (item.candidateEmail) {
+                      <small class="block text-muted" style="font-size: 11.5px; color: #64748b;">{{ item.candidateEmail }}</small>
+                    }
+                  </td>
                   <td>{{ item.job }}</td>
                   <td>
                     <span class="date-text">{{ item.date }}</span>
@@ -174,24 +179,73 @@
 
         <form (ngSubmit)="scheduleNewInterview()" class="modal-form">
           <div class="form-group">
-            <label>Candidate Name *</label>
-            <input type="text" [(ngModel)]="newInterview.candidate" name="cName" placeholder="e.g. Candidate Name" required />
+            <label>Job Position *</label>
+            <select
+              [ngModel]="selectedJobId"
+              (ngModelChange)="onJobSelected($event)"
+              name="cJob"
+              class="form-select"
+              required
+            >
+              <option [ngValue]="null" disabled selected>Select Job Position</option>
+              @for (job of availableJobs; track job.id) {
+                <option [ngValue]="job.id">
+                  {{ job.title }}{{ job.company ? ' - ' + job.company : '' }}
+                </option>
+              }
+            </select>
+            @if (isJobsLoading) {
+              <small class="field-hint loading-hint">⏳ Loading job postings from database...</small>
+            } @else if (jobsError) {
+              <small class="field-hint error-hint">{{ jobsError }}</small>
+            } @else if (availableJobs.length === 0) {
+              <small class="field-hint warning-hint">No active job postings available.</small>
+            }
           </div>
 
           <div class="form-group">
-            <label>Job Position</label>
-            <input type="text" [(ngModel)]="newInterview.job" name="cJob" placeholder="e.g. Java Full Stack Developer" />
+            <label>Candidate Name *</label>
+            <select
+              [ngModel]="selectedCandidateId"
+              (ngModelChange)="onCandidateSelected($event)"
+              name="cName"
+              class="form-select"
+              [disabled]="!selectedJobId || isApplicantsLoading || (jobApplicants.length === 0 && !isApplicantsLoading)"
+              required
+            >
+              @if (!selectedJobId) {
+                <option [ngValue]="null" disabled selected>Select a Job Position first</option>
+              } @else if (isApplicantsLoading) {
+                <option [ngValue]="null" disabled selected>Loading applicants...</option>
+              } @else if (jobApplicants.length === 0) {
+                <option [ngValue]="null" disabled selected>No applicants available for this job</option>
+              } @else {
+                <option [ngValue]="null" disabled selected>Select Candidate</option>
+                @for (applicant of jobApplicants; track applicant.candidateId) {
+                  <option [ngValue]="applicant.candidateId">
+                    {{ applicant.candidateName }}{{ applicant.candidateEmail ? ' (' + applicant.candidateEmail + ')' : '' }}
+                  </option>
+                }
+              }
+            </select>
+            @if (isApplicantsLoading) {
+              <small class="field-hint loading-hint">⏳ Retrieving candidates who applied for this job...</small>
+            } @else if (applicantsError) {
+              <small class="field-hint error-hint">{{ applicantsError }}</small>
+            } @else if (selectedJobId && jobApplicants.length === 0 && !isApplicantsLoading) {
+              <small class="field-hint warning-hint">No applicants available for this job</small>
+            }
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>Date</label>
-              <input type="date" [(ngModel)]="newInterview.date" name="cDate" />
+              <label>Date *</label>
+              <input type="date" [(ngModel)]="newInterview.date" name="cDate" [min]="todayKey" required />
             </div>
 
             <div class="form-group">
-              <label>Time</label>
-              <input type="text" [(ngModel)]="newInterview.time" name="cTime" placeholder="e.g. 11:30 AM" />
+              <label>Time *</label>
+              <input type="text" [(ngModel)]="newInterview.time" name="cTime" placeholder="e.g. 11:30 AM" required />
             </div>
           </div>
 
@@ -211,9 +265,26 @@
             </div>
           </div>
 
+          @if (scheduleError) {
+            <div class="schedule-alert error">
+              <span>⚠️ {{ scheduleError }}</span>
+            </div>
+          }
+          @if (scheduleSuccess) {
+            <div class="schedule-alert success">
+              <span>✓ {{ scheduleSuccess }}</span>
+            </div>
+          }
+
           <div class="modal-actions">
-            <button type="button" class="btn btn-outline" (click)="closeScheduleModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Schedule Interview →</button>
+            <button type="button" class="btn btn-outline" (click)="closeScheduleModal()" [disabled]="isScheduling">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="isScheduling || !selectedJobId || !selectedCandidateId">
+              @if (isScheduling) {
+                <span>Scheduling...</span>
+              } @else {
+                <span>Schedule Interview →</span>
+              }
+            </button>
           </div>
         </form>
       </div>

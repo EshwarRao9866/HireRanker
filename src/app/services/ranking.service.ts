@@ -8,12 +8,17 @@ export interface CandidateRankingResponse {
   rank: number;
   candidateId: number;
   candidateName: string;
+  candidateEmail?: string;
+  jobId?: number;
+  jobTitle?: string;
   applicationId: number;
   overallScore: number;
   skillsScore: number;
   experienceScore: number;
   educationScore: number;
   applicationStatus: string;
+  screenedAt?: string;
+  resumeFileName?: string;
 }
 
 export type CandidateRankingItem = CandidateRankingResponse;

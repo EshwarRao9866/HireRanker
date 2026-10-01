@@ -5,10 +5,18 @@ import { Router } from '@angular/router';
 import { Subscription, finalize, catchError, of, timeout } from 'rxjs';
 import { ScreeningService, ScreeningResultResponse } from '../services/screening.service';
 import { JobService } from '../services/job.service';
-import { ApplicationService } from '../services/application.service';
+import { ApplicationService, ApplicationResponse } from '../services/application.service';
 import { ResumeService } from '../services/resume.service';
-import { calculateAtsScore } from '../services/resume-analyzer.util';
 import { cleanJobTitle, cleanCandidateName, cleanCandidateEmail } from '../services/salary-formatter.util';
+
+export interface ApplicantOption {
+  id: number;
+  candidateName: string;
+  candidateEmail: string;
+  resumeFileName?: string;
+  resumeId?: number;
+  status?: string;
+}
 
 @Component({
   selector: 'app-resume-screening',
@@ -19,12 +27,12 @@ import { cleanJobTitle, cleanCandidateName, cleanCandidateEmail } from '../servi
 })
 export class ResumeScreening implements OnInit, OnDestroy {
   selectedJob = 'Java Full Stack Developer';
-  selectedJobId = 1;
-  uploadedFileName = 'Eshwar_Rao_Resume.pdf';
+  selectedJobId = 24;
+  uploadedFileName = 'Resume.pdf';
   isScreening = false;
   screeningComplete = false;
   errorMessage: string | null = null;
-  currentApplicationId: number = 1;
+  currentApplicationId: number = 0;
   screeningProgress = 0;
   screeningStageText = '';
   screeningStage: 'IDLE' | 'UPLOADING' | 'STORED' | 'EXTRACTING' | 'ANALYZING' | 'SCORING' | 'COMPLETE' | 'FAILED' = 'IDLE';
@@ -32,35 +40,11 @@ export class ResumeScreening implements OnInit, OnDestroy {
   private screeningSub?: Subscription;
   private progressInterval: any;
 
-  cleanJobTitle(title: string): string {
-    return cleanJobTitle(title);
-  }
-
-  cleanCandidateName(name: string): string {
-    return cleanCandidateName(name);
-  }
-
-  cleanCandidateEmail(email: string): string {
-    return cleanCandidateEmail(email);
-  }
-
-  jobs: Array<{ id: number; title: string; displayTitle?: string }> = [
-    { id: 1, title: 'Java Full Stack Developer', displayTitle: 'Java Full Stack Developer' },
-    { id: 2, title: 'Senior Angular Developer', displayTitle: 'Senior Angular Developer' },
-    { id: 7, title: 'Web Developer', displayTitle: 'Web Developer' },
-    { id: 3, title: 'UI/UX Product Designer', displayTitle: 'UI/UX Product Designer' },
-    { id: 4, title: 'Cloud & AI Software Engineer', displayTitle: 'Cloud & AI Software Engineer' }
-  ];
-
-  applicants: Array<{
-    id: number;
-    candidateName: string;
-    candidateEmail: string;
-    resumeFileName?: string;
-    resumeId?: number;
-    status?: string;
-  }> = [];
-  selectedApplicantId: number | null = 1;
+  jobs: Array<{ id: number; title: string; displayTitle?: string }> = [];
+  applicants: ApplicantOption[] = [];
+  selectedApplicantId: number | null = null;
+  screenedApplicants: ScreeningResultResponse[] = [];
+  isLoadingScreenings = false;
 
   matchData = {
     overallScore: 0,
@@ -72,7 +56,6 @@ export class ResumeScreening implements OnInit, OnDestroy {
     educationScore: 0,
     achievementScore: 0,
     completenessScore: 0,
-    // Aliases for compatibility
     keywordScore: 0,
     skillsMatch: 0,
     experienceMatch: 0,
@@ -89,19 +72,20 @@ export class ResumeScreening implements OnInit, OnDestroy {
     strengths: [] as string[],
     weaknesses: [] as string[],
     improvementSuggestions: [] as string[],
-    improvements: [] as string[],
     resumeSummary: ''
   };
 
-  rankingList: Array<{
-    rank: number;
-    name: string;
-    email: string;
-    score: number;
-    status: string;
-    matchedSkillsCount: number;
-    missingSkillsCount: number;
-  }> = [];
+  cleanJobTitle(title: string): string {
+    return cleanJobTitle(title);
+  }
+
+  cleanCandidateName(name: string): string {
+    return cleanCandidateName(name);
+  }
+
+  cleanCandidateEmail(email: string): string {
+    return cleanCandidateEmail(email);
+  }
 
   constructor(
     private readonly jobService: JobService,
@@ -113,28 +97,34 @@ export class ResumeScreening implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    const active = this.jobService.getActiveJobs();
-    if (active && active.length > 0) {
-      this.jobs = active.map(j => ({ id: j.id, title: j.title, displayTitle: this.cleanJobTitle(j.title) || j.title }));
-      this.selectedJob = this.jobs[0].title;
-      this.selectedJobId = this.jobs[0].id;
-    }
-
+    // 1. Fetch available jobs from backend
     this.jobService.fetchJobsFromBackend().subscribe({
       next: (backendJobs) => {
         if (backendJobs && backendJobs.length > 0) {
-          this.jobs = backendJobs.map(j => ({ id: j.id, title: j.title, displayTitle: this.cleanJobTitle(j.title) || j.title }));
-          this.selectedJob = this.jobs[0].title;
+          this.jobs = backendJobs.map(j => ({
+            id: j.id,
+            title: j.title,
+            displayTitle: this.cleanJobTitle(j.title) || j.title
+          }));
           this.selectedJobId = this.jobs[0].id;
-          this.loadApplicantsForJob(this.selectedJobId);
-        } else {
+          this.selectedJob = this.jobs[0].title;
           this.loadApplicantsForJob(this.selectedJobId);
         }
       },
       error: () => {
-        this.loadApplicantsForJob(this.selectedJobId);
+        // Fallback to active jobs in service
+        const active = this.jobService.getActiveJobs();
+        if (active && active.length > 0) {
+          this.jobs = active.map(j => ({ id: j.id, title: j.title, displayTitle: this.cleanJobTitle(j.title) || j.title }));
+          this.selectedJobId = this.jobs[0].id;
+          this.selectedJob = this.jobs[0].title;
+          this.loadApplicantsForJob(this.selectedJobId);
+        }
       }
     });
+
+    // 2. Fetch all completed screenings from MySQL
+    this.loadScreenedApplicants();
   }
 
   ngOnDestroy(): void {
@@ -144,6 +134,29 @@ export class ResumeScreening implements OnInit, OnDestroy {
     if (this.progressInterval) {
       clearInterval(this.progressInterval);
     }
+  }
+
+  loadScreenedApplicants(): void {
+    this.isLoadingScreenings = true;
+    this.screeningService.getAllScreenings().subscribe({
+      next: (list) => {
+        this.isLoadingScreenings = false;
+        // Deduplicate screenings by applicationId
+        const map = new Map<number, ScreeningResultResponse>();
+        for (const item of (list || [])) {
+          if (!map.has(item.applicationId) || item.id > map.get(item.applicationId)!.id) {
+            map.set(item.applicationId, item);
+          }
+        }
+        this.screenedApplicants = Array.from(map.values()).sort((a, b) => (b.overallScore || 0) - (a.overallScore || 0));
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isLoadingScreenings = false;
+        this.screenedApplicants = [];
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   onJobChange(jobTitleOrId: string | number): void {
@@ -157,21 +170,11 @@ export class ResumeScreening implements OnInit, OnDestroy {
   }
 
   loadApplicantsForJob(jobId: number): void {
-    const targetJob = this.jobs.find(j => j.id === jobId);
-    const jobTitleLower = (targetJob?.title || this.selectedJob).toLowerCase().trim();
-
     this.applicationService.getApplicationsByJob(jobId).pipe(
       catchError(() => of([]))
     ).subscribe({
       next: (apps) => {
-        let list: Array<{
-          id: number;
-          candidateName: string;
-          candidateEmail: string;
-          resumeFileName: string;
-          resumeId?: number;
-          status?: string;
-        }> = [];
+        let list: ApplicantOption[] = [];
 
         if (apps && apps.length > 0) {
           list = apps.map(a => ({
@@ -184,63 +187,11 @@ export class ResumeScreening implements OnInit, OnDestroy {
           }));
         }
 
-        // If no direct backend applications returned for this jobId, match against local application records & JobService applicants
-        if (list.length === 0) {
-          const localApplicants = this.jobService.getApplicants();
-          const matchedApplicants = localApplicants.filter(a => {
-            const aJob = (a.job || '').toLowerCase().trim();
-            return aJob === jobTitleLower || aJob.includes(jobTitleLower) || jobTitleLower.includes(aJob);
-          });
-
-          if (matchedApplicants.length > 0) {
-            list = matchedApplicants.map(m => ({
-              id: m.id,
-              candidateName: m.name,
-              candidateEmail: m.email,
-              resumeFileName: m.resumeFileName || 'Resume.pdf',
-              resumeId: m.id,
-              status: m.status
-            }));
-          } else {
-            const candidateApps = this.jobService.getCandidateApplications();
-            const matchedCandidateApps = candidateApps.filter(ca => {
-              const caJob = (ca.jobTitle || '').toLowerCase().trim();
-              return ca.jobId === jobId || caJob === jobTitleLower || caJob.includes(jobTitleLower) || jobTitleLower.includes(caJob);
-            });
-
-            if (matchedCandidateApps.length > 0) {
-              list = matchedCandidateApps.map(ca => ({
-                id: ca.id,
-                candidateName: ca.candidateName,
-                candidateEmail: ca.candidateEmail,
-                resumeFileName: `${ca.candidateName.replace(/\s+/g, '_')}_Resume.pdf`,
-                resumeId: ca.id,
-                status: ca.status
-              }));
-            }
-          }
-        }
-
-        // ISSUE 4 FIX: If still empty (role with no direct applicant yet), pull candidate pool so user NEVER sees "No applications for this role"
-        if (list.length === 0) {
-          const pool = this.jobService.getApplicants();
-          if (pool && pool.length > 0) {
-            list = pool.slice(0, 3).map(p => ({
-              id: p.id,
-              candidateName: p.name,
-              candidateEmail: p.email,
-              resumeFileName: p.resumeFileName || `${p.name.replace(/\s+/g, '_')}_Resume.pdf`,
-              resumeId: p.id,
-              status: p.status || 'Active'
-            }));
-          }
-        }
-
         this.applicants = list;
         if (this.applicants.length > 0) {
           this.selectedApplicantId = this.applicants[0].id;
           this.currentApplicationId = this.applicants[0].id;
-          this.uploadedFileName = this.applicants[0].resumeFileName || 'Candidate_Resume.pdf';
+          this.uploadedFileName = this.applicants[0].resumeFileName || 'Resume.pdf';
           this.errorMessage = null;
           this.loadScreeningResult(this.currentApplicationId);
         } else {
@@ -254,15 +205,32 @@ export class ResumeScreening implements OnInit, OnDestroy {
     });
   }
 
-  onApplicantChange(applicantId: number): void {
-    this.selectedApplicantId = applicantId;
-    this.currentApplicationId = applicantId;
+  onApplicantChange(applicantId: any): void {
+    const id = Number(applicantId);
+    this.selectedApplicantId = id;
+    this.currentApplicationId = id;
     this.errorMessage = null;
-    const applicant = this.applicants.find(a => a.id === applicantId);
+    const applicant = this.applicants.find(a => a.id === id);
     if (applicant) {
-      this.uploadedFileName = applicant.resumeFileName || 'Candidate_Resume.pdf';
+      this.uploadedFileName = applicant.resumeFileName || 'Resume.pdf';
     }
-    this.loadScreeningResult(applicantId);
+    this.loadScreeningResult(id);
+  }
+
+  selectScreenedApplicant(screening: ScreeningResultResponse): void {
+    this.selectedApplicantId = screening.applicationId;
+    this.currentApplicationId = screening.applicationId;
+    if (screening.jobId) {
+      this.selectedJobId = screening.jobId;
+    }
+    if (screening.jobTitle) {
+      this.selectedJob = screening.jobTitle;
+    }
+    this.uploadedFileName = screening.resumeFileName || 'Resume.pdf';
+    this.applyScreeningResult(screening);
+    this.screeningComplete = true;
+    this.errorMessage = null;
+    this.cdr.detectChanges();
   }
 
   loadScreeningResult(applicationId: number): void {
@@ -270,6 +238,17 @@ export class ResumeScreening implements OnInit, OnDestroy {
       this.screeningComplete = false;
       return;
     }
+
+    // Check if we already have it in screenedApplicants
+    const existing = this.screenedApplicants.find(s => s.applicationId === applicationId);
+    if (existing) {
+      this.applyScreeningResult(existing);
+      this.screeningComplete = true;
+      this.errorMessage = null;
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.screeningService.getScreeningResult(applicationId).pipe(
       timeout(5000),
       catchError(() => of(null))
@@ -292,44 +271,41 @@ export class ResumeScreening implements OnInit, OnDestroy {
     });
   }
 
-  onFileSelected(event: any): void {
-    if (this.isScreening) {
-      return;
+  parseSkillsList(skillsStr?: string): string[] {
+    if (!skillsStr) return [];
+    return skillsStr.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  formatDate(dateStr?: string): string {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+      return dateStr;
     }
+  }
+
+  onFileSelected(event: any): void {
+    if (this.isScreening) return;
 
     const input = event?.target as HTMLInputElement | null;
     const file = input?.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
-    // Reset input value to allow re-selection of the same file if needed
-    if (input) {
-      input.value = '';
-    }
+    if (input) input.value = '';
 
-    // Validate file type
-    const fileName = file.name || '';
-    if (!fileName.toLowerCase().endsWith('.pdf')) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
       this.errorMessage = 'Invalid file format. Only PDF files (.pdf) are supported for resume screening.';
-      this.isScreening = false;
-      this.screeningComplete = false;
       return;
     }
 
-    // Validate empty file
     if (file.size === 0) {
       this.errorMessage = 'The selected file is empty (0 bytes). Please upload a valid resume PDF.';
-      this.isScreening = false;
-      this.screeningComplete = false;
       return;
     }
 
-    // Validate file size limit (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      this.errorMessage = 'File size exceeds the 10MB limit. Please upload a smaller PDF resume.';
-      this.isScreening = false;
-      this.screeningComplete = false;
+      this.errorMessage = 'File size exceeds 10MB limit. Please upload a smaller resume PDF.';
       return;
     }
 
@@ -339,89 +315,61 @@ export class ResumeScreening implements OnInit, OnDestroy {
   }
 
   triggerScreening(): void {
-    if (this.isScreening) {
-      return;
-    }
+    if (this.isScreening) return;
 
     if (!this.currentApplicationId || this.currentApplicationId <= 0) {
       this.errorMessage = 'Please select a valid candidate application before running AI screening.';
-      this.isScreening = false;
-      this.screeningComplete = false;
-      this.cdr.detectChanges();
       return;
     }
 
     this.isScreening = true;
     this.screeningComplete = false;
     this.errorMessage = null;
-
-    // Stage 1: 10% Upload Started
     this.screeningProgress = 10;
-    this.screeningStage = 'UPLOADING';
-    this.screeningStageText = '10% - Upload Started: Initializing screening & loading resume...';
-    this.cdr.detectChanges();
+    this.screeningStageText = 'Uploading candidate resume to processing pipeline...';
 
-    if (this.progressInterval) {
-      clearInterval(this.progressInterval);
-      this.progressInterval = null;
-    }
-
-    // Dynamic progress ticking reflecting single-pass analysis
+    // Simulate progress while the API executes
     this.progressInterval = setInterval(() => {
       if (this.screeningProgress < 85) {
-        this.screeningProgress += 5;
+        this.screeningProgress += 15;
         if (this.screeningProgress >= 30 && this.screeningProgress < 50) {
-          this.screeningStage = 'STORED';
-          this.screeningStageText = '30% - Document Stored: Resume verified in storage...';
+          this.screeningStageText = 'Extracting resume text, structural sections, and skills...';
         } else if (this.screeningProgress >= 50 && this.screeningProgress < 70) {
-          this.screeningStage = 'EXTRACTING';
-          this.screeningStageText = '50% - Text Extracted: Parsing document structure with Apache PDFBox...';
+          this.screeningStageText = 'Computing semantic similarity against job requirements...';
         } else if (this.screeningProgress >= 70) {
-          this.screeningStage = 'ANALYZING';
-          this.screeningStageText = '70% - AI Analysis: Running semantic keyword & skill evaluation...';
+          this.screeningStageText = 'Calculating weighted 8-factor ATS score...';
         }
         this.cdr.detectChanges();
       }
-    }, 120);
+    }, 600);
 
-    if (this.screeningSub) {
-      this.screeningSub.unsubscribe();
-    }
-
-    this.screeningSub = this.screeningService.screenResume(this.currentApplicationId, true).pipe(
-      timeout(30000),
+    this.screeningService.screenResume(this.currentApplicationId, true).pipe(
       finalize(() => {
         if (this.progressInterval) {
           clearInterval(this.progressInterval);
-          this.progressInterval = null;
         }
         this.screeningProgress = 100;
-        this.screeningStage = 'COMPLETE';
-        this.screeningStageText = '100% - Screening Finished: ATS scorecard generated successfully!';
         this.isScreening = false;
         this.cdr.detectChanges();
       })
     ).subscribe({
       next: (res: ScreeningResultResponse) => {
-        try {
-          if (!res) {
-            throw new Error('Empty response received from analysis service.');
-          }
+        if (res && res.overallScore !== undefined) {
           this.applyScreeningResult(res);
           this.screeningComplete = true;
           this.errorMessage = null;
-        } catch (err: any) {
-          this.applyFallbackScreening(this.currentApplicationId);
-          this.screeningComplete = true;
-          this.errorMessage = null;
+          // Reload screened applicants list from MySQL
+          this.loadScreenedApplicants();
+        } else {
+          this.errorMessage = 'Screening result was returned with incomplete scoring data.';
         }
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        console.warn('[ResumeScreening] Backend API call returned error or timed out. Applying resilient ATS fallback scoring:', err);
-        this.applyFallbackScreening(this.currentApplicationId);
-        this.screeningComplete = true;
-        this.errorMessage = null;
+        console.error('Screening error from backend:', err);
+        const msg = err?.error?.message || (typeof err?.error === 'string' ? err.error : null) || err?.message;
+        this.errorMessage = msg || 'Screening analysis failed. Please verify that the application has a valid uploaded resume PDF.';
+        this.screeningComplete = false;
         this.cdr.detectChanges();
       }
     });
@@ -432,23 +380,23 @@ export class ResumeScreening implements OnInit, OnDestroy {
       this.errorMessage = 'Please select a candidate first.';
       return;
     }
-    const applicant = this.applicants.find(a => a.id === this.selectedApplicantId);
-    const resumeId = applicant?.resumeId || this.selectedApplicantId;
-    const fileName = applicant?.resumeFileName || this.uploadedFileName || 'Resume.pdf';
+    this.viewResumeForApp(this.selectedApplicantId, this.uploadedFileName);
+  }
 
-    this.resumeService.downloadResumeBlob(resumeId, fileName).pipe(
-      timeout(8000)
+  viewResumeForApp(applicationId: number, fileName?: string): void {
+    this.applicationService.getApplicationResumeFile(applicationId).pipe(
+      timeout(10000)
     ).subscribe({
       next: (blob) => {
         if (!blob || blob.size === 0) {
-          this.errorMessage = 'Resume file is empty or unavailable.';
+          this.errorMessage = 'Resume file is empty or unavailable on server.';
           return;
         }
         const fileUrl = window.URL.createObjectURL(blob);
         window.open(fileUrl, '_blank');
       },
       error: () => {
-        this.errorMessage = 'Unable to open resume PDF. Please verify backend server connection.';
+        this.errorMessage = 'Unable to open resume PDF. Please ensure candidate has uploaded a resume.';
       }
     });
   }
@@ -457,16 +405,15 @@ export class ResumeScreening implements OnInit, OnDestroy {
     if (!res) return;
 
     this.matchData.overallScore = Math.max(0, Math.min(100, Math.round(Number(res.overallScore) || 0)));
-    this.matchData.jobSkillScore = Math.max(0, Math.min(100, Math.round(Number(res.jobSkillScore) || Number(res.skillsScore) || Number(res.technicalSkillsScore) || 95)));
-    this.matchData.experienceScore = Math.max(0, Math.min(100, Math.round(Number(res.experienceScore) || 91)));
-    this.matchData.jobDescriptionScore = Math.max(0, Math.min(100, Math.round(Number(res.jobDescriptionScore) || Number(res.keywordScore) || 95)));
-    this.matchData.projectScore = Math.max(0, Math.min(100, Math.round(Number(res.projectScore) || 92)));
-    this.matchData.atsCompatibilityScore = Math.max(0, Math.min(100, Math.round(Number(res.atsCompatibilityScore) || Number(res.formattingScore) || 94)));
-    this.matchData.educationScore = Math.max(0, Math.min(100, Math.round(Number(res.educationScore) || 90)));
-    this.matchData.achievementScore = Math.max(0, Math.min(100, Math.round(Number(res.achievementScore) || 88)));
-    this.matchData.completenessScore = Math.max(0, Math.min(100, Math.round(Number(res.completenessScore) || Number(res.certificationScore) || 95)));
+    this.matchData.jobSkillScore = Math.max(0, Math.min(100, Math.round(Number(res.skillsScore) || Number(res.jobSkillScore) || 85)));
+    this.matchData.experienceScore = Math.max(0, Math.min(100, Math.round(Number(res.experienceScore) || 80)));
+    this.matchData.jobDescriptionScore = Math.max(0, Math.min(100, Math.round(Number(res.keywordScore) || Number(res.jobDescriptionScore) || 85)));
+    this.matchData.projectScore = Math.max(0, Math.min(100, Math.round(Number(res.projectScore) || 80)));
+    this.matchData.atsCompatibilityScore = Math.max(0, Math.min(100, Math.round(Number(res.formattingScore) || Number(res.atsCompatibilityScore) || 90)));
+    this.matchData.educationScore = Math.max(0, Math.min(100, Math.round(Number(res.educationScore) || 85)));
+    this.matchData.achievementScore = Math.max(0, Math.min(100, Math.round(Number(res.achievementScore) || 80)));
+    this.matchData.completenessScore = Math.max(0, Math.min(100, Math.round(Number(res.certificationScore) || Number(res.completenessScore) || 85)));
 
-    // Backward-compat aliases
     this.matchData.keywordScore = this.matchData.jobDescriptionScore;
     this.matchData.skillsMatch = this.matchData.jobSkillScore;
     this.matchData.experienceMatch = this.matchData.experienceScore;
@@ -488,8 +435,6 @@ export class ResumeScreening implements OnInit, OnDestroy {
       this.matchData.detectedSkills = res.matchingSkills.split(',').map((s: string) => s.trim()).filter(Boolean);
     } else if (Array.isArray(res.matchingSkills)) {
       this.matchData.detectedSkills = res.matchingSkills.map((s: any) => String(s).trim()).filter(Boolean);
-    } else if (Array.isArray(res.detectedSkills)) {
-      this.matchData.detectedSkills = res.detectedSkills.map((s: any) => String(s).trim()).filter(Boolean);
     }
 
     if (typeof res.missingSkills === 'string') {
@@ -506,91 +451,27 @@ export class ResumeScreening implements OnInit, OnDestroy {
 
     if (typeof res.strengths === 'string') {
       this.matchData.strengths = res.strengths.split(';').map((s: string) => s.trim()).filter(Boolean);
-    } else if (Array.isArray(res.strengths) && res.strengths.length > 0) {
+    } else if (Array.isArray(res.strengths)) {
       this.matchData.strengths = res.strengths.map((s: any) => String(s).trim()).filter(Boolean);
+    }
+    if (this.matchData.strengths.length === 0) {
+      this.matchData.strengths = ['Strong foundational technical capabilities', 'Verified experience in relevant role domains'];
     }
 
     if (typeof res.weaknesses === 'string') {
       this.matchData.weaknesses = res.weaknesses.split(';').map((s: string) => s.trim()).filter(Boolean);
-    } else if (Array.isArray(res.weaknesses) && res.weaknesses.length > 0) {
+    } else if (Array.isArray(res.weaknesses)) {
       this.matchData.weaknesses = res.weaknesses.map((s: any) => String(s).trim()).filter(Boolean);
     }
 
     if (typeof res.improvementSuggestions === 'string') {
       this.matchData.improvementSuggestions = res.improvementSuggestions.split(';').map((s: string) => s.trim()).filter(Boolean);
-    } else if (Array.isArray(res.improvementSuggestions) && res.improvementSuggestions.length > 0) {
+    } else if (Array.isArray(res.improvementSuggestions)) {
       this.matchData.improvementSuggestions = res.improvementSuggestions.map((s: any) => String(s).trim()).filter(Boolean);
     }
 
-    if (res.resumeSummary) {
-      this.matchData.resumeSummary = res.resumeSummary;
-    } else {
-      this.matchData.resumeSummary = `Candidate demonstrates ${this.matchData.matchTier.toLowerCase()} suitability for ${this.selectedJob} with an overall ATS score of ${this.matchData.overallScore}%.`;
-    }
-
-    if (res.recommendation) {
-      this.matchData.recommendation = res.recommendation;
-    } else {
-      this.matchData.recommendation = this.matchData.matchTier;
-    }
-  }
-
-  private applyFallbackScreening(applicationId: number): void {
-    const applicant = this.applicants.find(a => a.id === applicationId);
-    const targetJob = this.jobs.find(j => j.id === this.selectedJobId);
-    const jobTitle = targetJob?.title || this.selectedJob;
-
-    // Retrieve candidate resume text: from localStorage or applicant record
-    let resumeText = '';
-    try {
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-        resumeText = localStorage.getItem('candidateResumeText') || '';
-      }
-    } catch {}
-    const isEshwar = applicant?.candidateName?.toLowerCase().includes('eshwar');
-
-    if (!resumeText || !isEshwar) {
-      const record = this.jobService.getApplicants().find(r => r.id === applicationId || r.name === applicant?.candidateName);
-      if (record) {
-        resumeText = `${record.name} ${record.aboutMe || ''} Skills: ${record.skills?.join(', ') || ''} Experience: ${record.experience || '4.5 years'} Education: ${record.education || ''} Projects: ${record.projects?.map(p => p.title + ' ' + p.tech + ' ' + p.description).join(' ') || ''}`;
-      } else {
-        resumeText = `${applicant?.candidateName || 'Candidate'} Web Developer with HTML5 CSS3 JavaScript TypeScript Angular Java Spring Boot REST APIs Git`;
-      }
-    }
-
-    // Evaluate using the EXACT same deterministic 8-dimension ATS algorithm
-    const analysis = calculateAtsScore(resumeText, jobTitle);
-    const b = analysis.breakdown;
-
-    this.matchData.overallScore = b.overallScore;
-    this.matchData.jobSkillScore = b.jobSkillScore;
-    this.matchData.experienceScore = b.experienceScore;
-    this.matchData.jobDescriptionScore = b.jobDescriptionScore;
-    this.matchData.projectScore = b.projectScore;
-    this.matchData.atsCompatibilityScore = b.atsCompatibilityScore;
-    this.matchData.educationScore = b.educationScore;
-    this.matchData.achievementScore = b.achievementScore;
-    this.matchData.completenessScore = b.completenessScore;
-
-    // Aliases
-    this.matchData.keywordScore = b.jobDescriptionScore;
-    this.matchData.skillsMatch = b.jobSkillScore;
-    this.matchData.experienceMatch = b.experienceScore;
-    this.matchData.projectMatch = b.projectScore;
-    this.matchData.educationMatch = b.educationScore;
-    this.matchData.formattingMatch = b.atsCompatibilityScore;
-    this.matchData.achievementMatch = b.achievementScore;
-    this.matchData.certificationMatch = b.completenessScore;
-
-    this.matchData.detectedSkills = [...analysis.detectedSkills];
-    this.matchData.missingSkills = [...analysis.missingSkills];
-    this.matchData.recommendedSkills = [...analysis.recommendedSkills];
-    this.matchData.strengths = [...analysis.strengths];
-    this.matchData.weaknesses = [...analysis.weaknesses];
-    this.matchData.improvementSuggestions = [...analysis.improvementSuggestions];
-    this.matchData.matchTier = analysis.matchTier;
-    this.matchData.recommendation = analysis.matchTier;
-    this.matchData.resumeSummary = analysis.summary;
+    this.matchData.resumeSummary = res.resumeSummary || `Candidate profile evaluated with ${this.matchData.matchTier} ATS score of ${this.matchData.overallScore}%.`;
+    this.matchData.recommendation = res.recommendation || this.matchData.matchTier;
   }
 
   retryScreening(): void {
@@ -603,6 +484,7 @@ export class ResumeScreening implements OnInit, OnDestroy {
   }
 
   proceedToShortlist(): void {
+    if (!this.currentApplicationId) return;
     this.applicationService.shortlistApplication(this.currentApplicationId).subscribe({
       next: () => {
         this.router.navigate(['/shortlisted-candidates']);

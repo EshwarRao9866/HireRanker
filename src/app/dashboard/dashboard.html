@@ -506,10 +506,23 @@
         <div class="card-toolbar">
           <div>
             <h3>Candidate Assessment Leaderboard</h3>
-            <p>Ranked according to AI match score, technical skills, and job compatibility.</p>
+            <p>
+              Ranked according to AI match score, technical skills, and job compatibility
+              @if (selectedLeaderboardJobId > 0) {
+                &mdash; <strong style="color: var(--primary);">{{ getSelectedJobTitle() }}</strong>
+              }
+            </p>
           </div>
 
           <div class="toolbar-actions">
+            <!-- Job Selection for Job-specific Ranking -->
+            <select [ngModel]="selectedLeaderboardJobId" (ngModelChange)="onLeaderboardJobChange($event)" class="status-select" style="min-width: 190px; font-weight: 600;" title="Filter leaderboard by Job Position">
+              <option [value]="0">All Jobs (Global Leaderboard)</option>
+              @for (job of availableJobs; track job.id) {
+                <option [value]="job.id">{{ job.title }}</option>
+              }
+            </select>
+
             <!-- Filter Tabs -->
             <div class="tab-pill-group">
               <button
@@ -613,6 +626,9 @@
                   </td>
                   <td>
                     <div class="table-actions">
+                      <button class="btn-sm btn-outline-sm" (click)="viewProfile(c)" title="View Candidate Profile">
+                        👁️ Profile
+                      </button>
                       <button class="btn-sm btn-primary-sm" (click)="shortlistCandidate(c)" title="Shortlist Candidate">
                         ⭐ Shortlist
                       </button>
@@ -633,6 +649,96 @@
           </table>
         </div>
       </section>
+
+      <!-- CANDIDATE PROFILE MODAL -->
+      @if (selectedProfileCandidate) {
+        <div style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 20px;" (click)="closeProfileModal()">
+          <div style="background: #ffffff; border-radius: 16px; max-width: 540px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; border: 1px solid #e2e8f0;" (click)="$event.stopPropagation()">
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px;">🏆</span>
+                <h3 style="margin: 0; font-size: 18px; color: #0f172a; font-weight: 700;">Candidate Assessment Profile</h3>
+              </div>
+              <button (click)="closeProfileModal()" style="background: none; border: none; font-size: 22px; cursor: pointer; color: #94a3b8; line-height: 1;" title="Close">✕</button>
+            </div>
+            
+            <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);">
+                  {{ selectedProfileCandidate.name.charAt(0) }}
+                </div>
+                <div>
+                  <h4 style="margin: 0; font-size: 18px; color: #0f172a; font-weight: 700;">{{ selectedProfileCandidate.name }}</h4>
+                  <p style="margin: 2px 0 0 0; color: #4f46e5; font-size: 14px; font-weight: 600;">{{ selectedProfileCandidate.appliedRole }}</p>
+                  <small style="color: #64748b; font-size: 13px;">Application #{{ selectedProfileCandidate.applicationId || selectedProfileCandidate.id }}</small>
+                </div>
+              </div>
+
+              <div style="background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #64748b;">Email Address:</span>
+                  <strong style="color: #0f172a;">{{ selectedProfileCandidate.email }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #64748b;">Applied Position:</span>
+                  <strong style="color: #0f172a;">{{ selectedProfileCandidate.appliedRole }}</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #64748b;">Pipeline Status:</span>
+                  <span class="status-badge" [class.badge-emerald]="selectedProfileCandidate.status === 'Shortlisted'" [class.badge-purple]="selectedProfileCandidate.status === 'Interview Scheduled'" [class.badge-blue]="selectedProfileCandidate.status === 'Under Review'" [class.badge-rose]="selectedProfileCandidate.status === 'Rejected'">
+                    {{ selectedProfileCandidate.status }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- AI Evaluation Scores -->
+              <div>
+                <strong style="font-size: 13px; color: #0f172a; display: block; margin-bottom: 8px;">AI Screening Evaluation Scores:</strong>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                  <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px; text-align: center;">
+                    <small style="display: block; font-size: 11px; color: #1e40af; font-weight: 600;">Overall Match</small>
+                    <strong style="font-size: 18px; color: #1d4ed8;">{{ selectedProfileCandidate.matchScore }}%</strong>
+                  </div>
+                  <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px; text-align: center;">
+                    <small style="display: block; font-size: 11px; color: #166534; font-weight: 600;">Skills Score</small>
+                    <strong style="font-size: 18px; color: #15803d;">{{ selectedProfileCandidate.skills }}%</strong>
+                  </div>
+                  <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 10px; text-align: center;">
+                    <small style="display: block; font-size: 11px; color: #6b21a8; font-weight: 600;">Experience</small>
+                    <strong style="font-size: 14px; color: #7e22ce; line-height: 27px;">{{ selectedProfileCandidate.experience }}</strong>
+                  </div>
+                  <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 10px; text-align: center;">
+                    <small style="display: block; font-size: 11px; color: #92400e; font-weight: 600;">Education</small>
+                    <strong style="font-size: 18px; color: #b45309;">{{ selectedProfileCandidate.education }}%</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding: 16px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+              <button class="btn-sm btn-outline-sm" (click)="viewResume(selectedProfileCandidate)">
+                📄 View Resume PDF
+              </button>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-sm btn-primary-sm" (click)="shortlistCandidate(selectedProfileCandidate)" [disabled]="selectedProfileCandidate.status === 'Shortlisted'">
+                  {{ selectedProfileCandidate.status === 'Shortlisted' ? '✓ Shortlisted' : '⭐ Shortlist' }}
+                </button>
+                <button class="btn-sm btn-outline-sm" (click)="scheduleInterview(selectedProfileCandidate); closeProfileModal();">
+                  📅 Schedule
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- TOAST NOTIFICATION -->
+      @if (toastMessage) {
+        <div style="position: fixed; bottom: 24px; right: 24px; z-index: 2000; background: #0f172a; color: #ffffff; padding: 12px 20px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; font-size: 13.5px; border-left: 4px solid #10b981;">
+          <span>{{ toastMessage }}</span>
+          <button (click)="toastMessage = ''" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; margin-left: 10px;">✕</button>
+        </div>
+      }
 
       <!-- QUICK SHORTCUTS ROW -->
       <section class="shortcuts-row">
