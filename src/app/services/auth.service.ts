@@ -160,10 +160,11 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${this.API_URL}/auth/login`, { email, password }).pipe(
       tap((res) => {
         if (res && res.success && res.token) {
+          const userRole: UserRole = (res.role === 'ADMIN' || res.role?.toString() === 'ROLE_ADMIN') ? 'ADMIN' : 'CANDIDATE';
           this.setSession(
-            res.name || (res.role === 'ADMIN' ? 'Admin User' : 'Candidate User'),
+            res.name || (userRole === 'ADMIN' ? 'Admin User' : 'Candidate User'),
             res.email || email,
-            res.role || 'CANDIDATE',
+            userRole,
             res.id,
             res.token
           );
@@ -291,11 +292,13 @@ export class AuthService {
 
     localStorage.setItem(this.STORAGE_IS_LOGGED_IN, 'true');
     localStorage.setItem(this.STORAGE_USER_ROLE, role);
-    if (token) {
-      localStorage.setItem(this.STORAGE_TOKEN, token);
+    const existingToken = localStorage.getItem(this.STORAGE_TOKEN);
+    const effectiveToken = token || existingToken || undefined;
+    if (effectiveToken) {
+      localStorage.setItem(this.STORAGE_TOKEN, effectiveToken);
     }
 
-    const session: UserSession = { fullName, email, role, id, token };
+    const session: UserSession = { fullName, email, role, id, token: effectiveToken };
     localStorage.setItem(this.STORAGE_CURRENT_SESSION, JSON.stringify(session));
     this.currentUser.set(session);
   }

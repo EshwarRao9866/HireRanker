@@ -198,8 +198,15 @@
           </div>
           <strong class="value">{{ stats.totalApplicants }}</strong>
           <div class="stat-footer">
-            <span class="trend-up">↑ 18.4%</span>
-            <small>vs last month</small>
+            @if (stats.applicantsTrend !== null && stats.applicantsTrend !== undefined) {
+              <span [class.trend-up]="stats.applicantsTrend >= 0" [class.trend-down]="stats.applicantsTrend < 0">
+                {{ stats.applicantsTrend >= 0 ? '↑' : '↓' }} {{ stats.applicantsTrend }}%
+              </span>
+              <small>vs last month</small>
+            } @else {
+              <span class="trend-neutral">—</span>
+              <small>Current pipeline</small>
+            }
           </div>
         </div>
 
@@ -210,8 +217,15 @@
           </div>
           <strong class="value">{{ stats.screenedResumes }}</strong>
           <div class="stat-footer">
-            <span class="trend-up">↑ 12.7%</span>
-            <small>75% automation rate</small>
+            @if (stats.screenedTrend !== null && stats.screenedTrend !== undefined) {
+              <span [class.trend-up]="stats.screenedTrend >= 0" [class.trend-down]="stats.screenedTrend < 0">
+                {{ stats.screenedTrend >= 0 ? '↑' : '↓' }} {{ stats.screenedTrend }}%
+              </span>
+              <small>vs last month</small>
+            } @else {
+              <span class="trend-neutral">—</span>
+              <small>{{ stats.totalApplicants > 0 ? (stats.screenedResumes * 100 / stats.totalApplicants | number:'1.0-0') + '% screening rate' : 'No resumes yet' }}</small>
+            }
           </div>
         </div>
 
@@ -222,8 +236,15 @@
           </div>
           <strong class="value">{{ stats.shortlisted }}</strong>
           <div class="stat-footer">
-            <span class="trend-up">↑ 8.3%</span>
-            <small>Top percentile</small>
+            @if (stats.shortlistedTrend !== null && stats.shortlistedTrend !== undefined) {
+              <span [class.trend-up]="stats.shortlistedTrend >= 0" [class.trend-down]="stats.shortlistedTrend < 0">
+                {{ stats.shortlistedTrend >= 0 ? '↑' : '↓' }} {{ stats.shortlistedTrend }}%
+              </span>
+              <small>vs last month</small>
+            } @else {
+              <span class="trend-neutral">—</span>
+              <small>{{ stats.totalApplicants > 0 ? (stats.shortlisted * 100 / stats.totalApplicants | number:'1.0-0') + '% selection rate' : 'Qualified candidates' }}</small>
+            }
           </div>
         </div>
 
@@ -234,7 +255,7 @@
           </div>
           <strong class="value">{{ stats.interviewsScheduled }}</strong>
           <div class="stat-footer">
-            <span class="trend-highlight">8 This Week</span>
+            <span class="trend-highlight">{{ stats.interviewsThisWeek }} This Week</span>
             <small>AI & Live rounds</small>
           </div>
         </div>

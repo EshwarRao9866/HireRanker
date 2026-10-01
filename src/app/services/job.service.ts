@@ -56,9 +56,11 @@ export interface ApplicantProject {
 
 export interface ApplicantRecord {
   id: number;
+  jobId?: number;
   name: string;
   email: string;
   job: string;
+  company?: string;
   matchScore: number;
   skillsMatch: number;
   experience: string;
@@ -300,7 +302,7 @@ export class JobService {
           tags: bj.requiredSkills ? bj.requiredSkills.split(',').map((s: string) => s.trim()) : ['Java', 'Spring Boot'],
           description: bj.description,
           responsibilities: bj.responsibilities,
-          applicants: 0,
+          applicants: typeof bj.applicantsCount === 'number' ? bj.applicantsCount : (bj.applicants || 0),
           status: bj.status === 'ACTIVE' ? 'Active' : bj.status === 'CLOSED' ? 'Closed' : 'Draft',
           postedDate: bj.createdAt ? new Date(bj.createdAt).toLocaleDateString() : 'Recently'
         }));

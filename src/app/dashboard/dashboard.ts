@@ -62,7 +62,11 @@ export class Dashboard implements OnInit {
     screenedResumes: 0,
     shortlisted: 0,
     interviewsScheduled: 0,
-    avgMatchRate: 0
+    avgMatchRate: 0,
+    applicantsTrend: null as number | null,
+    screenedTrend: null as number | null,
+    shortlistedTrend: null as number | null,
+    interviewsThisWeek: 0
   };
 
   topSkills: SkillStat[] = [];
@@ -114,6 +118,13 @@ export class Dashboard implements OnInit {
     }
 
     this.loadNotifications();
+
+    // Immediately restore cached dashboard data so the UI displays instantly on page refresh
+    const cached = this.dashboardService.getCachedAdminDashboard();
+    if (cached) {
+      this.populateDashboardData(cached);
+    }
+
     this.loadDashboardData(this.selectedPeriod);
   }
 
@@ -121,66 +132,79 @@ export class Dashboard implements OnInit {
     this.loadDashboardData(this.selectedPeriod);
   }
 
+  private populateDashboardData(data: any): void {
+    if (!data) return;
+
+    this.stats = {
+      totalApplicants: data.totalApplications ?? data.applicantsOverview?.totalApplicants ?? 0,
+      screenedResumes: data.screenedResumes ?? 0,
+      shortlisted: data.shortlistedCandidates ?? 0,
+      interviewsScheduled: data.totalInterviews ?? 0,
+      avgMatchRate: Math.round(data.averageMatchScore ?? 0),
+      applicantsTrend: data.applicantsTrendPercent !== undefined ? data.applicantsTrendPercent : null,
+      screenedTrend: data.screenedTrendPercent !== undefined ? data.screenedTrendPercent : null,
+      shortlistedTrend: data.shortlistedTrendPercent !== undefined ? data.shortlistedTrendPercent : null,
+      interviewsThisWeek: data.interviewsScheduledThisWeek ?? 0
+    };
+
+    if (data.topSkills && data.topSkills.length > 0) {
+      this.topSkills = data.topSkills.map((s: any) => ({
+        name: s.name,
+        percent: Math.round(s.percent),
+        class: s.cssClass || 'other'
+      }));
+      this.computeSkillsConicGradient(this.topSkills);
+    } else if (this.topSkills.length === 0) {
+      this.skillsConicGradient = '#e2e8f0 0% 100%';
+    }
+
+    if (data.applicationStatus && data.applicationStatus.length > 0) {
+      this.statusBreakdown = data.applicationStatus.map((s: any) => ({
+        label: s.label,
+        count: s.count,
+        percent: Math.round(s.percent),
+        class: s.cssClass || 'screened'
+      }));
+      this.computeStatusConicGradient(this.statusBreakdown);
+    } else if (this.statusBreakdown.length === 0) {
+      this.statusConicGradient = '#e2e8f0 0% 100%';
+    }
+
+    if (data.topRankedCandidates && data.topRankedCandidates.length > 0) {
+      this.candidates = data.topRankedCandidates.map((c: any) => ({
+        id: c.candidateId,
+        name: c.candidateName,
+        email: c.email,
+        appliedRole: c.appliedRole,
+        matchScore: Math.round(c.matchScore),
+        skills: Math.round(c.skillsScore),
+        experience: `${c.experienceScore || 3} yrs`,
+        education: Math.round(c.educationScore),
+        resumeFileName: c.resumeFileName || 'Resume.pdf',
+        resumeId: c.resumeId,
+        applicationId: c.applicationId,
+        status: c.applicationStatus === 'SHORTLISTED' ? 'Shortlisted' :
+                c.applicationStatus === 'INTERVIEW' ? 'Interview Scheduled' :
+                c.applicationStatus === 'REJECTED' ? 'Rejected' : 'Under Review'
+      }));
+    }
+
+    if (data.applicantsOverview) {
+      this.renderDynamicChart(data.applicantsOverview);
+    }
+  }
+
   loadDashboardData(period: string = 'This Week'): void {
     this.dashboardService.getAdminDashboard(period).subscribe({
       next: (data) => {
         if (data) {
-          this.stats = {
-            totalApplicants: data.totalApplications ?? data.applicantsOverview?.totalApplicants ?? 0,
-            screenedResumes: data.screenedResumes ?? 0,
-            shortlisted: data.shortlistedCandidates ?? 0,
-            interviewsScheduled: data.totalInterviews ?? 0,
-            avgMatchRate: Math.round(data.averageMatchScore ?? 0)
-          };
-
-          if (data.topSkills && data.topSkills.length > 0) {
-            this.topSkills = data.topSkills.map(s => ({
-              name: s.name,
-              percent: Math.round(s.percent),
-              class: s.cssClass || 'other'
-            }));
-            this.computeSkillsConicGradient(this.topSkills);
-          } else {
-            this.topSkills = [];
-            this.skillsConicGradient = '#e2e8f0 0% 100%';
-          }
-
-          if (data.applicationStatus && data.applicationStatus.length > 0) {
-            this.statusBreakdown = data.applicationStatus.map(s => ({
-              label: s.label,
-              count: s.count,
-              percent: Math.round(s.percent),
-              class: s.cssClass || 'screened'
-            }));
-            this.computeStatusConicGradient(this.statusBreakdown);
-          } else {
-            this.statusBreakdown = [];
-            this.statusConicGradient = '#e2e8f0 0% 100%';
-          }
-
-          if (data.topRankedCandidates && data.topRankedCandidates.length > 0) {
-            this.candidates = data.topRankedCandidates.map(c => ({
-              id: c.candidateId,
-              name: c.candidateName,
-              email: c.email,
-              appliedRole: c.appliedRole,
-              matchScore: Math.round(c.matchScore),
-              skills: Math.round(c.skillsScore),
-              experience: `${c.experienceScore || 3} yrs`,
-              education: Math.round(c.educationScore),
-              resumeFileName: c.resumeFileName || 'Resume.pdf',
-              resumeId: c.resumeId,
-              applicationId: c.applicationId,
-              status: c.applicationStatus === 'SHORTLISTED' ? 'Shortlisted' :
-                      c.applicationStatus === 'INTERVIEW' ? 'Interview Scheduled' :
-                      c.applicationStatus === 'REJECTED' ? 'Rejected' : 'Under Review'
-            }));
-          } else {
-            this.candidates = [];
-          }
-
-          if (data.applicantsOverview) {
-            this.renderDynamicChart(data.applicantsOverview);
+          const hasMetrics = (data.totalApplications > 0) ||
+                             (data.applicantsOverview && data.applicantsOverview.totalApplicants > 0) ||
+                             (data.topRankedCandidates && data.topRankedCandidates.length > 0) ||
+                             (data.topSkills && data.topSkills.length > 0);
+          // If the new payload has data, or if we have no existing stats yet, populate
+          if (hasMetrics || this.stats.totalApplicants === 0) {
+            this.populateDashboardData(data);
           }
         }
       },

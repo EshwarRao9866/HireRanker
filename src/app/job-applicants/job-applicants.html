@@ -20,6 +20,16 @@
       </div>
 
       <div class="filter-box">
+        <label>Filter by Job:</label>
+        <select [(ngModel)]="selectedJobId">
+          <option value="All">All Jobs</option>
+          @for (job of availableJobs; track job.id) {
+            <option [value]="job.id.toString()">{{ job.title }} (ID: {{ job.id }})</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-box">
         <label>Filter by Status:</label>
         <select [(ngModel)]="selectedFilter">
           <option value="All">All Statuses</option>

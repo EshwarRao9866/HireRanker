@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { JobService, ApplicantRecord } from '../services/job.service';
+import { Router, ActivatedRoute } from '@angular/router';
+import { JobService, ApplicantRecord, JobItem } from '../services/job.service';
 import { ApplicationService } from '../services/application.service';
 import { ResumeService } from '../services/resume.service';
 
@@ -16,8 +16,10 @@ import { ResumeService } from '../services/resume.service';
 export class JobApplicants implements OnInit {
   searchQuery = '';
   selectedFilter = 'All';
+  selectedJobId = 'All';
 
   applicants: ApplicantRecord[] = [];
+  availableJobs: { id: number; title: string }[] = [];
   selectedResumeApplicant: ApplicantRecord | null = null;
   selectedProfileApplicant: ApplicantRecord | null = null;
 
@@ -26,13 +28,32 @@ export class JobApplicants implements OnInit {
 
   constructor(
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
     private readonly jobService: JobService,
     private readonly applicationService: ApplicationService,
     private readonly resumeService: ResumeService
   ) {}
 
   ngOnInit(): void {
+    // Check if navigated with a specific jobId query parameter
+    this.route.queryParams.subscribe(params => {
+      if (params['jobId']) {
+        this.selectedJobId = String(params['jobId']);
+      }
+    });
+
+    this.loadJobsList();
     this.loadApplicants();
+  }
+
+  loadJobsList(): void {
+    this.jobService.fetchJobsFromBackend().subscribe({
+      next: (jobs) => {
+        if (jobs && jobs.length > 0) {
+          this.availableJobs = jobs.map(j => ({ id: j.id, title: j.title }));
+        }
+      }
+    });
   }
 
   loadApplicants(): void {
@@ -43,6 +64,17 @@ export class JobApplicants implements OnInit {
           return;
         }
 
+        // Also populate available jobs dynamically if empty
+        if (this.availableJobs.length === 0) {
+          const jobMap = new Map<number, string>();
+          backendApps.forEach(a => {
+            if (a.jobId && a.jobTitle) {
+              jobMap.set(a.jobId, a.jobTitle);
+            }
+          });
+          this.availableJobs = Array.from(jobMap.entries()).map(([id, title]) => ({ id, title }));
+        }
+
         this.applicants = backendApps.map(a => {
           const skillsList = a.skills
             ? a.skills.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
@@ -50,6 +82,8 @@ export class JobApplicants implements OnInit {
 
           return {
             id: a.id,
+            jobId: a.jobId,
+            company: (a as any).company,
             name: a.candidateName || `Candidate #${a.candidateId}`,
             email: a.candidateEmail || `candidate${a.candidateId}@hireranker.internal`,
             job: a.jobTitle || 'Full Stack Engineer',
@@ -118,7 +152,9 @@ export class JobApplicants implements OnInit {
 
       const matchesFilter = this.selectedFilter === 'All' || a.status === this.selectedFilter;
 
-      return matchesSearch && matchesFilter;
+      const matchesJob = this.selectedJobId === 'All' || String(a.jobId) === this.selectedJobId;
+
+      return matchesSearch && matchesFilter && matchesJob;
     });
   }
 

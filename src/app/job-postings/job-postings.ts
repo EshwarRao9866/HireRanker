@@ -279,7 +279,7 @@ export class JobPostings implements OnInit {
   }
 
   viewApplicants(job: JobItem): void {
-    this.router.navigate(['/job-applicants']);
+    this.router.navigate(['/job-applicants'], { queryParams: { jobId: job.id } });
   }
 
   goBack(): void {
