@@ -133,5 +133,12 @@ export class ApplicationService {
   deleteApplication(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  /**
+   * Retrieves the original uploaded resume PDF associated with an application (GET /api/applications/{id}/resume/file)
+   */
+  getApplicationResumeFile(applicationId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${applicationId}/resume/file`, { responseType: 'blob' });
+  }
 }
 

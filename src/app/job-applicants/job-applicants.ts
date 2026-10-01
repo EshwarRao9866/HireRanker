@@ -1,7 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { JobService, ApplicantRecord, JobItem } from '../services/job.service';
 import { ApplicationService } from '../services/application.service';
 import { ResumeService } from '../services/resume.service';
@@ -13,7 +14,7 @@ import { ResumeService } from '../services/resume.service';
   templateUrl: './job-applicants.html',
   styleUrl: './job-applicants.css'
 })
-export class JobApplicants implements OnInit {
+export class JobApplicants implements OnInit, OnDestroy {
   searchQuery = '';
   selectedFilter = 'All';
   selectedJobId = 'All';
@@ -22,6 +23,12 @@ export class JobApplicants implements OnInit {
   availableJobs: { id: number; title: string }[] = [];
   selectedResumeApplicant: ApplicantRecord | null = null;
   selectedProfileApplicant: ApplicantRecord | null = null;
+
+  isPdfLoading = false;
+  pdfError = false;
+  pdfErrorMessage = '';
+  pdfObjectUrl: string | null = null;
+  pdfSafeUrl: SafeResourceUrl | null = null;
 
   toastMessage = '';
   private toastTimeout: any;
@@ -32,7 +39,8 @@ export class JobApplicants implements OnInit {
     private readonly jobService: JobService,
     private readonly applicationService: ApplicationService,
     private readonly resumeService: ResumeService,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
+    private readonly sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -97,6 +105,8 @@ export class JobApplicants implements OnInit {
           return {
             id: a.id,
             jobId: a.jobId,
+            candidateId: a.candidateId,
+            resumeId: a.resumeId,
             company: (a as any).company,
             name: a.candidateName || `Candidate #${a.candidateId}`,
             email: a.candidateEmail || `candidate${a.candidateId}@hireranker.internal`,
@@ -178,18 +188,126 @@ export class JobApplicants implements OnInit {
   viewResume(applicant: ApplicantRecord): void {
     this.selectedProfileApplicant = null;
     this.selectedResumeApplicant = applicant;
+    this.cleanupPdfUrl();
+    this.loadApplicantPdf(applicant);
     this.cdr.markForCheck();
     this.cdr.detectChanges();
   }
 
+  loadApplicantPdf(applicant: ApplicantRecord): void {
+    this.isPdfLoading = true;
+    this.pdfError = false;
+    this.pdfErrorMessage = '';
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+
+    const resumeObs$ = applicant.id
+      ? this.applicationService.getApplicationResumeFile(applicant.id)
+      : (applicant.resumeId ? this.resumeService.getResumePdfBlob(applicant.resumeId) : null);
+
+    if (!resumeObs$) {
+      this.isPdfLoading = false;
+      this.pdfError = true;
+      this.pdfErrorMessage = 'No resume is associated with this candidate application.';
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      return;
+    }
+
+    resumeObs$.subscribe({
+      next: (blob) => {
+        if (this.selectedResumeApplicant?.id !== applicant.id) {
+          return;
+        }
+        if (!blob || blob.size === 0) {
+          this.isPdfLoading = false;
+          this.pdfError = true;
+          this.pdfErrorMessage = 'Original PDF file is empty or unavailable on storage.';
+          this.cdr.markForCheck();
+          this.cdr.detectChanges();
+          return;
+        }
+        this.cleanupPdfUrl();
+        const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+        this.pdfObjectUrl = window.URL.createObjectURL(pdfBlob);
+        this.pdfSafeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
+        this.isPdfLoading = false;
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        if (this.selectedResumeApplicant?.id !== applicant.id) {
+          return;
+        }
+        if (applicant.resumeId) {
+          this.resumeService.getResumePdfBlob(applicant.resumeId).subscribe({
+            next: (blob) => {
+              if (this.selectedResumeApplicant?.id !== applicant.id) return;
+              if (!blob || blob.size === 0) {
+                this.isPdfLoading = false;
+                this.pdfError = true;
+                this.pdfErrorMessage = 'Original PDF file is empty or unavailable on storage.';
+                this.cdr.markForCheck();
+                this.cdr.detectChanges();
+                return;
+              }
+              this.cleanupPdfUrl();
+              const pdfBlob = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+              this.pdfObjectUrl = window.URL.createObjectURL(pdfBlob);
+              this.pdfSafeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
+              this.isPdfLoading = false;
+              this.cdr.markForCheck();
+              this.cdr.detectChanges();
+            },
+            error: (fallbackErr) => {
+              if (this.selectedResumeApplicant?.id !== applicant.id) return;
+              this.handlePdfLoadError(fallbackErr, applicant);
+            }
+          });
+          return;
+        }
+        this.handlePdfLoadError(err, applicant);
+      }
+    });
+  }
+
+  private handlePdfLoadError(err: any, applicant: ApplicantRecord): void {
+    console.error('Failed to load candidate original resume PDF:', err);
+    this.isPdfLoading = false;
+    this.pdfError = true;
+    this.pdfErrorMessage = err?.status === 404
+      ? `Original PDF file '${applicant.resumeFileName}' was not found in storage (404 Not Found).`
+      : err?.status === 403
+      ? 'You do not have administrative authorization to access this resume.'
+      : 'Failed to retrieve resume PDF from server. Please verify backend connectivity.';
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+  }
+
+  retryLoadPdf(): void {
+    if (this.selectedResumeApplicant) {
+      this.loadApplicantPdf(this.selectedResumeApplicant);
+    }
+  }
+
+  private cleanupPdfUrl(): void {
+    if (this.pdfObjectUrl) {
+      window.URL.revokeObjectURL(this.pdfObjectUrl);
+      this.pdfObjectUrl = null;
+      this.pdfSafeUrl = null;
+    }
+  }
+
   closeResumeModal(): void {
     this.selectedResumeApplicant = null;
+    this.cleanupPdfUrl();
     this.cdr.markForCheck();
     this.cdr.detectChanges();
   }
 
   openCandidateProfile(applicant: ApplicantRecord): void {
     this.selectedResumeApplicant = null;
+    this.cleanupPdfUrl();
     this.selectedProfileApplicant = applicant;
     this.cdr.markForCheck();
     this.cdr.detectChanges();
@@ -205,9 +323,7 @@ export class JobApplicants implements OnInit {
     if (this.selectedProfileApplicant) {
       const app = this.selectedProfileApplicant;
       this.selectedProfileApplicant = null;
-      this.selectedResumeApplicant = app;
-      this.cdr.markForCheck();
-      this.cdr.detectChanges();
+      this.viewResume(app);
     }
   }
 
@@ -215,6 +331,7 @@ export class JobApplicants implements OnInit {
     if (this.selectedResumeApplicant) {
       const app = this.selectedResumeApplicant;
       this.selectedResumeApplicant = null;
+      this.cleanupPdfUrl();
       this.selectedProfileApplicant = app;
       this.cdr.markForCheck();
       this.cdr.detectChanges();
@@ -294,8 +411,17 @@ export class JobApplicants implements OnInit {
   }
 
   downloadResume(applicant: ApplicantRecord): void {
-    const resumeId = (applicant as any).resumeId || applicant.id || 1;
-    this.resumeService.downloadResumeBlob(resumeId).subscribe({
+    this.showToast(`📄 Downloading ${applicant.resumeFileName || 'resume.pdf'}...`);
+    const downloadObs$ = applicant.id
+      ? this.applicationService.getApplicationResumeFile(applicant.id)
+      : (applicant.resumeId ? this.resumeService.getResumePdfBlob(applicant.resumeId) : null);
+
+    if (!downloadObs$) {
+      this.showToast('⚠️ No resume file is associated with this application.');
+      return;
+    }
+
+    downloadObs$.subscribe({
       next: (blob) => {
         if (!blob || blob.size === 0) {
           this.showToast('⚠️ Resume file is empty or unavailable.');
@@ -305,17 +431,47 @@ export class JobApplicants implements OnInit {
         const a = document.createElement('a');
         a.href = fileUrl;
         a.download = applicant.resumeFileName || `Resume_${applicant.name.replace(/\s+/g, '_')}.pdf`;
-        a.target = '_blank';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         setTimeout(() => window.URL.revokeObjectURL(fileUrl), 1000);
-        this.showToast(`📄 Downloading ${applicant.resumeFileName || 'resume.pdf'}...`);
+        this.showToast(`✓ Downloaded ${applicant.resumeFileName || 'resume.pdf'}`);
       },
-      error: () => {
-        this.showToast('⚠️ Unable to connect to backend server. File download unavailable.');
+      error: (err) => {
+        // Fallback to resumeId if application endpoint had an issue
+        if (applicant.resumeId) {
+          this.resumeService.getResumePdfBlob(applicant.resumeId).subscribe({
+            next: (blob) => {
+              if (!blob || blob.size === 0) {
+                this.showToast('⚠️ Resume file is empty or unavailable.');
+                return;
+              }
+              const fileUrl = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = fileUrl;
+              a.download = applicant.resumeFileName || `Resume_${applicant.name.replace(/\s+/g, '_')}.pdf`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              setTimeout(() => window.URL.revokeObjectURL(fileUrl), 1000);
+              this.showToast(`✓ Downloaded ${applicant.resumeFileName || 'resume.pdf'}`);
+            },
+            error: (fallbackErr) => {
+              console.error('Failed to download resume:', fallbackErr);
+              this.showToast('⚠️ Unable to download original PDF. File not found on server.');
+            }
+          });
+          return;
+        }
+        console.error('Failed to download resume:', err);
+        this.showToast('⚠️ Unable to download original PDF. File not found on server.');
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.cleanupPdfUrl();
+    if (this.toastTimeout) clearTimeout(this.toastTimeout);
   }
 
   copyContact(text: string, label: string): void {

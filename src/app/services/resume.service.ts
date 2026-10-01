@@ -405,42 +405,19 @@ export class ResumeService {
   }
 
   /**
+   * Retrieves the candidate's exact original uploaded PDF Blob (GET /api/resumes/{id}/file)
+   * Does NOT reconstruct or replace the PDF with fallback generated content.
+   */
+  getResumePdfBlob(id: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/file`, { responseType: 'blob' });
+  }
+
+  /**
    * Downloads resume file content as a Blob with JWT authorization header injected by AuthInterceptor
    * (GET /api/resumes/{id}/file)
    */
   downloadResumeBlob(id: number, fileName?: string): Observable<Blob> {
-    // If id is a valid backend ID (<= 100000), attempt direct file download first
-    if (id && id < 100000) {
-      return this.http.get(`${this.apiUrl}/${id}/file`, { responseType: 'blob' }).pipe(
-        catchError((err) => {
-          console.warn(`[ResumeService] Backend /api/resumes/${id}/file returned error (${err?.status}), trying active fallbacks...`);
-          return this.fallbackDownloadResumeBlob(id, fileName);
-        })
-      );
-    }
-
-    // If id is a local/timestamp ID, try backend active resume or fallback
-    return this.fallbackDownloadResumeBlob(id, fileName);
-  }
-
-  private fallbackDownloadResumeBlob(id: number, fileName?: string): Observable<Blob> {
-    // 1. Only candidates have a personal resume endpoint; admins must never call /my-resume/file (prevents 403 Forbidden)
-    if (this.authService.isCandidate()) {
-      return this.http.get(`${this.apiUrl}/my-resume/file`, { responseType: 'blob' }).pipe(
-        catchError(() => this.fallbackResumeByIdOrGenerated(id, fileName))
-      );
-    }
-
-    return this.fallbackResumeByIdOrGenerated(id, fileName);
-  }
-
-  private fallbackResumeByIdOrGenerated(id: number, fileName?: string): Observable<Blob> {
-    // Try cached resume blob from upload if present
-    if (this.cachedResumeBlob) {
-      return of(this.cachedResumeBlob);
-    }
-    // Return generated structured ATS candidate profile PDF to gracefully render without breaking
-    return of(this.createFallbackPdfBlob(id, fileName || `Resume_${id}.pdf`));
+    return this.http.get(`${this.apiUrl}/${id}/file`, { responseType: 'blob' });
   }
 
   /**

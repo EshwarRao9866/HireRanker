@@ -137,131 +137,56 @@
         </header>
 
         <div class="modal-body-scrollable">
-          <!-- A4 Professional ATS Resume Layout -->
-          <div class="resume-paper">
-            
-            <div class="rp-header">
-              <h1 class="rp-name">{{ selectedResumeApplicant.name }}</h1>
-              <p class="rp-title">{{ selectedResumeApplicant.currentTitle || selectedResumeApplicant.job }}</p>
-              <div class="rp-contact-strip">
-                <span (click)="copyContact(selectedResumeApplicant.email, 'Email')" title="Click to copy email">
-                  ✉ {{ selectedResumeApplicant.email }}
-                </span>
-                <span (click)="copyContact(selectedResumeApplicant.phone || '+91 98765 43210', 'Phone')" title="Click to copy phone">
-                  📱 {{ selectedResumeApplicant.phone || '+91 98765 43210' }}
-                </span>
-                <span>📍 {{ selectedResumeApplicant.location || 'Hyderabad, India' }}</span>
-                @if (selectedResumeApplicant.linkedin) {
-                  <a [href]="selectedResumeApplicant.linkedin" target="_blank" rel="noopener noreferrer" class="rp-link">
-                    🔗 LinkedIn
-                  </a>
-                }
-                @if (selectedResumeApplicant.github) {
-                  <a [href]="selectedResumeApplicant.github" target="_blank" rel="noopener noreferrer" class="rp-link">
-                    🐙 GitHub
-                  </a>
-                }
-              </div>
+          <!-- ATS Screening Analysis Summary (Separated from the original PDF) -->
+          <div class="rp-ats-banner">
+            <div class="rp-ats-col">
+              <span class="rp-label">AI Match Score</span>
+              <strong class="rp-val green">{{ selectedResumeApplicant.matchScore }}%</strong>
             </div>
+            <div class="rp-ats-col">
+              <span class="rp-label">Skills Match</span>
+              <strong class="rp-val">{{ selectedResumeApplicant.skillsMatch }}%</strong>
+            </div>
+            <div class="rp-ats-col">
+              <span class="rp-label">Experience</span>
+              <strong class="rp-val">{{ selectedResumeApplicant.experience }}</strong>
+            </div>
+            <div class="rp-ats-col">
+              <span class="rp-label">Recommendation</span>
+              <strong class="rp-val highlight">
+                {{ selectedResumeApplicant.matchScore >= 88 ? 'Recommended for Interview' : 'Eligible for Review' }}
+              </strong>
+            </div>
+          </div>
 
-            <!-- Summary -->
-            <section class="rp-section">
-              <h2 class="rp-section-title">Professional Summary</h2>
-              <p class="rp-summary-text">
-                {{ selectedResumeApplicant.aboutMe || 'Dedicated software engineer with extensive experience designing performant full stack applications and cloud-ready architectures.' }}
-              </p>
-            </section>
-
-            <!-- Technical Skills -->
-            <section class="rp-section">
-              <h2 class="rp-section-title">Technical Skills &amp; Competencies</h2>
-              <div class="rp-skills-list">
-                @for (skill of selectedResumeApplicant.skills; track skill) {
-                  <span class="rp-skill-chip">{{ skill }}</span>
-                }
+          <!-- Original Uploaded PDF Document Viewer -->
+          <div class="pdf-viewer-card">
+            @if (isPdfLoading) {
+              <div class="pdf-state-box loading">
+                <div class="pdf-spinner"></div>
+                <h4>Loading Original PDF...</h4>
+                <p>Retrieving <strong>{{ selectedResumeApplicant.resumeFileName }}</strong> from secure storage.</p>
               </div>
-            </section>
-
-            <!-- Experience -->
-            <section class="rp-section">
-              <h2 class="rp-section-title">Work Experience</h2>
-              @if (selectedResumeApplicant.workHistory && selectedResumeApplicant.workHistory.length > 0) {
-                @for (exp of selectedResumeApplicant.workHistory; track exp.role) {
-                  <div class="rp-exp-item">
-                    <div class="rp-exp-head">
-                      <strong>{{ exp.role }} &mdash; <span class="rp-company">{{ exp.company }}</span></strong>
-                      <span class="rp-duration">{{ exp.duration }}</span>
-                    </div>
-                    <ul class="rp-bullets">
-                      @for (hl of exp.highlights; track hl) {
-                        <li>{{ hl }}</li>
-                      }
-                    </ul>
-                  </div>
-                }
-              } @else {
-                <div class="rp-exp-item">
-                  <div class="rp-exp-head">
-                    <strong>Software Engineer &mdash; <span class="rp-company">Enterprise Systems</span></strong>
-                    <span class="rp-duration">{{ selectedResumeApplicant.experience }}</span>
-                  </div>
-                  <ul class="rp-bullets">
-                    <li>Engineered software features and maintained high code reliability standards.</li>
-                    <li>Collaborated in cross-functional agile teams to deliver customer-centric functionality.</li>
-                  </ul>
-                </div>
-              }
-            </section>
-
-            <!-- Education -->
-            <section class="rp-section">
-              <h2 class="rp-section-title">Education &amp; Credentials</h2>
-              <div class="rp-edu-item">
-                <div class="rp-exp-head">
-                  <strong>{{ selectedResumeApplicant.education || 'Bachelor of Technology in Computer Science' }}</strong>
-                  <span class="rp-duration">Score: {{ selectedResumeApplicant.educationScore }}%</span>
+            } @else if (pdfError) {
+              <div class="pdf-state-box error">
+                <span class="pdf-state-icon">⚠️</span>
+                <h4>Original PDF File Unavailable</h4>
+                <p>{{ pdfErrorMessage }}</p>
+                <div class="pdf-state-actions">
+                  <button class="btn-retry-pdf" (click)="retryLoadPdf()">↻ Retry Loading</button>
+                  <button class="btn-profile-link" (click)="openProfileFromResume()">👤 View Candidate Profile</button>
                 </div>
               </div>
-            </section>
-
-            <!-- Projects -->
-            @if (selectedResumeApplicant.projects && selectedResumeApplicant.projects.length > 0) {
-              <section class="rp-section">
-                <h2 class="rp-section-title">Key Projects</h2>
-                @for (proj of selectedResumeApplicant.projects; track proj.title) {
-                  <div class="rp-project-item">
-                    <div class="rp-exp-head">
-                      <strong>{{ proj.title }}</strong>
-                      <span class="rp-tech-badge">{{ proj.tech }}</span>
-                    </div>
-                    <p class="rp-proj-desc">{{ proj.description }}</p>
-                  </div>
-                }
-              </section>
+            } @else if (pdfSafeUrl) {
+              <div class="pdf-embed-wrapper">
+                <iframe
+                  [src]="pdfSafeUrl"
+                  class="pdf-iframe-frame"
+                  type="application/pdf"
+                  [title]="'Original Resume: ' + selectedResumeApplicant.resumeFileName">
+                </iframe>
+              </div>
             }
-
-            <!-- ATS Screening Banner -->
-            <div class="rp-ats-banner">
-              <div class="rp-ats-col">
-                <span class="rp-label">AI Match Score</span>
-                <strong class="rp-val green">{{ selectedResumeApplicant.matchScore }}%</strong>
-              </div>
-              <div class="rp-ats-col">
-                <span class="rp-label">Skills Match</span>
-                <strong class="rp-val">{{ selectedResumeApplicant.skillsMatch }}%</strong>
-              </div>
-              <div class="rp-ats-col">
-                <span class="rp-label">Experience</span>
-                <strong class="rp-val">{{ selectedResumeApplicant.experience }}</strong>
-              </div>
-              <div class="rp-ats-col">
-                <span class="rp-label">Recommendation</span>
-                <strong class="rp-val highlight">
-                  {{ selectedResumeApplicant.matchScore >= 88 ? 'Recommended for Interview' : 'Eligible for Review' }}
-                </strong>
-              </div>
-            </div>
-
           </div>
         </div>
 

@@ -57,6 +57,8 @@ export interface ApplicantProject {
 export interface ApplicantRecord {
   id: number;
   jobId?: number;
+  candidateId?: number;
+  resumeId?: number;
   name: string;
   email: string;
   job: string;
