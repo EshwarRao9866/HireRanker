@@ -26,6 +26,17 @@
     </div>
   </header>
 
+  <!-- PROCTORING REAL-TIME ALERT BANNER (PART 9) -->
+  @if (activeAlertMessage) {
+    <div class="proctor-live-alert-banner" [attr.data-alert-type]="activeAlertType">
+      <span class="proctor-alert-icon">⚠️</span>
+      <div class="proctor-alert-body">
+        <strong>{{ activeAlertMessage }}</strong>
+        <span class="proctor-alert-sub">Zero-Bias Proctoring is monitoring session integrity. Please maintain attention.</span>
+      </div>
+    </div>
+  }
+
   @if (completionNotice) {
     <div class="alert-banner info-banner" style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; color: #065f46; padding: 12px 18px; border-radius: 8px; margin: 16px 24px; font-weight: 600;">
       ✅ {{ completionNotice }}
@@ -38,8 +49,31 @@
     </div>
   }
 
+  <!-- AI INTERVIEW CONCLUSION SCREEN (PART 12) -->
+  @if (isConclusionPhase) {
+    <div class="conclusion-phase-overlay">
+      <div class="conclusion-phase-card">
+        <div class="conclusion-ai-avatar">
+          <div class="pulse-ring"></div>
+          <span class="avatar-emoji">🤖</span>
+        </div>
+        <div class="conclusion-badge">
+          <span class="live-pulse"></span>
+          <span>AI Final Conclusion In Progress</span>
+        </div>
+        <h2 class="conclusion-title">Interview Completed, {{ candidateName }}!</h2>
+        <p class="conclusion-speech-text">
+          "{{ conclusionText }}"
+        </p>
+        <div class="conclusion-status-pill">
+          <span>🔊 AI Interviewer is speaking final conclusion... Compiling scorecard</span>
+        </div>
+      </div>
+    </div>
+  }
+
   @if (isCompleted && scorecard) {
-    <!-- INTERVIEW COMPLETED SCORECARD -->
+    <!-- INTERVIEW COMPLETED SCORECARD (PART 12 & 13) -->
     <div class="scorecard-container">
       <div class="scorecard-card">
         <div class="scorecard-header">
@@ -71,6 +105,55 @@
             <span class="score-label">Problem Solving</span>
             <span class="score-value">{{ scorecard.problemSolvingScore }}%</span>
             <div class="mini-bar"><div class="mini-fill" [style.width.%]="scorecard.problemSolvingScore"></div></div>
+          </div>
+        </div>
+
+        <!-- ASSESSMENT ACTIVITY STATS -->
+        <div class="stats-ribbon-grid">
+          <div class="ribbon-metric">
+            <span class="metric-label">Questions Target</span>
+            <span class="metric-val">{{ scorecard.totalQuestions || totalQuestions }}</span>
+          </div>
+          <div class="ribbon-metric">
+            <span class="metric-label">Answered</span>
+            <span class="metric-val" style="color: #10b981;">{{ scorecard.answeredQuestions || 0 }}</span>
+          </div>
+          <div class="ribbon-metric">
+            <span class="metric-label">Unanswered / Skipped</span>
+            <span class="metric-val" style="color: #ea580c;">{{ scorecard.skippedQuestions || 0 }}</span>
+          </div>
+          <div class="ribbon-metric">
+            <span class="metric-label">Duration</span>
+            <span class="metric-val">{{ scorecard.durationMinutes || 15 }}m</span>
+          </div>
+        </div>
+
+        <!-- CANDIDATE MONITORING & INTEGRITY SUMMARY (PART 13) -->
+        <div class="proctoring-summary-card" [class.review-flagged]="(scorecard.integrityStatus || 'NORMAL') === 'REVIEW_REQUIRED'">
+          <div class="proctor-card-head">
+            <div class="proctor-status-tag">
+              <span class="integrity-dot" [class.dot-normal]="(scorecard.integrityStatus || 'NORMAL') === 'NORMAL'" [class.dot-review]="(scorecard.integrityStatus || 'NORMAL') === 'REVIEW_REQUIRED'"></span>
+              <span>Integrity Verification: <strong>{{ scorecard.integrityStatus || 'NORMAL' }}</strong></span>
+            </div>
+            <span class="proctor-note">Independent proctoring log for recruiter audit (scores are non-punitive)</span>
+          </div>
+          <div class="proctor-metrics-row">
+            <div class="proctor-stat-chip">
+              <span class="chip-num">{{ scorecard.totalIntegrityEvents || 0 }}</span>
+              <span class="chip-name">Monitoring Events</span>
+            </div>
+            <div class="proctor-stat-chip">
+              <span class="chip-num">{{ scorecard.multiplePersonEvents || 0 }}</span>
+              <span class="chip-name">Multiple Persons</span>
+            </div>
+            <div class="proctor-stat-chip">
+              <span class="chip-num">{{ scorecard.tabSwitchEvents || 0 }}</span>
+              <span class="chip-name">Tab / Blur Events</span>
+            </div>
+            <div class="proctor-stat-chip">
+              <span class="chip-num">{{ scorecard.attentionAwayEvents || 0 }}</span>
+              <span class="chip-name">Attention Flags</span>
+            </div>
           </div>
         </div>
 
@@ -347,17 +430,73 @@
                     <button type="button" class="btn-simulate-voice" (click)="requestQuickVerbalAnswer()" title="Quickly populate verbal answer for testing">
                       💡 Quick Verbal Answer
                     </button>
+                    <button type="button" class="btn btn-primary btn-submit-answer" (click)="submitAnswer()" [disabled]="isSubmitting || !answerText.trim()">
+                      {{ isSubmitting ? 'Evaluating...' : 'Submit Answer ✓' }}
+                    </button>
                   </div>
 
                   <div class="auto-submission-status">
+                    <button type="button" class="btn-skip-subtle" (click)="skipQuestion()" [disabled]="isSubmitting">
+                      Skip Question ⏭️
+                    </button>
                     <span class="auto-sub-chip">
-                      🤖 Automatic speech & silence detection active
+                      🤖 Auto-evaluates on 2.5s speech silence
                     </span>
                   </div>
                 </div>
               </div>
 
             </div>
+
+            <!-- ANSWER EVALUATION & SPOKEN FEEDBACK CARD (PART 10 & 11) -->
+            @if (showAnswerFeedback && currentAnswerFeedback) {
+              <div class="feedback-card-container">
+                <div class="feedback-card-inner">
+                  <div class="feedback-head-row">
+                    <div class="eval-pill" [class.eval-correct]="currentAnswerFeedback.correctnessClassification === 'CORRECT' || currentAnswerFeedback.correct === true" [class.eval-partial]="currentAnswerFeedback.correctnessClassification === 'PARTIALLY_CORRECT'" [class.eval-incorrect]="currentAnswerFeedback.correctnessClassification === 'INCORRECT'">
+                      <span class="pill-dot">●</span>
+                      <span>{{ currentAnswerFeedback.correctnessClassification || (currentAnswerFeedback.correct ? 'CORRECT' : 'EVALUATED') }}</span>
+                    </div>
+                    <div class="score-pill">
+                      <span>Score: <strong>{{ currentAnswerFeedback.score !== undefined ? currentAnswerFeedback.score : 80 }}%</strong></span>
+                    </div>
+                    <span class="tts-feedback-badge" [class.active-tts]="isSpeakingFeedback">
+                      {{ isSpeakingFeedback ? '🔊 AI Reading Feedback Aloud...' : '✅ Feedback Ready' }}
+                    </span>
+                  </div>
+
+                  <h4 class="feedback-title">AI Answer Feedback</h4>
+                  <p class="feedback-text">
+                    {{ currentAnswerFeedback.feedback || currentAnswerFeedback.explanation }}
+                  </p>
+
+                  @if (currentAnswerFeedback.explanation && currentAnswerFeedback.feedback) {
+                    <div class="feedback-subdetail">
+                      <strong>💡 Technical Clarification:</strong>
+                      <p>{{ currentAnswerFeedback.explanation }}</p>
+                    </div>
+                  }
+
+                  @if (currentAnswerFeedback.improvementAreas && currentAnswerFeedback.improvementAreas.length > 0) {
+                    <div class="improvements-box">
+                      <strong>🎯 Improvement Focus:</strong>
+                      <ul>
+                        @for (imp of currentAnswerFeedback.improvementAreas; track $index) {
+                          <li>{{ imp }}</li>
+                        }
+                      </ul>
+                    </div>
+                  }
+
+                  <div class="feedback-footer-row">
+                    <span class="feedback-timer-notice">Advancing to next question shortly...</span>
+                    <button type="button" class="btn btn-next-question" (click)="advanceFromFeedback()">
+                      Next Question →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
           } @else {
             <div class="loading-state">
               <div class="spinner"></div>

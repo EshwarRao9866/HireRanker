@@ -61,7 +61,7 @@ export class Interview implements OnInit, OnDestroy {
 
   setFilter(filter: 'UPCOMING' | 'COMPLETED' | 'CANCELLED' | 'ALL'): void {
     this.activeFilter = filter;
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   selectedInterview: CandidateInterview | null = null;
@@ -127,7 +127,7 @@ export class Interview implements OnInit, OnDestroy {
   private audioAnimFrameId: number | null = null;
   private testTimeoutHandle: any = null;
   private speechRecognitionInstance: any = null;
-  private precheckBaseTranscript: string = '';
+  private precheckFinalTranscript: string = '';
   private sustainedVoiceTimer: any = null;
   private interviewsSub?: Subscription;
 
@@ -160,11 +160,11 @@ export class Interview implements OnInit, OnDestroy {
   loadInterviews(): void {
     this.isLoadingInterviews = true;
     this.loadError = '';
-    this.cdr.markForCheck();
+    this.cdr.detectChanges();
 
     // 1. Fetch real-time interviews directly from candidate-specific endpoint (GET /api/interviews/my-interviews)
     this.interviewService.getMyInterviews().pipe(
-      timeout(6000),
+      timeout(8000),
       catchError((err) => {
         console.warn('[INTERVIEW] Failed to load my-interviews from API:', err);
         return of([]);
@@ -179,7 +179,8 @@ export class Interview implements OnInit, OnDestroy {
             this.activeFilter = 'ALL';
           }
           this.isLoadingInterviews = false;
-          this.cdr.markForCheck();
+          this.loadError = '';
+          this.cdr.detectChanges();
         } else {
           // Fallback: check candidate dashboard if my-interviews returned empty
           this.checkDashboardFallback();
@@ -205,7 +206,8 @@ export class Interview implements OnInit, OnDestroy {
           if (matched.length > 0) {
             this.interviews = matched.map(si => this.mapScheduledInterview(si));
             this.isLoadingInterviews = false;
-            this.cdr.markForCheck();
+            this.loadError = '';
+            this.cdr.detectChanges();
           }
         }
       });
@@ -214,11 +216,11 @@ export class Interview implements OnInit, OnDestroy {
 
   private checkDashboardFallback(): void {
     this.dashboardService.getCandidateDashboard().pipe(
-      timeout(4000),
+      timeout(6000),
       catchError(() => of(null)),
       finalize(() => {
         this.isLoadingInterviews = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       })
     ).subscribe({
       next: (dash) => {
@@ -229,13 +231,17 @@ export class Interview implements OnInit, OnDestroy {
           } else if (this.interviews.length > 0) {
             this.activeFilter = 'ALL';
           }
+          this.loadError = '';
         }
         this.isLoadingInterviews = false;
-        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoadingInterviews = false;
-        this.cdr.markForCheck();
+        if (this.interviews.length === 0) {
+          this.loadError = 'Failed to load interviews. Please check your connection and retry.';
+        }
+        this.cdr.detectChanges();
       }
     });
   }
@@ -621,59 +627,99 @@ export class Interview implements OnInit, OnDestroy {
       try {
         if (this.speechRecognitionInstance) {
           try { this.speechRecognitionInstance.abort(); } catch {}
+          this.speechRecognitionInstance = null;
         }
 
         const rec = new SpeechRec();
         rec.continuous = true;
         rec.interimResults = true;
-        rec.lang = 'en-US';
+        // Improve speech recognition configuration for Indian English (en-IN) with fallback
+        const navLang = (typeof navigator !== 'undefined' && navigator.language) ? navigator.language : 'en-IN';
+        rec.lang = navLang.toLowerCase().includes('in') ? 'en-IN' : (navLang.startsWith('en') ? 'en-IN' : navLang);
+
+        rec.onstart = () => {
+          this.speechRecognitionState = 'STT_LISTENING';
+          this.cdr.detectChanges();
+        };
 
         rec.onresult = (event: any) => {
-          let words = '';
+          let sessionFinal = '';
+          let interim = '';
+
           for (let i = 0; i < event.results.length; i++) {
-            words += event.results[i][0].transcript + ' ';
+            const res = event.results[i];
+            if (res.isFinal) {
+              sessionFinal += res[0].transcript + ' ';
+            } else {
+              interim += res[0].transcript + ' ';
+            }
           }
-          const trimmed = words.trim();
-          const lower = trimmed.toLowerCase();
-          console.log('[INTERVIEW] State 3 (SPEECH_RECOGNITION) heard words:', lower);
 
-          // Real-time live transcript binding
-          this.recognizedTranscript = trimmed;
+          const currentSessionText = (sessionFinal + interim).trim();
+          const combined = this.precheckFinalTranscript
+            ? (this.precheckFinalTranscript + ' ' + currentSessionText).trim()
+            : currentSessionText;
 
-          // Verify that candidate transcript closely matches the requested phrase: "Hello, I am ready for the interview"
-          const clean = lower.replace(/[^a-z0-9 ]/g, '');
-          const tokens = clean.split(/\s+/);
-          const hasHello = tokens.includes('hello') || tokens.includes('hi') || tokens.includes('hey');
-          const hasReady = tokens.includes('ready');
-          const hasInterview = tokens.includes('interview');
+          if (combined) {
+            this.recognizedTranscript = combined;
+            this.cdr.detectChanges();
+          }
 
-          const phraseMatched = (hasHello && hasReady && hasInterview) ||
-                                clean.includes('ready for the interview') ||
-                                clean.includes('ready for interview') ||
-                                (hasHello && (hasReady || hasInterview));
+          const lower = combined.toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+          const words = lower.split(/\s+/).filter(Boolean);
 
-          if (phraseMatched) {
-            console.log('[INTERVIEW] Target verification phrase successfully matched:', trimmed);
-            this.recordSpeechRecognitionResult(trimmed, 'speech_recognition_phrase_match');
+          // Verify candidate readiness phrase: "Hello, I am ready for the interview" or natural variations
+          const hasReady = words.includes('ready');
+          const hasInterview = words.includes('interview') || words.includes('assessment') || words.includes('test');
+          const hasHello = words.includes('hello') || words.includes('hi') || words.includes('hey');
+          const phraseMatched = lower.includes('ready for the interview') ||
+                                lower.includes('ready for interview') ||
+                                lower.includes('ready for the assessment') ||
+                                (hasReady && hasInterview) ||
+                                (hasHello && hasReady) ||
+                                (words.length >= 3 && (hasReady || hasInterview));
+
+          if (phraseMatched && !this.speechRecognitionVerified) {
+            console.log('[INTERVIEW] Target pre-assessment phrase recognized:', combined);
+            if (sessionFinal) {
+              this.precheckFinalTranscript = (this.precheckFinalTranscript + ' ' + sessionFinal).trim();
+            }
+            this.recordSpeechRecognitionResult(combined, 'speech_recognition_phrase_match');
           }
         };
 
         rec.onerror = (e: any) => {
-          console.warn('[INTERVIEW] State 3 STT note:', e);
-          if (e.error === 'not-allowed') {
+          console.warn('[INTERVIEW] Pre-assessment STT event:', e?.error || e);
+          if (e?.error === 'not-allowed') {
             this.speechRecognitionState = 'STT_FAILED';
+            this.microphoneError = 'Microphone permission denied for speech recognition.';
+            this.cdr.detectChanges();
+          }
+        };
+
+        rec.onend = () => {
+          if (this.recognizedTranscript.trim() && !this.precheckFinalTranscript.includes(this.recognizedTranscript.trim())) {
+            this.precheckFinalTranscript = this.recognizedTranscript.trim();
+          }
+          // Restart recognition if candidate is still speaking/testing and not verified
+          if (!this.speechRecognitionVerified && this.micPermissionGranted && this.showPreInterviewModal) {
+            try {
+              rec.start();
+            } catch {}
           }
         };
 
         rec.start();
         this.speechRecognitionInstance = rec;
       } catch (e) {
-        console.warn('[INTERVIEW] Could not start speech recognition for precheck:', e);
+        console.warn('[INTERVIEW] Pre-assessment Speech recognition initialization error:', e);
         this.speechRecognitionState = 'STT_FAILED';
+        this.cdr.detectChanges();
       }
     } else {
       this.speechRecognitionState = 'STT_UNSUPPORTED';
-      console.warn('[INTERVIEW] Browser Web Speech API SpeechRecognition not supported.');
+      this.microphoneError = 'Web Speech Recognition is not supported by your current browser. Please use Chrome or Edge for the live speech assessment.';
+      this.cdr.detectChanges();
     }
   }
 
@@ -684,6 +730,7 @@ export class Interview implements OnInit, OnDestroy {
       this.micInputState = 'AUDIO_SIGNAL_DETECTED';
       console.log(`[INTERVIEW] State 2 (MICROPHONE_INPUT): Audio Signal Detected (${level}%). Speech-to-Text still required.`);
       this.checkAndFinalizeMicrophoneVerification();
+      this.cdr.detectChanges();
     }
   }
 
@@ -694,7 +741,6 @@ export class Interview implements OnInit, OnDestroy {
     this.speechRecognitionState = 'STT_TRANSCRIPTION_SUCCESS';
     this.speechVerificationCompleted = true;
     this.microphoneState = 'MIC_VERIFIED';
-    // Speaker check remains completely independent - never auto-flip speakerReady!
     console.log(`[INTERVIEW] State 3 (SPEECH_RECOGNITION): Transcribed words ("${this.recognizedTranscript}") via ${reason}`);
 
     if (this.speechRecognitionInstance) {
@@ -702,29 +748,26 @@ export class Interview implements OnInit, OnDestroy {
       this.speechRecognitionInstance = null;
     }
     this.checkAndFinalizeMicrophoneVerification();
+    this.cdr.detectChanges();
   }
 
   checkAndFinalizeMicrophoneVerification(): void {
     if (this.micPermissionGranted && this.micAudioDetected && this.speechRecognitionVerified) {
       this.speechVerificationCompleted = true;
       this.microphoneState = 'MIC_VERIFIED';
-      // Speaker check is independent and requires explicit user confirmation
       console.log('[INTERVIEW] All Microphone States Confirmed: PERMISSION + ACOUSTIC_LEVEL + PHRASE_MATCH = VERIFIED.');
+      this.cdr.detectChanges();
     }
   }
 
-  confirmMicrophoneVerified(reason: string = 'manual'): void {
-    this.micPermissionGranted = true;
-    this.micPermissionState = 'PERMISSION_GRANTED';
-    this.micAudioDetected = true;
-    this.micInputState = 'AUDIO_SIGNAL_DETECTED';
-    this.audioLevel = Math.max(this.audioLevel, 65);
-    this.speechVerificationCompleted = true;
-    this.recordSpeechRecognitionResult(this.speechPhrase, reason);
+  confirmMicrophoneVerified(reason: string = 'retry'): void {
+    // Re-trigger actual microphone and speech recognition check rather than faking pass
+    this.testMicrophone();
   }
 
   playTestAudio(): void {
     this.isPlayingTestAudio = true;
+    this.cdr.detectChanges();
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance('Welcome to HireRanker. If you can hear this audio clearly, please confirm below.');
@@ -732,9 +775,11 @@ export class Interview implements OnInit, OnDestroy {
       utterance.pitch = 1.0;
       utterance.onend = () => {
         this.isPlayingTestAudio = false;
+        this.cdr.detectChanges();
       };
       utterance.onerror = () => {
         this.isPlayingTestAudio = false;
+        this.cdr.detectChanges();
       };
       window.speechSynthesis.speak(utterance);
     } else {
@@ -752,101 +797,23 @@ export class Interview implements OnInit, OnDestroy {
         osc.stop(ctx.currentTime + 1.2);
         setTimeout(() => {
           this.isPlayingTestAudio = false;
+          this.cdr.detectChanges();
         }, 1200);
       } catch {
         this.isPlayingTestAudio = false;
+        this.cdr.detectChanges();
       }
     }
   }
 
   confirmSpeakerReady(): void {
     this.speakerReady = true;
+    this.cdr.detectChanges();
   }
 
   simulateHardware(): void {
-    this.stopMediaTest(false);
-    this.errorMessage = '';
-    this.lightingWarning = '';
-    this.lightingStatus = 'Optimal Lighting';
-    this.hardwareTesting = false;
-
-    // Create a live simulated canvas video stream if physical camera not active
-    if (!this.mediaStream) {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          let frame = 0;
-          const draw = () => {
-            frame++;
-            ctx.fillStyle = '#0b1329';
-            ctx.fillRect(0, 0, 640, 480);
-
-            // Draw avatar silhouette
-            ctx.fillStyle = '#1e293b';
-            ctx.beginPath();
-            ctx.arc(320, 190, 65, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.beginPath();
-            ctx.ellipse(320, 370, 130, 100, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Proctoring badge
-            ctx.fillStyle = '#10b981';
-            ctx.font = 'bold 18px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🟢 AI Proctoring Camera Verified', 320, 48);
-
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '13px sans-serif';
-            ctx.fillText('Verified Hardware Compatibility Feed', 320, 78);
-
-            const timeStr = new Date().toLocaleTimeString();
-            ctx.fillStyle = '#38bdf8';
-            ctx.font = '13px monospace';
-            ctx.fillText(`STREAM-SYNC: ${timeStr}`, 320, 440);
-
-            requestAnimationFrame(draw);
-          };
-          draw();
-
-          const canvasStream = (canvas as any).captureStream ? (canvas as any).captureStream(25) : null;
-          if (canvasStream) {
-            this.mediaStream = canvasStream;
-          }
-        }
-      } catch {}
-    }
-
-    if (this.mediaStream) {
-      this.interviewMediaService.setActiveStream(this.mediaStream);
-      this.interviewService.setMediaStream(this.mediaStream);
-      setTimeout(() => {
-        const videoEl = document.getElementById('testVideoPreview') as HTMLVideoElement;
-        if (videoEl && this.mediaStream) {
-          videoEl.srcObject = this.mediaStream;
-          videoEl.play().catch(() => {});
-        }
-      }, 50);
-    }
-
-    this.cameraVerified = true;
-    this.cameraState = 'CAMERA_VERIFIED';
-    this.micPermissionGranted = true;
-    this.micPermissionState = 'PERMISSION_GRANTED';
-    this.micAudioDetected = true;
-    this.micInputState = 'AUDIO_SIGNAL_DETECTED';
-    this.speechRecognitionVerified = true;
-    this.speechRecognitionState = 'STT_TRANSCRIPTION_SUCCESS';
-    this.recognizedTranscript = this.speechPhrase;
-    this.speechVerificationCompleted = true;
-    this.microphoneState = 'MIC_VERIFIED';
-    this.speakerReady = true;
-    this.audioLevel = 75;
-    console.log('[INTERVIEW] Hardware simulated / quick verified across all independent states.');
+    // Re-run genuine device checks
+    this.testHardware();
   }
 
   private checkAmbientLighting(videoEl: HTMLVideoElement): void {

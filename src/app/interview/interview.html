@@ -87,6 +87,13 @@
           <div class="spinner-ring"></div>
           <p>Loading scheduled assessments...</p>
         </div>
+      } @else if (loadError) {
+        <div class="empty-interviews-card">
+          <div class="empty-icon">⚠️</div>
+          <h3>Unable to Load Scheduled Assessments</h3>
+          <p>{{ loadError }}</p>
+          <button class="btn btn-find-jobs" (click)="loadInterviews()">Retry Loading</button>
+        </div>
       } @else if (filteredInterviews.length === 0) {
         <div class="empty-interviews-card">
           <div class="empty-icon">📅</div>
@@ -304,9 +311,6 @@
                   <button type="button" class="btn-back-link" (click)="backToInstructions()">
                     ← Review Instructions
                   </button>
-                  <button type="button" class="btn-bypass-link" (click)="simulateHardware()" title="Skip device test and verify immediately">
-                    ⚡ Quick Verify / Bypass
-                  </button>
                 </div>
               </div>
 
@@ -440,11 +444,6 @@
                     <button type="button" class="btn btn-test-mic" (click)="testMicrophone()" [disabled]="micTesting">
                       {{ micTesting ? '⏳ Testing Microphone...' : (speechVerificationCompleted ? '🔄 Retest Microphone' : '🎙️ Test Microphone') }}
                     </button>
-                    @if (!speechVerificationCompleted && micAudioDetected) {
-                      <button type="button" class="btn btn-sm-verify" (click)="confirmMicrophoneVerified('manual')">
-                        🎙️ Confirm Spoken Sentence (Bypass STT)
-                      </button>
-                    }
                   </div>
 
                   @if (microphoneError) {
@@ -491,7 +490,7 @@
                 <div class="alert-error-box">
                   <div class="error-text">⚠️ {{ errorMessage }}</div>
                   <div class="error-actions-row">
-                    <button type="button" class="btn btn-bypass-action" (click)="simulateHardware()">⚡ Quick Verify All (Compatibility Mode)</button>
+                    <button type="button" class="btn btn-secondary" (click)="testHardware()">🔄 Retry Device Checks</button>
                   </div>
                 </div>
               }

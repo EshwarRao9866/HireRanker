@@ -74,6 +74,7 @@ export interface LiveAnswerResponse {
   feedback?: string;
   explanation?: string;
   missingConcepts?: string[];
+  improvementAreas?: string[];
   correct?: boolean;
   correctnessClassification?: 'CORRECT' | 'PARTIALLY_CORRECT' | 'INCORRECT' | string;
   status: string;
@@ -94,6 +95,16 @@ export interface LiveInterviewResult {
   strengths: string;
   weaknesses: string;
   completedAt?: string;
+  totalQuestions?: number;
+  answeredQuestions?: number;
+  skippedQuestions?: number;
+  durationMinutes?: number;
+  integrityStatus?: string;
+  totalIntegrityEvents?: number;
+  multiplePersonEvents?: number;
+  tabSwitchEvents?: number;
+  attentionAwayEvents?: number;
+  audioAnomalyEvents?: number;
 }
 
 export interface ScheduledInterview {

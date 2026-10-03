@@ -1251,3 +1251,433 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ================= PART 9: PROCTORING ALERT BANNER ================= */
+.proctor-live-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  border-radius: 10px;
+  padding: 12px 20px;
+  margin: 12px 28px 0 28px;
+  animation: slideDownFade 0.3s ease-out;
+}
+
+.proctor-alert-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.proctor-alert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.proctor-alert-body strong {
+  font-size: 0.95rem;
+  color: #fca5a5;
+}
+
+.proctor-alert-sub {
+  font-size: 0.78rem;
+  color: #f87171;
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= PART 10 & 11: ANSWER FEEDBACK CARD ================= */
+.feedback-card-container {
+  margin-top: 18px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.feedback-card-inner {
+  background: #111c33;
+  border: 1px solid #38bdf8;
+  border-radius: 12px;
+  padding: 18px 22px;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.25);
+}
+
+.feedback-head-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.eval-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.eval-correct {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  color: #34d399;
+}
+
+.eval-partial {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid #f59e0b;
+  color: #fbbf24;
+}
+
+.eval-incorrect {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.score-pill {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid #6366f1;
+  color: #c7d2fe;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+}
+
+.tts-feedback-badge {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-left: auto;
+}
+
+.tts-feedback-badge.active-tts {
+  color: #38bdf8;
+  font-weight: 700;
+  animation: pulse-dot 1.5s infinite;
+}
+
+.feedback-title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  color: #f8fafc;
+}
+
+.feedback-text {
+  font-size: 0.92rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0 0 10px 0;
+}
+
+.feedback-subdetail {
+  background: rgba(15, 23, 42, 0.5);
+  border-left: 3px solid #38bdf8;
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 10px;
+}
+
+.feedback-subdetail strong {
+  display: block;
+  font-size: 0.8rem;
+  color: #38bdf8;
+  margin-bottom: 2px;
+}
+
+.feedback-subdetail p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #94a3b8;
+}
+
+.improvements-box {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.improvements-box strong {
+  font-size: 0.8rem;
+  color: #f59e0b;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.improvements-box ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.feedback-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.feedback-timer-notice {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.btn-next-question {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-next-question:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.btn-submit-answer {
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-submit-answer:hover:not(:disabled) {
+  background: #059669;
+}
+
+.btn-skip-subtle {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-skip-subtle:hover:not(:disabled) {
+  border-color: #94a3b8;
+  color: #f1f5f9;
+}
+
+/* ================= PART 12: CONCLUSION SCREEN ================= */
+.conclusion-phase-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 13, 22, 0.92);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.conclusion-phase-card {
+  max-width: 620px;
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #38bdf8;
+  border-radius: 18px;
+  padding: 36px 32px;
+  text-align: center;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), 0 0 30px rgba(56, 189, 248, 0.2);
+}
+
+.conclusion-ai-avatar {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+}
+
+.avatar-emoji {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.pulse-ring {
+  position: absolute;
+  inset: -6px;
+  border: 2px solid #38bdf8;
+  border-radius: 50%;
+  animation: pulse-ring-anim 2s infinite;
+}
+
+@keyframes pulse-ring-anim {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.conclusion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 14px;
+}
+
+.conclusion-title {
+  margin: 0 0 12px 0;
+  font-size: 1.5rem;
+  color: #f8fafc;
+}
+
+.conclusion-speech-text {
+  font-size: 1rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  font-style: italic;
+  margin: 0 0 20px 0;
+}
+
+.conclusion-status-pill {
+  display: inline-block;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  padding: 8px 18px;
+  border-radius: 9999px;
+}
+
+/* ================= PART 13: SCORECARD ACTIVITY & PROCTORING ================= */
+.stats-ribbon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.ribbon-metric {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.metric-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.proctoring-summary-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 14px 0;
+}
+
+.proctoring-summary-card.review-flagged {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.proctor-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.proctor-status-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #f1f5f9;
+}
+
+.integrity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-normal {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.dot-review {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+.proctor-note {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.proctor-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.proctor-stat-chip {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.chip-num {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.chip-name {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
