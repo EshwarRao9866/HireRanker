@@ -16,12 +16,12 @@
   <div class="stats-row">
     <div class="stat-card">
       <span class="label">Total Scheduled</span>
-      <strong>{{ interviews.length }}</strong>
+      <strong>{{ totalScheduledCount }}</strong>
       <small>Live active pipeline</small>
     </div>
 
     <div class="stat-card">
-      <span class="label">AI Automated Assessments</span>
+      <span class="label">AI Assessments</span>
       <strong class="text-indigo">{{ aiAssessmentCount }}</strong>
       <small>Bot evaluated</small>
     </div>
@@ -33,9 +33,9 @@
     </div>
 
     <div class="stat-card">
-      <span class="label">Active Schedule Rate</span>
-      <strong class="text-green">{{ interviews.length > 0 ? '100%' : '0%' }}</strong>
-      <small>Database verified</small>
+      <span class="label">Active Scheduled</span>
+      <strong class="text-green">{{ activeScheduledCount }}</strong>
+      <small>Upcoming pipeline</small>
     </div>
   </div>
 
@@ -97,14 +97,14 @@
     <div class="content-card">
       <div class="card-head">
         <h3>Upcoming Interview Roster</h3>
-        <small>Real-time launch controls ({{ interviews.length }} total)</small>
+        <small>Database verified pipeline ({{ upcomingInterviews.length }} upcoming / {{ totalScheduledCount }} total)</small>
       </div>
 
-      @if (interviews.length === 0) {
+      @if (upcomingInterviews.length === 0) {
         <div style="text-align: center; padding: 48px 24px;">
           <div style="font-size: 36px; margin-bottom: 8px;">📅</div>
-          <h4 style="margin: 0 0 6px 0; color: #1e293b;">No interviews scheduled</h4>
-          <p style="margin: 0; color: #64748b; font-size: 14px;">Scheduled interviews will appear here when HR or recruiter schedules them.</p>
+          <h4 style="margin: 0 0 6px 0; color: #1e293b;">No upcoming interviews scheduled</h4>
+          <p style="margin: 0; color: #64748b; font-size: 14px;">Scheduled upcoming interviews will appear here when scheduled by HR or recruiter.</p>
         </div>
       } @else {
         <div class="table-wrap">
@@ -113,6 +113,7 @@
               <tr>
                 <th>Candidate</th>
                 <th>Applied Role</th>
+                <th>Company</th>
                 <th>Date & Time</th>
                 <th>Interviewer / Type</th>
                 <th>Status</th>
@@ -120,7 +121,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (item of interviews; track (item.id + '_' + $index)) {
+              @for (item of upcomingInterviews; track (item.id + '_' + $index)) {
                 <tr>
                   <td>
                     <strong>{{ item.candidate }}</strong>
@@ -129,6 +130,7 @@
                     }
                   </td>
                   <td>{{ item.job }}</td>
+                  <td>{{ item.company || 'Tech Corp' }}</td>
                   <td>
                     <span class="date-text">{{ item.date }}</span>
                     <small class="block text-muted">{{ item.time }}</small>
@@ -148,8 +150,16 @@
                   </td>
                   <td>
                     <div class="action-btns-cell">
-                      <button class="btn-start" (click)="configureInterview(item)" title="Reschedule or configure interview">
+                      @if (item.meetingLink) {
+                        <a [href]="item.meetingLink" target="_blank" rel="noopener noreferrer" class="btn-join-action" title="Join Live Meeting">
+                          🎥 Join
+                        </a>
+                      }
+                      <button class="btn-start" (click)="configureInterview(item)" title="Reschedule interview">
                         📅 Reschedule
+                      </button>
+                      <button class="btn-complete-action" (click)="completeInterview(item)" title="Mark as Completed">
+                        ✓ Complete
                       </button>
                       @if (item.status !== 'Cancelled') {
                         <button class="btn-cancel-action" (click)="cancelInterview(item)" title="Cancel interview">
@@ -164,6 +174,49 @@
           </table>
         </div>
       }
+
+      @if (pastInterviews.length > 0) {
+        <div style="margin-top: 28px; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+          <h4 style="font-size: 13.5px; font-weight: 700; color: #475569; margin: 0 0 12px 0;">Completed & Cancelled Records ({{ pastInterviews.length }})</h4>
+          <div class="table-wrap">
+            <table class="saas-table">
+              <thead>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Role</th>
+                  <th>Company</th>
+                  <th>Date & Time</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (past of pastInterviews; track past.id) {
+                  <tr style="opacity: 0.8;">
+                    <td>
+                      <strong>{{ past.candidate }}</strong>
+                      @if (past.candidateEmail) {
+                        <small class="block text-muted" style="font-size: 11px; color: #64748b;">{{ past.candidateEmail }}</small>
+                      }
+                    </td>
+                    <td>{{ past.job }}</td>
+                    <td>{{ past.company || 'Tech Corp' }}</td>
+                    <td>{{ past.date }} <small class="text-muted">{{ past.time }}</small></td>
+                    <td>
+                      <span class="type-pill" [class.ai-pill]="past.type === 'AI Assessment'">{{ past.type }}</span>
+                    </td>
+                    <td>
+                      <span class="status-badge" [class.badge-blue]="past.status === 'Completed'" [class.badge-gray]="past.status === 'Cancelled'">
+                        {{ past.status }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
     </div>
 
   </div>
@@ -173,7 +226,7 @@
     <div class="modal-backdrop" (click)="closeScheduleModal()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-head">
-          <h3>Schedule Candidate Interview</h3>
+          <h3>{{ reschedulingInterviewId ? 'Reschedule Candidate Interview' : 'Schedule Candidate Interview' }}</h3>
           <button class="close-modal" (click)="closeScheduleModal()">×</button>
         </div>
 
@@ -278,9 +331,11 @@
 
           <div class="modal-actions">
             <button type="button" class="btn btn-outline" (click)="closeScheduleModal()" [disabled]="isScheduling">Cancel</button>
-            <button type="submit" class="btn btn-primary" [disabled]="isScheduling || !selectedJobId || !selectedCandidateId">
+            <button type="submit" class="btn btn-primary" [disabled]="isScheduling || (!reschedulingInterviewId && (!selectedJobId || !selectedCandidateId))">
               @if (isScheduling) {
-                <span>Scheduling...</span>
+                <span>Processing...</span>
+              } @else if (reschedulingInterviewId) {
+                <span>Save & Reschedule →</span>
               } @else {
                 <span>Schedule Interview →</span>
               }

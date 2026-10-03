@@ -1,6 +1,6 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, of, map, catchError } from 'rxjs';
+import { Observable, BehaviorSubject, of, map, catchError, tap } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../environments/environment';
 
@@ -11,6 +11,7 @@ export interface InterviewRequest {
   interviewType?: 'ONLINE' | 'OFFLINE' | 'PHONE';
   meetingLink?: string;
   notes?: string;
+  status?: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
 }
 
 export interface InterviewResponse {
@@ -24,6 +25,7 @@ export interface InterviewResponse {
   companyName?: string;
   scheduledDateTime: string;
   type: string;
+  interviewType?: string;
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
   meetingLink?: string;
   notes?: string;
@@ -99,9 +101,11 @@ export interface ScheduledInterview {
   candidate: string;
   candidateEmail?: string;
   job: string;
+  company?: string;
   date: string;
   dateKey: string;
   time: string;
+  rawDateTime: string;
   interviewer: string;
   type: 'AI Assessment' | 'Live Technical' | 'HR Round' | string;
   status: 'Scheduled' | 'Completed' | 'In Progress' | 'Cancelled' | string;
@@ -147,20 +151,98 @@ export class InterviewService {
   }
 
   /**
-   * Refreshes interviews from Spring Boot backend MySQL database.
-   * Dynamically calls /api/interviews/my-interviews for candidate users and /api/interviews for admin users.
+   * Transforms raw backend InterviewResponse into the UI ScheduledInterview model.
+   * Accurately determines type (AI Assessment vs Live Technical vs HR Round)
+   * and panel interviewer from notes and database fields.
    */
-  refreshInterviewsFromBackend(): Observable<ScheduledInterview[]> {
+  mapInterviewResponseToScheduled(item: InterviewResponse | any): ScheduledInterview {
+    const d = item.scheduledDateTime ? new Date(item.scheduledDateTime) : new Date();
+    const dateKey = this.formatDateKey(d);
+    const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const notesLower = (item.notes || '').toLowerCase();
+    const rawType = (item.interviewType || item.type || '').toUpperCase();
+
+    // Determine Type: AI Assessment vs Live Technical vs HR Round
+    let resolvedType = 'Live Technical';
+    if (notesLower.includes('ai') || rawType === 'LIVE_AI') {
+      resolvedType = 'AI Assessment';
+    } else if (notesLower.includes('hr') || rawType === 'PHONE') {
+      resolvedType = 'HR Round';
+    } else if (notesLower.includes('technical') || notesLower.includes('live') || rawType === 'ONLINE' || rawType === 'OFFLINE') {
+      resolvedType = 'Live Technical';
+    }
+
+    // Determine Interviewer Panel from notes if available (e.g. "with Senior Engineering Panel")
+    let interviewer = 'Tech Lead Panel';
+    if (item.notes) {
+      const withMatch = item.notes.match(/with\s+(.+)$/i);
+      if (withMatch && withMatch[1]) {
+        interviewer = withMatch[1].trim();
+      } else if (resolvedType === 'AI Assessment') {
+        interviewer = 'HireRanker AI Bot';
+      }
+    }
+
+    // Status mapping
+    let resolvedStatus: 'Scheduled' | 'Completed' | 'In Progress' | 'Cancelled' = 'Scheduled';
+    const st = (item.status || '').toUpperCase();
+    if (st === 'COMPLETED') {
+      resolvedStatus = 'Completed';
+    } else if (st === 'CANCELLED') {
+      resolvedStatus = 'Cancelled';
+    } else if (st === 'IN_PROGRESS') {
+      resolvedStatus = 'In Progress';
+    } else {
+      resolvedStatus = 'Scheduled'; // SCHEDULED or RESCHEDULED
+    }
+
+    return {
+      id: item.id,
+      candidate: item.candidateName || `Candidate #${item.candidateId || item.id}`,
+      candidateEmail: item.candidateEmail || '',
+      job: item.jobTitle || 'Position',
+      company: item.companyName || '',
+      date: dateStr,
+      dateKey: dateKey,
+      time: timeStr,
+      rawDateTime: item.scheduledDateTime || d.toISOString(),
+      interviewer: interviewer,
+      type: resolvedType,
+      status: resolvedStatus,
+      applicationId: item.applicationId,
+      meetingLink: item.meetingLink,
+      notes: item.notes
+    };
+  }
+
+  /**
+   * Refreshes interviews from Spring Boot backend MySQL database.
+   * Dynamically calls /api/interviews for admin users and /api/interviews/my-interviews for candidate users.
+   */
+  refreshInterviewsFromBackend(forceAdmin?: boolean): Observable<ScheduledInterview[]> {
     if (!isPlatformBrowser(this.platformId)) {
       return of([]);
     }
 
     let userRole = 'CANDIDATE';
     try {
-      const stored = localStorage.getItem('hireRankerUser');
-      if (stored) {
-        const u = JSON.parse(stored);
-        if (u?.role) userRole = u.role;
+      if (forceAdmin) {
+        userRole = 'ADMIN';
+      } else {
+        const directRole = localStorage.getItem('userRole');
+        if (directRole === 'ADMIN' || directRole === 'ROLE_ADMIN') {
+          userRole = 'ADMIN';
+        } else {
+          const session = localStorage.getItem('hireRankerSession');
+          if (session) {
+            const s = JSON.parse(session);
+            if (s?.role === 'ADMIN' || s?.role === 'ROLE_ADMIN') {
+              userRole = 'ADMIN';
+            }
+          }
+        }
       }
     } catch {}
 
@@ -171,33 +253,34 @@ export class InterviewService {
           this.interviewsSubject.next([]);
           return [];
         }
-        const mapped: ScheduledInterview[] = list.map(item => {
-          const d = item.scheduledDateTime ? new Date(item.scheduledDateTime) : new Date();
-          const dateKey = this.formatDateKey(d);
-          const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-          const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-          return {
-            id: item.id,
-            candidate: item.candidateName || `Candidate #${item.candidateId}`,
-            candidateEmail: item.candidateEmail || '',
-            job: item.jobTitle || 'Position',
-            date: dateStr,
-            dateKey: dateKey,
-            time: timeStr,
-            interviewer: 'Recruitment Team',
-            type: item.type === 'ONLINE' ? 'AI Assessment' : 'Live Technical',
-            status: item.status === 'SCHEDULED' ? 'Scheduled' : item.status === 'COMPLETED' ? 'Completed' : 'Cancelled',
-            applicationId: item.applicationId,
-            meetingLink: item.meetingLink,
-            notes: item.notes
-          };
-        });
+        const mapped: ScheduledInterview[] = list.map(item => this.mapInterviewResponseToScheduled(item));
         this.interviewsSubject.next(mapped);
         return mapped;
       }),
       catchError(() => {
         this.interviewsSubject.next([]);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Explicitly retrieves all database interviews for Admin view.
+   * Ensures the reactive interview state is refreshed.
+   */
+  getAllInterviews(): Observable<ScheduledInterview[]> {
+    return this.http.get<InterviewResponse[]>(this.apiUrl).pipe(
+      map(list => {
+        if (!list || !Array.isArray(list)) {
+          this.interviewsSubject.next([]);
+          return [];
+        }
+        const mapped = list.map(item => this.mapInterviewResponseToScheduled(item));
+        this.interviewsSubject.next(mapped);
+        return mapped;
+      }),
+      catchError((err) => {
+        console.error('Failed to get all interviews from backend:', err);
         return of([]);
       })
     );
@@ -249,7 +332,11 @@ export class InterviewService {
       ...request,
       interviewType: request.interviewType || request.type || 'ONLINE'
     };
-    return this.http.post<InterviewResponse>(this.apiUrl, payload);
+    return this.http.post<InterviewResponse>(this.apiUrl, payload).pipe(
+      tap(() => {
+        this.refreshInterviewsFromBackend(true).subscribe();
+      })
+    );
   }
 
   /**
@@ -269,18 +356,29 @@ export class InterviewService {
   /**
    * Admin: Reschedule interview (PUT /api/interviews/{id}/reschedule)
    */
-  rescheduleInterview(id: number, scheduledDateTime: string): Observable<InterviewResponse> {
-    const parsedDate = new Date(scheduledDateTime);
-    if (!isNaN(parsedDate.getTime())) {
-      const dateKey = this.formatDateKey(parsedDate);
-      const dateStr = parsedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-      const timeStr = parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-      this.rescheduleScheduledInterview(id, dateStr, timeStr, dateKey);
-    }
-    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/reschedule`, { scheduledDateTime }).pipe(
-      map(res => {
-        this.refreshInterviewsFromBackend().subscribe();
-        return res;
+  rescheduleInterview(id: number, scheduledDateTime: string, notes?: string): Observable<InterviewResponse> {
+    const payload: any = { scheduledDateTime };
+    if (notes) payload.notes = notes;
+
+    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/reschedule`, payload).pipe(
+      tap(() => {
+        this.refreshInterviewsFromBackend(true).subscribe();
+      })
+    );
+  }
+
+  /**
+   * Admin: Complete interview (PUT /api/interviews/{id}/complete)
+   * Transitions status to COMPLETED and refreshes scheduler & dashboard.
+   */
+  markInterviewCompleted(id: number): Observable<InterviewResponse> {
+    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/complete`, {}).pipe(
+      catchError(() => {
+        // Fallback to general update if /complete endpoint is not directly available
+        return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}`, { status: 'COMPLETED' });
+      }),
+      tap(() => {
+        this.refreshInterviewsFromBackend(true).subscribe();
       })
     );
   }
@@ -288,12 +386,11 @@ export class InterviewService {
   /**
    * Admin: Cancel interview (PUT /api/interviews/{id}/cancel)
    */
-  cancelInterview(id: number): Observable<InterviewResponse> {
-    this.cancelScheduledInterview(id);
-    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/cancel`, {}).pipe(
-      map(res => {
-        this.refreshInterviewsFromBackend().subscribe();
-        return res;
+  cancelInterview(id: number, reason?: string): Observable<InterviewResponse> {
+    const payload = reason ? { reason } : {};
+    return this.http.put<InterviewResponse>(`${this.apiUrl}/${id}/cancel`, payload).pipe(
+      tap(() => {
+        this.refreshInterviewsFromBackend(true).subscribe();
       })
     );
   }
@@ -397,7 +494,26 @@ export class InterviewService {
    * Live Interview: Complete interview and generate scorecard (POST /api/interviews/{id}/complete)
    */
   completeInterview(interviewId: number): Observable<LiveInterviewResult> {
-    return this.http.post<LiveInterviewResult>(`${this.apiUrl}/${interviewId}/complete`, {});
+    return this.http.post<LiveInterviewResult>(`${this.apiUrl}/${interviewId}/complete`, {}).pipe(
+      tap(() => {
+        this.refreshInterviewsFromBackend().subscribe({ error: () => {} });
+      })
+    );
+  }
+
+  /**
+   * Live Interview: Record proctoring/integrity events (POST /api/interviews/{id}/integrity-events)
+   */
+  recordIntegrityEvents(interviewId: number, events: any[]): Observable<any> {
+    if (!events || events.length === 0) {
+      return of({ count: 0 });
+    }
+    return this.http.post<any>(`${this.apiUrl}/${interviewId}/integrity-events`, { events }).pipe(
+      catchError(err => {
+        console.warn('[INTERVIEW SERVICE] Failed to record integrity events:', err);
+        return of({ count: 0 });
+      })
+    );
   }
 
   /**

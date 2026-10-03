@@ -58,6 +58,7 @@ export class InterviewScheduler implements OnInit, OnDestroy {
   filteredInterviews: ScheduledInterview[] = [];
   calendarDays: CalendarDay[] = [];
 
+  reschedulingInterviewId: number | null = null;
   private interviewsSub?: Subscription;
 
   newInterview: Partial<ScheduledInterview> = {
@@ -79,12 +80,32 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     return `Timeline (${dateLabel})`;
   }
 
+  get totalScheduledCount(): number {
+    return this.interviews.length;
+  }
+
   get aiAssessmentCount(): number {
     return this.interviews.filter(i => (i.type || '').toLowerCase().includes('ai')).length;
   }
 
   get liveTechnicalCount(): number {
     return this.interviews.filter(i => (i.type || '').toLowerCase().includes('technical') || (i.type || '').toLowerCase().includes('live')).length;
+  }
+
+  get activeScheduledCount(): number {
+    return this.interviews.filter(i => i.status === 'Scheduled' || i.status === 'In Progress').length;
+  }
+
+  get upcomingInterviews(): ScheduledInterview[] {
+    return this.interviews
+      .filter(i => i.status === 'Scheduled' || i.status === 'In Progress')
+      .sort((a, b) => new Date(a.rawDateTime || a.date).getTime() - new Date(b.rawDateTime || b.date).getTime());
+  }
+
+  get pastInterviews(): ScheduledInterview[] {
+    return this.interviews
+      .filter(i => i.status === 'Completed' || i.status === 'Cancelled')
+      .sort((a, b) => new Date(b.rawDateTime || b.date).getTime() - new Date(a.rawDateTime || a.date).getTime());
   }
 
   constructor(
@@ -104,10 +125,24 @@ export class InterviewScheduler implements OnInit, OnDestroy {
         this.interviews = list || [];
         this.updateCalendarEventIndicators();
         this.updateFilteredInterviews();
+        this.cdr.detectChanges();
       }
     });
 
-    // 2. Fetch applications for candidate selector in modal
+    // 2. Refresh database interviews from backend immediately for Admin view
+    this.interviewService.refreshInterviewsFromBackend(true).subscribe({
+      next: (list) => {
+        if (list && list.length > 0) {
+          this.interviews = list;
+          this.updateCalendarEventIndicators();
+          this.updateFilteredInterviews();
+          this.cdr.detectChanges();
+        }
+      },
+      error: () => {}
+    });
+
+    // 3. Fetch applications for candidate selector in modal
     this.applicationService.getAllApplications().subscribe({
       next: (apps) => {
         if (apps && apps.length > 0) {
@@ -117,7 +152,7 @@ export class InterviewScheduler implements OnInit, OnDestroy {
       error: () => {}
     });
 
-    // 3. Preload jobs for scheduler modal
+    // 4. Preload jobs for scheduler modal
     this.loadJobs();
   }
 
@@ -225,6 +260,7 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     this.scheduleError = null;
     this.scheduleSuccess = null;
     this.isScheduling = false;
+    this.reschedulingInterviewId = null;
     this.cdr.detectChanges();
   }
 
@@ -323,16 +359,6 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     this.scheduleError = null;
     this.scheduleSuccess = null;
 
-    if (!this.selectedJobId) {
-      this.scheduleError = 'Please select a Job Position.';
-      return;
-    }
-
-    if (!this.selectedCandidateId || !this.selectedApplicationId) {
-      this.scheduleError = 'Please select a Candidate.';
-      return;
-    }
-
     if (!this.newInterview.date) {
       this.scheduleError = 'Please select an interview Date.';
       return;
@@ -345,6 +371,46 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     const scheduledDateObj = new Date(isoDateTime);
     if (isNaN(scheduledDateObj.getTime()) || scheduledDateObj.getTime() < Date.now() - 60000) {
       this.scheduleError = 'Interview cannot be scheduled in the past. Please select a future date and time.';
+      return;
+    }
+
+    // Handle RESCHEDULE flow for existing interview
+    if (this.reschedulingInterviewId) {
+      this.isScheduling = true;
+      this.cdr.detectChanges();
+      const notes = `${this.newInterview.type || 'Technical Round'} with ${this.newInterview.interviewer || 'Panel'}`;
+
+      this.interviewService.rescheduleInterview(this.reschedulingInterviewId, isoDateTime, notes).pipe(
+        finalize(() => {
+          this.isScheduling = false;
+          this.cdr.detectChanges();
+        })
+      ).subscribe({
+        next: () => {
+          this.scheduleSuccess = `Interview successfully rescheduled for ${this.newInterview.candidate}!`;
+          this.interviewService.refreshInterviewsFromBackend(true).subscribe();
+          setTimeout(() => {
+            this.closeScheduleModal();
+          }, 1000);
+        },
+        error: (err) => {
+          console.error('Backend reschedule error:', err);
+          const errMsg = err?.error?.message || (typeof err?.error === 'string' ? err.error : null);
+          this.scheduleError = errMsg || 'Failed to reschedule interview. Please verify details and try again.';
+          this.cdr.detectChanges();
+        }
+      });
+      return;
+    }
+
+    // Handle NEW SCHEDULE flow
+    if (!this.selectedJobId) {
+      this.scheduleError = 'Please select a Job Position.';
+      return;
+    }
+
+    if (!this.selectedCandidateId || !this.selectedApplicationId) {
+      this.scheduleError = 'Please select a Candidate.';
       return;
     }
 
@@ -374,24 +440,8 @@ export class InterviewScheduler implements OnInit, OnDestroy {
       next: (created) => {
         this.scheduleSuccess = `Interview successfully scheduled for ${this.newInterview.candidate}!`;
 
-        // Add to shared reactive interview state
-        const localItem: ScheduledInterview = {
-          id: created?.id || Date.now(),
-          candidate: this.newInterview.candidate || '',
-          job: this.newInterview.job || '',
-          date: displayDate,
-          dateKey: dateKey,
-          time: this.newInterview.time || '11:00 AM',
-          interviewer: this.newInterview.interviewer || 'Tech Lead Panel',
-          type: (this.newInterview.type as any) || 'Live Technical',
-          status: 'Scheduled',
-          applicationId: this.selectedApplicationId!,
-          meetingLink: meetingLink
-        };
-        this.interviewService.addScheduledInterview(localItem);
-
         // Refresh interviews from backend to update Roster, Timeline, Calendar
-        this.interviewService.refreshInterviewsFromBackend().subscribe();
+        this.interviewService.refreshInterviewsFromBackend(true).subscribe();
 
         setTimeout(() => {
           this.closeScheduleModal();
@@ -423,6 +473,7 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     if (confirm(`Are you sure you want to cancel the interview for ${item.candidate}?`)) {
       this.interviewService.cancelInterview(item.id).subscribe({
         next: () => {
+          this.interviewService.refreshInterviewsFromBackend(true).subscribe();
           this.cdr.detectChanges();
         },
         error: (err) => {
@@ -432,13 +483,31 @@ export class InterviewScheduler implements OnInit, OnDestroy {
     }
   }
 
+  completeInterview(item: ScheduledInterview): void {
+    if (confirm(`Mark interview for ${item.candidate} as Completed?`)) {
+      this.interviewService.markInterviewCompleted(item.id).subscribe({
+        next: () => {
+          this.interviewService.refreshInterviewsFromBackend(true).subscribe();
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Failed to complete interview on backend:', err);
+        }
+      });
+    }
+  }
+
   configureInterview(item: ScheduledInterview): void {
     this.openScheduleModal();
+    this.reschedulingInterviewId = item.id;
+    this.selectedApplicationId = item.applicationId || null;
+
     if (item.job) {
       this.jobService.fetchJobsFromBackend().subscribe(jobs => {
         const found = (jobs || []).find(j => j.title.toLowerCase() === item.job.toLowerCase());
         if (found) {
-          this.onJobSelected(found.id);
+          this.selectedJobId = found.id;
+          this.loadApplicantsForJob(found.id);
         }
       });
     }
@@ -451,6 +520,7 @@ export class InterviewScheduler implements OnInit, OnDestroy {
       type: item.type,
       status: item.status
     };
+    this.cdr.detectChanges();
   }
 
   goBack(): void {

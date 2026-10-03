@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription, timeout, catchError, of, finalize } from 'rxjs';
@@ -37,6 +37,7 @@ export class Interview implements OnInit, OnDestroy {
 
   interviews: CandidateInterview[] = [];
   isLoadingInterviews = true;
+  loadError: string = '';
   activeFilter: 'UPCOMING' | 'COMPLETED' | 'CANCELLED' | 'ALL' = 'UPCOMING';
 
   get upcomingInterviews(): CandidateInterview[] {
@@ -60,6 +61,7 @@ export class Interview implements OnInit, OnDestroy {
 
   setFilter(filter: 'UPCOMING' | 'COMPLETED' | 'CANCELLED' | 'ALL'): void {
     this.activeFilter = filter;
+    this.cdr.markForCheck();
   }
 
   selectedInterview: CandidateInterview | null = null;
@@ -78,7 +80,7 @@ export class Interview implements OnInit, OnDestroy {
   cameraVerified = false;
   cameraError = '';
 
-  // Independent Microphone State Machine (Section 23B: Strict 3-State Separation)
+  // Independent Microphone State Machine (Strict 3-State Separation)
   // State 1: MICROPHONE_PERMISSION (Hardware access permission)
   micPermissionState: 'PERMISSION_PENDING' | 'PERMISSION_GRANTED' | 'PERMISSION_DENIED' = 'PERMISSION_PENDING';
   micPermissionGranted = false;
@@ -125,6 +127,7 @@ export class Interview implements OnInit, OnDestroy {
   private audioAnimFrameId: number | null = null;
   private testTimeoutHandle: any = null;
   private speechRecognitionInstance: any = null;
+  private precheckBaseTranscript: string = '';
   private sustainedVoiceTimer: any = null;
   private interviewsSub?: Subscription;
 
@@ -133,7 +136,8 @@ export class Interview implements OnInit, OnDestroy {
     private readonly authService: AuthService,
     private readonly dashboardService: DashboardService,
     private readonly interviewService: InterviewService,
-    private readonly interviewMediaService: InterviewMediaService
+    private readonly interviewMediaService: InterviewMediaService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -155,32 +159,35 @@ export class Interview implements OnInit, OnDestroy {
 
   loadInterviews(): void {
     this.isLoadingInterviews = true;
+    this.loadError = '';
+    this.cdr.markForCheck();
 
-    // 1. Fetch real-time interviews directly from the candidate-specific endpoint (GET /api/interviews/my-interviews)
+    // 1. Fetch real-time interviews directly from candidate-specific endpoint (GET /api/interviews/my-interviews)
     this.interviewService.getMyInterviews().pipe(
-      timeout(5000),
+      timeout(6000),
       catchError((err) => {
         console.warn('[INTERVIEW] Failed to load my-interviews from API:', err);
         return of([]);
-      }),
-      finalize(() => {
-        this.isLoadingInterviews = false;
       })
     ).subscribe({
       next: (list) => {
         if (list && Array.isArray(list) && list.length > 0) {
           this.interviews = list.map(iv => this.mapInterviewResponse(iv));
-          // If no upcoming interviews but there are completed or cancelled ones, default to ALL tab
-          if (this.upcomingInterviews.length === 0 && this.interviews.length > 0) {
+          if (this.upcomingInterviews.length > 0) {
+            this.activeFilter = 'UPCOMING';
+          } else if (this.interviews.length > 0) {
             this.activeFilter = 'ALL';
           }
+          this.isLoadingInterviews = false;
+          this.cdr.markForCheck();
         } else {
           // Fallback: check candidate dashboard if my-interviews returned empty
           this.checkDashboardFallback();
         }
       },
-      error: () => {
-        this.isLoadingInterviews = false;
+      error: (err) => {
+        console.error('[INTERVIEW] loadInterviews error:', err);
+        this.checkDashboardFallback();
       }
     });
 
@@ -197,6 +204,8 @@ export class Interview implements OnInit, OnDestroy {
           });
           if (matched.length > 0) {
             this.interviews = matched.map(si => this.mapScheduledInterview(si));
+            this.isLoadingInterviews = false;
+            this.cdr.markForCheck();
           }
         }
       });
@@ -206,14 +215,28 @@ export class Interview implements OnInit, OnDestroy {
   private checkDashboardFallback(): void {
     this.dashboardService.getCandidateDashboard().pipe(
       timeout(4000),
-      catchError(() => of(null))
+      catchError(() => of(null)),
+      finalize(() => {
+        this.isLoadingInterviews = false;
+        this.cdr.markForCheck();
+      })
     ).subscribe({
       next: (dash) => {
         if (dash?.upcomingInterviews && Array.isArray(dash.upcomingInterviews) && dash.upcomingInterviews.length > 0) {
           this.interviews = dash.upcomingInterviews.map((iv: any) => this.mapInterviewResponse(iv));
+          if (this.upcomingInterviews.length > 0) {
+            this.activeFilter = 'UPCOMING';
+          } else if (this.interviews.length > 0) {
+            this.activeFilter = 'ALL';
+          }
         }
+        this.isLoadingInterviews = false;
+        this.cdr.markForCheck();
       },
-      error: () => {}
+      error: () => {
+        this.isLoadingInterviews = false;
+        this.cdr.markForCheck();
+      }
     });
   }
 

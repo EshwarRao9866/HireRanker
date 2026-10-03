@@ -190,6 +190,17 @@ public class InterviewController {
         return ResponseEntity.ok(InterviewResponse.fromEntity(rescheduled));
     }
 
+    /**
+     * Marks an interview as completed.
+     * Restricted strictly to ADMIN users.
+     */
+    @PutMapping("/{id}/complete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<InterviewResponse> completeInterview(@PathVariable Long id) {
+        Interview completed = interviewService.updateInterviewStatus(id, InterviewStatus.COMPLETED);
+        return ResponseEntity.ok(InterviewResponse.fromEntity(completed));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteInterview(@PathVariable Long id) {
