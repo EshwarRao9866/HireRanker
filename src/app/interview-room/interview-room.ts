@@ -135,20 +135,60 @@ export class InterviewRoom implements OnInit, OnDestroy {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
 
-  // Candidate Monitoring & Suspicious Activity Alerts (PART 9)
-  activeAlertMessage: string = '';
-  activeAlertType: 'MULTIPLE_PERSON' | 'FACE_ABSENT' | 'ATTENTION_AWAY' | 'BROWSER_EVENT' | '' = '';
-  private alertClearTimer: any = null;
+  /**
+   * ANSWERING STATE DEFINITION (Issue 2):
+   * - Current question is displayed.
+   * - AI has finished speaking the question.
+   * - Candidate has started speaking / clicked "Start Speaking".
+   * - Speech recognition is actively capturing the candidate's answer.
+   * - Candidate has not yet submitted/completed the answer.
+   *
+   * Outside this state (AI speaking, loading, evaluating, transitioning, waiting, ending):
+   * Face-movement/attention alerts MUST NOT be generated.
+   * Multiple-face detection remains active throughout the entire interview.
+   */
+  get isCandidateActivelyAnswering(): boolean {
+    if (!this.currentQuestion) return false;
+    if (this.isCompleted || this.showExitModal || this.isIntroPhase || this.isConclusionPhase) return false;
+    if (this.isTtsSpeaking) return false;
+    if (this.isSubmitting || this.showAnswerFeedback || this.isSpeakingFeedback) return false;
+    if (this.questionState === 'PROCESSING_ANSWER' || this.questionState === 'ANSWER_COMPLETED' || this.questionState === 'INTERVIEW_COMPLETED' || this.questionState === 'QUESTION_SKIPPED') return false;
+    return (this.candidateIsAnswering || this.isSpeaking || this.questionState === 'CANDIDATE_ANSWERING');
+  }
+
+  // Candidate Monitoring & Suspicious Activity Alerts
+  activeToast: { message: string; type: 'warning' | 'info'; id: number } | null = null;
+  private toastTimer: any = null;
+  private toastCounter = 0;
+  private lastToastTime = 0;
+  private lastToastMessage = '';
+
+  // Real-time Event Counters
+  totalIntegrityEventsCount: number = 0;
+  multiplePersonEventsCount: number = 0;
+  faceAbsentEventsCount: number = 0;
+  attentionAwayEventsCount: number = 0;
+  tabSwitchEventsCount: number = 0;
+  fullscreenExitEventsCount: number = 0;
+  disconnectionEventsCount: number = 0;
+
+  // State Transitions (prevents per-frame duplicate alerts)
+  private multipleFacesActive: boolean = false;
+  private faceAbsentActive: boolean = false;
+  private attentionAwayActive: boolean = false;
+  private tabSwitchActive: boolean = false;
+  private fullscreenExitActive: boolean = false;
+
   integrityEventsQueue: IntegrityEventRecord[] = [];
   private proctoringCheckInterval: any = null;
   private flushEventsInterval: any = null;
   private faceAbsentStart: number | null = null;
   private multipleFacesStart: number | null = null;
   private lookingAwayStart: number | null = null;
-  private lastAlertLogged: Record<string, number> = {};
   private boundVisibilityHandler: any = null;
   private boundBlurHandler: any = null;
   private boundFullscreenHandler: any = null;
+  private boundDeviceChangeHandler: any = null;
 
   // Exit Modal State
   showExitModal: boolean = false;
@@ -567,9 +607,9 @@ export class InterviewRoom implements OnInit, OnDestroy {
       clearInterval(this.flushEventsInterval);
       this.flushEventsInterval = null;
     }
-    if (this.alertClearTimer) {
-      clearTimeout(this.alertClearTimer);
-      this.alertClearTimer = null;
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
     }
     this.removeBrowserEventListeners();
     if (this.canvasAnimFrameId) {
@@ -638,6 +678,10 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.sessionState = 'QUESTION_SPEAKING';
     this.showAnswerFeedback = false;
     this.currentAnswerFeedback = null;
+    this.currentQuestionIsAssisted = false;
+    this.lookingAwayStart = null;
+    this.attentionAwayActive = false;
+    this.stopVoiceRecognition();
 
     // Immediately trigger change detection so the complete question text is painted on the screen FIRST!
     this.cdr.detectChanges();
@@ -1048,10 +1092,14 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   private displayAnswerFeedbackAndSpeak(res: LiveAnswerResponse): void {
+    const rawScore = res.score ?? res.technicalScore ?? res.overallScore ?? 0;
+    res.score = Math.round(Number(rawScore) || 0);
     this.currentAnswerFeedback = res;
     this.pendingNextResponse = res;
     this.showAnswerFeedback = true;
     this.sessionState = 'FEEDBACK';
+    this.lookingAwayStart = null;
+    this.attentionAwayActive = false;
     this.cdr.detectChanges();
 
     // Prepare concise spoken feedback
@@ -1112,6 +1160,8 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.showAnswerFeedback = false;
     this.currentAnswerFeedback = null;
     this.pendingNextResponse = null;
+    this.lookingAwayStart = null;
+    this.attentionAwayActive = false;
     this.stopTts();
     this.cdr.detectChanges();
 
@@ -1138,6 +1188,8 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.stopCountdown();
     this.stopTts();
     this.stopVoiceRecognition();
+    this.lookingAwayStart = null;
+    this.attentionAwayActive = false;
     this.questionState = 'QUESTION_SKIPPED';
     this.cdr.detectChanges();
 
@@ -1234,6 +1286,19 @@ export class InterviewRoom implements OnInit, OnDestroy {
     this.interviewService.completeInterview(this.interviewId).subscribe({
       next: (result) => {
         this.isSubmitting = false;
+        if (result) {
+          result.multiplePersonEvents = Math.max(result.multiplePersonEvents || 0, this.multiplePersonEventsCount);
+          result.faceAbsentEvents = Math.max(result.faceAbsentEvents || 0, this.faceAbsentEventsCount);
+          result.attentionAwayEvents = Math.max(result.attentionAwayEvents || 0, this.attentionAwayEventsCount);
+          result.tabSwitchEvents = Math.max(result.tabSwitchEvents || 0, this.tabSwitchEventsCount);
+          result.fullscreenExitEvents = Math.max(result.fullscreenExitEvents || 0, this.fullscreenExitEventsCount);
+          result.disconnectionEvents = Math.max(result.disconnectionEvents || 0, this.disconnectionEventsCount);
+          result.totalIntegrityEvents = Math.max(
+            result.totalIntegrityEvents || 0,
+            result.multiplePersonEvents + result.faceAbsentEvents + result.attentionAwayEvents + result.tabSwitchEvents + result.fullscreenExitEvents + result.disconnectionEvents,
+            this.totalIntegrityEventsCount
+          );
+        }
         this.scorecard = result;
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(result));
@@ -1244,6 +1309,19 @@ export class InterviewRoom implements OnInit, OnDestroy {
         this.interviewService.getInterviewResult(this.interviewId).subscribe({
           next: (res) => {
             this.isSubmitting = false;
+            if (res) {
+              res.multiplePersonEvents = Math.max(res.multiplePersonEvents || 0, this.multiplePersonEventsCount);
+              res.faceAbsentEvents = Math.max(res.faceAbsentEvents || 0, this.faceAbsentEventsCount);
+              res.attentionAwayEvents = Math.max(res.attentionAwayEvents || 0, this.attentionAwayEventsCount);
+              res.tabSwitchEvents = Math.max(res.tabSwitchEvents || 0, this.tabSwitchEventsCount);
+              res.fullscreenExitEvents = Math.max(res.fullscreenExitEvents || 0, this.fullscreenExitEventsCount);
+              res.disconnectionEvents = Math.max(res.disconnectionEvents || 0, this.disconnectionEventsCount);
+              res.totalIntegrityEvents = Math.max(
+                res.totalIntegrityEvents || 0,
+                res.multiplePersonEvents + res.faceAbsentEvents + res.attentionAwayEvents + res.tabSwitchEvents + res.fullscreenExitEvents + res.disconnectionEvents,
+                this.totalIntegrityEventsCount
+              );
+            }
             this.scorecard = res;
             if (typeof localStorage !== 'undefined') {
               localStorage.setItem('hireRanker_scorecard_' + this.interviewId, JSON.stringify(res));
@@ -1256,19 +1334,26 @@ export class InterviewRoom implements OnInit, OnDestroy {
               interviewId: this.interviewId,
               candidateName: this.candidateName,
               jobTitle: this.jobTitle,
-              overallScore: 88,
-              technicalScore: 90,
-              communicationScore: 86,
-              problemSolvingScore: 88,
-              recommendation: 'STRONG_HIRE',
-              strengths: 'Demonstrated solid fundamentals in system architecture, Spring Boot, and problem solving.',
-              weaknesses: 'Can deepen distributed caching optimization and query tuning.',
+              overallScore: 0,
+              technicalScore: 0,
+              communicationScore: 0,
+              problemSolvingScore: 0,
+              recommendation: 'DO_NOT_HIRE',
+              strengths: 'Not enough evidence to identify a specific strength.',
+              weaknesses: 'Candidate did not provide sufficient responses for full technical evaluation.',
+              summary: 'Assessment session evaluation completed.',
               totalQuestions: this.totalQuestions,
-              answeredQuestions: Math.max(1, this.currentQuestionNumber - 1),
-              skippedQuestions: 0,
+              answeredQuestions: Math.max(0, this.currentQuestionNumber - 1),
+              skippedQuestions: Math.max(0, this.totalQuestions - (this.currentQuestionNumber - 1)),
               durationMinutes: 15.0,
-              integrityStatus: 'NORMAL',
-              totalIntegrityEvents: this.integrityEventsQueue.length
+              integrityStatus: this.totalIntegrityEventsCount > 4 ? 'REVIEW_REQUIRED' : 'NORMAL',
+              totalIntegrityEvents: this.totalIntegrityEventsCount,
+              multiplePersonEvents: this.multiplePersonEventsCount,
+              faceAbsentEvents: this.faceAbsentEventsCount,
+              attentionAwayEvents: this.attentionAwayEventsCount,
+              tabSwitchEvents: this.tabSwitchEventsCount,
+              fullscreenExitEvents: this.fullscreenExitEventsCount,
+              disconnectionEvents: this.disconnectionEventsCount
             };
             this.scorecard = fallbackResult;
             this.presentInterviewConclusion(fallbackResult);
@@ -1363,35 +1448,64 @@ export class InterviewRoom implements OnInit, OnDestroy {
     if (typeof window === 'undefined') return;
 
     this.boundVisibilityHandler = () => {
+      const now = Date.now();
       if (document.hidden && !this.isCompleted && !this.showExitModal) {
-        const now = Date.now();
-        this.triggerProctoringAlert(
-          'BROWSER_EVENT',
-          'Notice: Tab switching is monitored during the live assessment.',
-          'MEDIUM',
-          now
-        );
-        this.recordIntegrityEvent('TAB_SWITCH', 'MEDIUM', now, now + 1000, 1.0, 'Candidate switched browser tab');
+        if (!this.tabSwitchActive) {
+          this.tabSwitchActive = true;
+          this.tabSwitchEventsCount++;
+          this.totalIntegrityEventsCount++;
+          this.showMonitoringToast('Notice: Tab switching is monitored during the live assessment.', 'warning');
+          this.recordIntegrityEvent('TAB_SWITCH', 'MEDIUM', now, now + 1000, 1.0, 'Candidate switched browser tab');
+        }
+      } else if (!document.hidden) {
+        this.tabSwitchActive = false;
       }
     };
 
     this.boundBlurHandler = () => {
       if (!this.isCompleted && !this.showExitModal) {
         const now = Date.now();
-        this.recordIntegrityEvent('WINDOW_BLUR', 'LOW', now, now + 1000, 1.0, 'Window lost active focus');
+        if (!this.tabSwitchActive) {
+          this.tabSwitchActive = true;
+          this.tabSwitchEventsCount++;
+          this.totalIntegrityEventsCount++;
+          this.showMonitoringToast('Notice: Tab switching is monitored during the live assessment.', 'warning');
+          this.recordIntegrityEvent('WINDOW_BLUR', 'LOW', now, now + 1000, 1.0, 'Window lost active focus');
+        }
       }
     };
 
     this.boundFullscreenHandler = () => {
+      const now = Date.now();
       if (!document.fullscreenElement && !this.isCompleted && !this.showExitModal) {
+        if (!this.fullscreenExitActive) {
+          this.fullscreenExitActive = true;
+          this.fullscreenExitEventsCount++;
+          this.totalIntegrityEventsCount++;
+          this.showMonitoringToast('Notice: Fullscreen exit detected during the live assessment.', 'warning');
+          this.recordIntegrityEvent('FULLSCREEN_EXIT', 'LOW', now, now + 1000, 1.0, 'Candidate exited fullscreen mode');
+        }
+      } else if (document.fullscreenElement) {
+        this.fullscreenExitActive = false;
+      }
+    };
+
+    this.boundDeviceChangeHandler = () => {
+      if (!this.isCompleted && !this.showExitModal) {
         const now = Date.now();
-        this.recordIntegrityEvent('FULLSCREEN_EXIT', 'LOW', now, now + 1000, 1.0, 'Candidate exited fullscreen mode');
+        this.disconnectionEventsCount++;
+        this.totalIntegrityEventsCount++;
+        this.showMonitoringToast('Notice: Camera or microphone connection interrupted.', 'warning');
+        this.recordIntegrityEvent('DEVICE_DISCONNECT', 'HIGH', now, now + 1000, 1.0, 'Hardware device change or disconnection');
       }
     };
 
     document.addEventListener('visibilitychange', this.boundVisibilityHandler);
     window.addEventListener('blur', this.boundBlurHandler);
     document.addEventListener('fullscreenchange', this.boundFullscreenHandler);
+    if (navigator?.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', this.boundDeviceChangeHandler);
+    }
   }
 
   private removeBrowserEventListeners(): void {
@@ -1405,75 +1519,90 @@ export class InterviewRoom implements OnInit, OnDestroy {
     if (this.boundFullscreenHandler) {
       document.removeEventListener('fullscreenchange', this.boundFullscreenHandler);
     }
+    if (this.boundDeviceChangeHandler && navigator?.mediaDevices?.removeEventListener) {
+      navigator.mediaDevices.removeEventListener('devicechange', this.boundDeviceChangeHandler);
+    }
   }
 
   private handleDetectedFaces(faces: any[], videoWidth: number, videoHeight: number, now: number): void {
-    // A. Multiple-person detection
+    // A. Multiple-person detection (> 1 face)
     if (faces.length > 1) {
       this.faceAbsentStart = null;
+      this.faceAbsentActive = false;
+      this.lookingAwayStart = null;
+      this.attentionAwayActive = false;
+
       if (this.multipleFacesStart === null) {
         this.multipleFacesStart = now;
       } else if (now - this.multipleFacesStart >= 2000) {
-        this.triggerProctoringAlert(
-          'MULTIPLE_PERSON',
-          'Suspicious activity: Multiple people detected in the camera view.',
-          'HIGH',
-          now
-        );
+        if (!this.multipleFacesActive) {
+          this.multipleFacesActive = true;
+          this.multiplePersonEventsCount++;
+          this.totalIntegrityEventsCount++;
+          this.showMonitoringToast('Suspicious activity: Multiple faces detected in the camera view.', 'warning');
+          this.recordIntegrityEvent('MULTIPLE_PERSON', 'HIGH', now, now + 2000, 2.0, 'Suspicious activity: Multiple faces detected in the camera view.');
+        }
       }
       return;
     }
 
+    // Resolves multiple faces active state when faces count drops back to <= 1
     this.multipleFacesStart = null;
+    this.multipleFacesActive = false;
 
-    // B. Face visibility
+    // B. Face visibility (0 faces)
     if (faces.length === 0) {
       this.lookingAwayStart = null;
+      this.attentionAwayActive = false;
+
       if (this.faceAbsentStart === null) {
         this.faceAbsentStart = now;
       } else if (now - this.faceAbsentStart >= 3000) {
-        this.triggerProctoringAlert(
-          'FACE_ABSENT',
-          'Please keep your face visible during the interview.',
-          'MEDIUM',
-          now
-        );
+        if (!this.faceAbsentActive) {
+          this.faceAbsentActive = true;
+          this.faceAbsentEventsCount++;
+          this.totalIntegrityEventsCount++;
+          this.showMonitoringToast('Please keep your face visible during the interview.', 'warning');
+          this.recordIntegrityEvent('FACE_ABSENT', 'MEDIUM', now, now + 3000, 3.0, 'Please keep your face visible during the interview.');
+        }
       }
       return;
     }
 
     // Exactly 1 face visible
     this.faceAbsentStart = null;
+    this.faceAbsentActive = false;
 
-    // C. Attention and gaze signals
+    // C. Attention and gaze signals (ONLY DURING ACTIVE CANDIDATE ANSWERING)
+    if (!this.isCandidateActivelyAnswering) {
+      this.lookingAwayStart = null;
+      this.attentionAwayActive = false;
+      return;
+    }
+
     const face = faces[0];
     const box = face.boundingBox;
     if (box) {
       const centerX = box.x + box.width / 2;
       const relativeX = centerX / videoWidth;
 
-      // If looking far away from screen center for sustained >= 3.5s
+      // When candidate moves face significantly away from center (< 0.20 or > 0.80) while actively answering
       if (relativeX < 0.20 || relativeX > 0.80) {
         if (this.lookingAwayStart === null) {
           this.lookingAwayStart = now;
-        } else if (now - this.lookingAwayStart >= 3500) {
-          this.triggerProctoringAlert(
-            'ATTENTION_AWAY',
-            'Attention reminder: Please focus on the interview screen.',
-            'LOW',
-            now
-          );
+        } else if (now - this.lookingAwayStart >= 2500) {
+          if (!this.attentionAwayActive) {
+            this.attentionAwayActive = true;
+            this.attentionAwayEventsCount++;
+            this.totalIntegrityEventsCount++;
+            this.showMonitoringToast('Attention reminder: Please focus on the interview screen while answering.', 'info');
+            this.recordIntegrityEvent('ATTENTION_AWAY', 'LOW', now, now + 2500, 2.5, 'Attention reminder: Candidate looking away while answering.');
+          }
         }
       } else {
         this.lookingAwayStart = null;
-        if (this.activeAlertType === 'ATTENTION_AWAY') {
-          this.clearActiveAlert();
-        }
+        this.attentionAwayActive = false;
       }
-    }
-
-    if (this.activeAlertType === 'MULTIPLE_PERSON' || this.activeAlertType === 'FACE_ABSENT') {
-      this.clearActiveAlert();
     }
   }
 
@@ -1489,8 +1618,7 @@ export class InterviewRoom implements OnInit, OnDestroy {
       const data = ctx.getImageData(0, 0, 64, 48).data;
 
       let skinPixels = 0;
-      let leftSkin = 0;
-      let rightSkin = 0;
+      const colHistogram = new Int32Array(64);
 
       for (let y = 0; y < 48; y++) {
         for (let x = 0; x < 64; x++) {
@@ -1499,81 +1627,133 @@ export class InterviewRoom implements OnInit, OnDestroy {
           const g = data[idx + 1];
           const b = data[idx + 2];
 
-          // Simple skin tone heuristic
-          if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 15) {
+          // Normalized skin color range
+          if (r > 50 && g > 30 && b > 20 && r > g && r > b && (r - g) > 12) {
             skinPixels++;
-            if (x < 24) leftSkin++;
-            if (x > 40) rightSkin++;
+            colHistogram[x]++;
           }
         }
       }
 
-      const totalPixels = 64 * 48;
-      const skinRatio = skinPixels / totalPixels;
+      // Check face absence: virtually zero skin tone across the whole frame (< 20 pixels out of 3072)
+      if (skinPixels < 20) {
+        this.multipleFacesStart = null;
+        this.multipleFacesActive = false;
+        this.lookingAwayStart = null;
+        this.attentionAwayActive = false;
 
-      if (skinRatio < 0.02) {
-        // Face absent
         if (this.faceAbsentStart === null) {
           this.faceAbsentStart = now;
-        } else if (now - this.faceAbsentStart >= 3500) {
-          this.triggerProctoringAlert(
-            'FACE_ABSENT',
-            'Please keep your face visible during the interview.',
-            'MEDIUM',
-            now
-          );
+        } else if (now - this.faceAbsentStart >= 3000) {
+          if (!this.faceAbsentActive) {
+            this.faceAbsentActive = true;
+            this.faceAbsentEventsCount++;
+            this.totalIntegrityEventsCount++;
+            this.showMonitoringToast('Please keep your face visible during the interview.', 'warning');
+            this.recordIntegrityEvent('FACE_ABSENT', 'MEDIUM', now, now + 3000, 3.0, 'Please keep your face visible during the interview.');
+          }
         }
-      } else if (leftSkin > 80 && rightSkin > 80 && skinRatio > 0.28) {
-        // Multiple persons detected across both sides
-        this.faceAbsentStart = null;
+        return;
+      }
+
+      // Face is visible: clear absence
+      this.faceAbsentStart = null;
+      this.faceAbsentActive = false;
+
+      // Check multiple faces: find distinct separated peaks in column histogram
+      let leftCount = 0;
+      let midCount = 0;
+      let rightCount = 0;
+      for (let x = 0; x < 64; x++) {
+        if (x < 24) leftCount += colHistogram[x];
+        else if (x <= 40) midCount += colHistogram[x];
+        else rightCount += colHistogram[x];
+      }
+
+      // Distinct multiple faces: both left and right have significant presence and separated
+      const hasTwoDistinctClusters = leftCount > 90 && rightCount > 90 && skinPixels > 280;
+
+      if (hasTwoDistinctClusters) {
         if (this.multipleFacesStart === null) {
           this.multipleFacesStart = now;
-        } else if (now - this.multipleFacesStart >= 2500) {
-          this.triggerProctoringAlert(
-            'MULTIPLE_PERSON',
-            'Suspicious activity: Multiple people detected in the camera view.',
-            'HIGH',
-            now
-          );
+        } else if (now - this.multipleFacesStart >= 2000) {
+          if (!this.multipleFacesActive) {
+            this.multipleFacesActive = true;
+            this.multiplePersonEventsCount++;
+            this.totalIntegrityEventsCount++;
+            this.showMonitoringToast('Suspicious activity: Multiple faces detected in the camera view.', 'warning');
+            this.recordIntegrityEvent('MULTIPLE_PERSON', 'HIGH', now, now + 2000, 2.0, 'Suspicious activity: Multiple faces detected in the camera view.');
+          }
+        }
+        return;
+      }
+
+      // Normal single face
+      this.multipleFacesStart = null;
+      this.multipleFacesActive = false;
+
+      // Attention away: ONLY DURING ACTIVE CANDIDATE ANSWERING
+      if (!this.isCandidateActivelyAnswering) {
+        this.lookingAwayStart = null;
+        this.attentionAwayActive = false;
+        return;
+      }
+
+      if (leftCount > 130 && rightCount < 15 && midCount < 25) {
+        if (this.lookingAwayStart === null) {
+          this.lookingAwayStart = now;
+        } else if (now - this.lookingAwayStart >= 2500) {
+          if (!this.attentionAwayActive) {
+            this.attentionAwayActive = true;
+            this.attentionAwayEventsCount++;
+            this.totalIntegrityEventsCount++;
+            this.showMonitoringToast('Attention reminder: Please focus on the interview screen while answering.', 'info');
+            this.recordIntegrityEvent('ATTENTION_AWAY', 'LOW', now, now + 2500, 2.5, 'Attention reminder: Candidate looking away while answering.');
+          }
         }
       } else {
-        // Normal single person visible
-        this.faceAbsentStart = null;
-        this.multipleFacesStart = null;
-        if (this.activeAlertType === 'MULTIPLE_PERSON' || this.activeAlertType === 'FACE_ABSENT') {
-          this.clearActiveAlert();
-        }
+        this.lookingAwayStart = null;
+        this.attentionAwayActive = false;
       }
     } catch {}
   }
 
-  private triggerProctoringAlert(type: string, message: string, severity: string, now: number): void {
-    this.activeAlertMessage = message;
-    this.activeAlertType = type as any;
+  showMonitoringToast(message: string, type: 'warning' | 'info' = 'warning'): void {
+    const now = Date.now();
+    // Cooldown/deduplication: prevent duplicate toast every frame or within 5 seconds for continuous condition
+    if (this.lastToastMessage === message && (now - this.lastToastTime < 5000)) {
+      return;
+    }
+    if (this.activeToast && this.activeToast.message === message) {
+      return;
+    }
+
+    this.lastToastTime = now;
+    this.lastToastMessage = message;
+
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
+    const toastId = ++this.toastCounter;
+    this.activeToast = { message, type, id: toastId };
     this.cdr.detectChanges();
 
-    // Deduplicate event logging (once every 8 seconds per type)
-    const lastLogged = this.lastAlertLogged[type] || 0;
-    if (now - lastLogged >= 8000) {
-      this.lastAlertLogged[type] = now;
-      this.recordIntegrityEvent(type, severity, now, now + 2000, 2.0, message);
-    }
-
-    if (this.alertClearTimer) {
-      clearTimeout(this.alertClearTimer);
-    }
-    // Auto-clear alert banner after 4.5 seconds if condition stops
-    this.alertClearTimer = setTimeout(() => {
-      this.clearActiveAlert();
-    }, 4500);
+    this.toastTimer = setTimeout(() => {
+      if (this.activeToast && this.activeToast.id === toastId) {
+        this.activeToast = null;
+        this.cdr.detectChanges();
+      }
+    }, 3000);
   }
 
-  private clearActiveAlert(): void {
-    if (this.activeAlertMessage) {
-      this.activeAlertMessage = '';
-      this.activeAlertType = '';
-      this.cdr.detectChanges();
+  dismissToast(): void {
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
     }
+    this.activeToast = null;
+    this.cdr.detectChanges();
   }
 
   private recordIntegrityEvent(type: string, severity: string, start: number, end: number, dur: number, msg: string): void {
@@ -1659,6 +1839,11 @@ export class InterviewRoom implements OnInit, OnDestroy {
   }
 
   exitRoom(): void {
+    this.removeBrowserEventListeners();
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
     if (this.authService.isAdmin()) {
       this.router.navigate(['/interview-scheduler']);
     } else {

@@ -1338,8 +1338,8 @@
 
 /* ================= SCORECARD & FEEDBACK MODAL ================= */
 .modal-dialog.scorecard-modal {
-  max-width: 720px;
-  width: 92%;
+  max-width: 960px;
+  width: 95%;
   border-radius: 16px;
   background: #ffffff;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
@@ -1457,7 +1457,7 @@
 
 .feedback-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -1467,6 +1467,8 @@
   border-radius: 12px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
 }
 
 .strengths-col {
@@ -1489,6 +1491,15 @@
   line-height: 1.6;
   color: #475569;
   margin: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .feedback-section {
+    grid-template-columns: 1fr;
+  }
 }
 
 .evaluation-summary-box {
@@ -1533,3 +1544,135 @@
 .btn-print-scorecard:hover {
   background: #1e293b;
 }
+
+/* Pre-assessment Reset button */
+.btn-reset-mic {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-reset-mic:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+.btn-reset-mic:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Recommendation Badges */
+.badge-strong-hire {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #86efac !important;
+}
+.badge-hire-rec {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border: 1px solid #7dd3fc !important;
+}
+.badge-consider {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+}
+.badge-do-not-hire {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+/* Stats Ribbon Grid in Modal */
+.stats-ribbon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.ribbon-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ribbon-metric .metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.04em;
+}
+.ribbon-metric .metric-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Proctoring Summary Card in Modal */
+.proctoring-summary-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.proctor-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.proctor-status-tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.proctor-note {
+  font-size: 11px;
+  color: #64748b;
+}
+.proctor-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+.proctor-stat-chip {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.proctor-stat-chip .chip-num {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+.proctor-stat-chip .chip-name {
+  font-size: 10.5px;
+  color: #64748b;
+  margin-top: 2px;
+  font-weight: 600;
+}
+

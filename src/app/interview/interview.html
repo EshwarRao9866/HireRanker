@@ -444,6 +444,9 @@
                     <button type="button" class="btn btn-test-mic" (click)="testMicrophone()" [disabled]="micTesting">
                       {{ micTesting ? '⏳ Testing Microphone...' : (speechVerificationCompleted ? '🔄 Retest Microphone' : '🎙️ Test Microphone') }}
                     </button>
+                    <button type="button" class="btn btn-reset-mic" (click)="resetMicrophoneTest()" [disabled]="micTesting" title="Clear transcript and reset speech test">
+                      🔄 Reset
+                    </button>
                   </div>
 
                   @if (microphoneError) {
@@ -543,7 +546,13 @@
               <div class="score-box overall-box">
                 <span class="score-label">Overall Match Score</span>
                 <span class="score-value">{{ selectedScorecard.overallScore }}%</span>
-                <span class="badge-hire">{{ selectedScorecard.recommendation || 'STRONG_HIRE' }}</span>
+                <span class="badge-hire"
+                      [class.badge-strong-hire]="selectedScorecard.recommendation === 'STRONG_HIRE'"
+                      [class.badge-hire-rec]="selectedScorecard.recommendation === 'HIRE'"
+                      [class.badge-consider]="selectedScorecard.recommendation === 'CONSIDER'"
+                      [class.badge-do-not-hire]="selectedScorecard.recommendation === 'DO_NOT_HIRE'">
+                  {{ selectedScorecard.recommendation || 'DO_NOT_HIRE' }}
+                </span>
               </div>
               <div class="score-box">
                 <span class="score-label">💻 Technical Depth</span>
@@ -562,23 +571,86 @@
               </div>
             </div>
 
+            <!-- ASSESSMENT ACTIVITY STATS -->
+            <div class="stats-ribbon-grid">
+              <div class="ribbon-metric">
+                <span class="metric-label">Questions Target</span>
+                <span class="metric-val">{{ selectedScorecard.questionsTarget || 10 }}</span>
+              </div>
+              <div class="ribbon-metric">
+                <span class="metric-label">Answered</span>
+                <span class="metric-val" style="color: #10b981;">{{ selectedScorecard.questionsAnswered || 0 }}</span>
+              </div>
+              <div class="ribbon-metric">
+                <span class="metric-label">Unanswered / Skipped</span>
+                <span class="metric-val" style="color: #ea580c;">{{ selectedScorecard.questionsSkipped || 0 }}</span>
+              </div>
+              <div class="ribbon-metric">
+                <span class="metric-label">Actual Duration</span>
+                <span class="metric-val">{{ selectedScorecard.actualDurationSeconds ? ((selectedScorecard.actualDurationSeconds / 60) | number:'1.1-1') + 'm' : '15.0m' }}</span>
+              </div>
+            </div>
+
+            <!-- PROCTORING & INTEGRITY SUMMARY -->
+            <div class="proctoring-summary-card">
+              <div class="proctor-card-head">
+                <div class="proctor-status-tag">
+                  <span>🛡️ Session Integrity Verification</span>
+                </div>
+                <span class="proctor-note">Verified monitoring event history for recruiter audit</span>
+              </div>
+              <div class="proctor-metrics-row">
+                <div class="proctor-stat-chip">
+                  <span class="chip-num">{{ selectedScorecard.totalIntegrityEvents || 0 }}</span>
+                  <span class="chip-name">Total Monitoring Events</span>
+                </div>
+                <div class="proctor-stat-chip">
+                  <span class="chip-num">{{ selectedScorecard.multiplePersonEvents || 0 }}</span>
+                  <span class="chip-name">Multiple Faces</span>
+                </div>
+                <div class="proctor-stat-chip">
+                  <span class="chip-num">{{ selectedScorecard.faceAbsentEvents || 0 }}</span>
+                  <span class="chip-name">Face Not Visible</span>
+                </div>
+                <div class="proctor-stat-chip">
+                  <span class="chip-num">{{ selectedScorecard.attentionAwayEvents || 0 }}</span>
+                  <span class="chip-name">Attention Alerts</span>
+                </div>
+                <div class="proctor-stat-chip">
+                  <span class="chip-num">{{ selectedScorecard.tabSwitchEvents || 0 }}</span>
+                  <span class="chip-name">Tab / Blur Events</span>
+                </div>
+                <div class="proctor-stat-chip">
+                  <span class="chip-num">{{ selectedScorecard.fullscreenExitEvents || 0 }}</span>
+                  <span class="chip-name">Fullscreen Exit</span>
+                </div>
+              </div>
+            </div>
+
             <!-- DETAILED FEEDBACK SECTION -->
             <div class="feedback-section">
               <div class="feedback-col strengths-col">
                 <h4>✅ Key Technical Strengths</h4>
-                <p>{{ selectedScorecard.strengths }}</p>
+                <p style="white-space: pre-line;">{{ selectedScorecard.strengths }}</p>
               </div>
               <div class="feedback-col weaknesses-col">
                 <h4>💡 Growth & Improvement Areas</h4>
-                <p>{{ selectedScorecard.weaknesses }}</p>
+                <p style="white-space: pre-line;">{{ selectedScorecard.weaknesses }}</p>
               </div>
             </div>
+
+            @if (selectedScorecard.improvementTopics) {
+              <div class="topics-recommendation-bar" style="margin-top: 14px; padding: 10px 14px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 4px solid #3b82f6;">
+                <strong style="color: #1e40af; font-size: 0.85rem;">Key Topics to Revise Before Next Interview:</strong>
+                <span style="color: #1e293b; font-size: 0.85rem; margin-left: 8px;">{{ selectedScorecard.improvementTopics }}</span>
+              </div>
+            }
 
             <div class="evaluation-summary-box">
               <span class="eval-icon">🤖</span>
               <div class="eval-meta">
                 <strong>Zero-Bias AI Recommendation:</strong>
-                <span>Candidate met benchmark requirements for {{ selectedInterview?.jobTitle }}. Performance evaluation confirms competency in required core skills.</span>
+                <span>{{ selectedScorecard.summary || ('Candidate final recommendation: ' + (selectedScorecard.recommendation || 'DO_NOT_HIRE') + ' with an overall score of ' + selectedScorecard.overallScore + '%.') }}</span>
               </div>
             </div>
           }

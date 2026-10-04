@@ -425,7 +425,40 @@ export class Interview implements OnInit, OnDestroy {
    * Executes ONLY microphone checks (Permission -> Audio Signal -> STT Sentence).
    * Does NOT touch camera!
    */
+  /**
+   * Completely resets the pre-assessment microphone and STT test attempt.
+   * Clears transcript boxes, stops speech recognition safely, and resets all validation state.
+   */
+  resetMicrophoneTest(): void {
+    if (this.speechRecognitionInstance) {
+      try {
+        this.speechRecognitionInstance.onstart = null;
+        this.speechRecognitionInstance.onresult = null;
+        this.speechRecognitionInstance.onerror = null;
+        this.speechRecognitionInstance.onend = null;
+        this.speechRecognitionInstance.abort();
+      } catch {}
+      this.speechRecognitionInstance = null;
+    }
+    this.recognizedTranscript = '';
+    this.precheckFinalTranscript = '';
+    this.speechRecognitionVerified = false;
+    this.speechVerificationCompleted = false;
+    this.speechRecognitionState = 'STT_IDLE';
+
+    this.micAudioDetected = false;
+    this.audioLevel = 0;
+    this.microphoneState = 'MIC_IDLE';
+    this.micInputState = 'WAITING_FOR_AUDIO';
+    this.microphoneError = '';
+    this.micTesting = false;
+
+    console.log('[INTERVIEW] Pre-assessment microphone & STT test state cleanly reset.');
+    this.cdr.detectChanges();
+  }
+
   async testMicrophone(): Promise<void> {
+    this.resetMicrophoneTest();
     this.micTesting = true;
     this.microphoneError = '';
     this.micAudioDetected = false;
@@ -626,7 +659,13 @@ export class Interview implements OnInit, OnDestroy {
     if (SpeechRec) {
       try {
         if (this.speechRecognitionInstance) {
-          try { this.speechRecognitionInstance.abort(); } catch {}
+          try {
+            this.speechRecognitionInstance.onstart = null;
+            this.speechRecognitionInstance.onresult = null;
+            this.speechRecognitionInstance.onerror = null;
+            this.speechRecognitionInstance.onend = null;
+            this.speechRecognitionInstance.abort();
+          } catch {}
           this.speechRecognitionInstance = null;
         }
 
@@ -698,6 +737,9 @@ export class Interview implements OnInit, OnDestroy {
         };
 
         rec.onend = () => {
+          if (this.speechRecognitionInstance !== rec) {
+            return;
+          }
           if (this.recognizedTranscript.trim() && !this.precheckFinalTranscript.includes(this.recognizedTranscript.trim())) {
             this.precheckFinalTranscript = this.recognizedTranscript.trim();
           }
@@ -1009,24 +1051,22 @@ export class Interview implements OnInit, OnDestroy {
       error: () => {
         this.isLoadingScorecard = false;
         if (!this.selectedScorecard) {
-          const candidateName = this.authService.currentUser()?.fullName || 'Eshwar Rao';
+          const candidateName = this.authService.currentUser()?.fullName || 'Candidate';
           const defaultScorecard: LiveInterviewResult = {
             interviewId: interview.id,
             candidateName: candidateName,
-            jobTitle: interview.jobTitle || 'Java Full Stack Developer',
-            overallScore: 88,
-            technicalScore: 92,
-            communicationScore: 86,
-            problemSolvingScore: 87,
-            recommendation: 'STRONG_HIRE',
-            strengths: 'Demonstrated solid proficiency in Java core concepts, Spring Boot dependency injection, REST API design principles, and transactional integrity.',
-            weaknesses: 'Can deepen hands-on optimization in distributed caching patterns (Redis) and concurrent thread-pool fine-tuning under high throughput.',
-            completedAt: interview.date + ' (' + interview.time + ')'
+            jobTitle: interview.jobTitle || 'Technical Role',
+            overallScore: 0,
+            technicalScore: 0,
+            communicationScore: 0,
+            problemSolvingScore: 0,
+            recommendation: 'EVALUATION_PENDING',
+            strengths: 'Not enough evidence to identify a specific strength.',
+            weaknesses: 'Evaluation result is currently processing or interview was not completed.',
+            summary: 'Assessment session evaluation is pending or incomplete.',
+            completedAt: interview.date + (interview.time ? (' (' + interview.time + ')') : '')
           };
           this.selectedScorecard = defaultScorecard;
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('hireRanker_scorecard_' + interview.id, JSON.stringify(defaultScorecard));
-          }
         }
       }
     });

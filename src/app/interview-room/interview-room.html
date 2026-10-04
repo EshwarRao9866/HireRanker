@@ -26,13 +26,16 @@
     </div>
   </header>
 
-  <!-- PROCTORING REAL-TIME ALERT BANNER (PART 9) -->
-  @if (activeAlertMessage) {
-    <div class="proctor-live-alert-banner" [attr.data-alert-type]="activeAlertType">
-      <span class="proctor-alert-icon">⚠️</span>
-      <div class="proctor-alert-body">
-        <strong>{{ activeAlertMessage }}</strong>
-        <span class="proctor-alert-sub">Zero-Bias Proctoring is monitoring session integrity. Please maintain attention.</span>
+  <!-- TOP-RIGHT MONITORING TOAST NOTIFICATION (3-SECOND AUTO-DISMISS) -->
+  @if (activeToast) {
+    <div class="proctor-toast-wrapper" [attr.data-toast-type]="activeToast.type" role="alert">
+      <div class="proctor-toast-card">
+        <span class="proctor-toast-icon">{{ activeToast.type === 'warning' ? '⚠️' : 'ℹ️' }}</span>
+        <div class="proctor-toast-body">
+          <strong class="proctor-toast-title">{{ activeToast.type === 'warning' ? 'Integrity Notice' : 'Attention Reminder' }}</strong>
+          <span class="proctor-toast-text">{{ activeToast.message }}</span>
+        </div>
+        <button type="button" class="proctor-toast-dismiss" (click)="dismissToast()" aria-label="Dismiss alert">✕</button>
       </div>
     </div>
   }
@@ -86,7 +89,13 @@
           <div class="score-box overall-box">
             <span class="score-label">Overall Score</span>
             <span class="score-value">{{ scorecard.overallScore }}%</span>
-            <span class="score-badge badge-hire">{{ scorecard.recommendation }}</span>
+            <span class="score-badge badge-hire"
+                  [class.badge-strong-hire]="scorecard.recommendation === 'STRONG_HIRE'"
+                  [class.badge-hire-rec]="scorecard.recommendation === 'HIRE'"
+                  [class.badge-consider]="scorecard.recommendation === 'CONSIDER'"
+                  [class.badge-do-not-hire]="scorecard.recommendation === 'DO_NOT_HIRE'">
+              {{ scorecard.recommendation }}
+            </span>
           </div>
 
           <div class="score-box">
@@ -112,23 +121,23 @@
         <div class="stats-ribbon-grid">
           <div class="ribbon-metric">
             <span class="metric-label">Questions Target</span>
-            <span class="metric-val">{{ scorecard.totalQuestions || totalQuestions }}</span>
+            <span class="metric-val">{{ scorecard.questionsTarget || (scorecard.totalQuestions || totalQuestions) }}</span>
           </div>
           <div class="ribbon-metric">
             <span class="metric-label">Answered</span>
-            <span class="metric-val" style="color: #10b981;">{{ scorecard.answeredQuestions || 0 }}</span>
+            <span class="metric-val" style="color: #10b981;">{{ scorecard.questionsAnswered !== undefined ? scorecard.questionsAnswered : (scorecard.answeredQuestions || 0) }}</span>
           </div>
           <div class="ribbon-metric">
             <span class="metric-label">Unanswered / Skipped</span>
-            <span class="metric-val" style="color: #ea580c;">{{ scorecard.skippedQuestions || 0 }}</span>
+            <span class="metric-val" style="color: #ea580c;">{{ scorecard.questionsSkipped !== undefined ? scorecard.questionsSkipped : (scorecard.skippedQuestions || 0) }}</span>
           </div>
           <div class="ribbon-metric">
             <span class="metric-label">Duration</span>
-            <span class="metric-val">{{ scorecard.durationMinutes || 15 }}m</span>
+            <span class="metric-val">{{ scorecard.actualDurationSeconds ? ((scorecard.actualDurationSeconds / 60) | number:'1.1-1') + 'm' : ((scorecard.durationMinutes || 15) + 'm') }}</span>
           </div>
         </div>
 
-        <!-- CANDIDATE MONITORING & INTEGRITY SUMMARY (PART 13) -->
+        <!-- CANDIDATE MONITORING & INTEGRITY SUMMARY -->
         <div class="proctoring-summary-card" [class.review-flagged]="(scorecard.integrityStatus || 'NORMAL') === 'REVIEW_REQUIRED'">
           <div class="proctor-card-head">
             <div class="proctor-status-tag">
@@ -139,32 +148,56 @@
           </div>
           <div class="proctor-metrics-row">
             <div class="proctor-stat-chip">
-              <span class="chip-num">{{ scorecard.totalIntegrityEvents || 0 }}</span>
-              <span class="chip-name">Monitoring Events</span>
+              <span class="chip-num">{{ scorecard.multiplePersonEvents || 0 }}</span>
+              <span class="chip-name">Multiple Person Alerts</span>
             </div>
             <div class="proctor-stat-chip">
-              <span class="chip-num">{{ scorecard.multiplePersonEvents || 0 }}</span>
-              <span class="chip-name">Multiple Persons</span>
+              <span class="chip-num">{{ scorecard.attentionAwayEvents || 0 }}</span>
+              <span class="chip-name">Attention Alerts</span>
             </div>
             <div class="proctor-stat-chip">
               <span class="chip-num">{{ scorecard.tabSwitchEvents || 0 }}</span>
               <span class="chip-name">Tab / Blur Events</span>
             </div>
             <div class="proctor-stat-chip">
-              <span class="chip-num">{{ scorecard.attentionAwayEvents || 0 }}</span>
-              <span class="chip-name">Attention Flags</span>
+              <span class="chip-num">{{ scorecard.fullscreenExitEvents || 0 }}</span>
+              <span class="chip-name">Fullscreen Exits</span>
+            </div>
+            <div class="proctor-stat-chip">
+              <span class="chip-num">{{ scorecard.faceAbsentEvents || 0 }}</span>
+              <span class="chip-name">Face Not Visible</span>
+            </div>
+            <div class="proctor-stat-chip">
+              <span class="chip-num">{{ scorecard.totalIntegrityEvents || 0 }}</span>
+              <span class="chip-name">Total Monitoring Events</span>
             </div>
           </div>
         </div>
 
+        <!-- DETAILED FEEDBACK SECTION -->
         <div class="feedback-section">
           <div class="feedback-col">
             <h4>⭐ Key Strengths</h4>
-            <p>{{ scorecard.strengths }}</p>
+            <p style="white-space: pre-line;">{{ scorecard.strengths }}</p>
           </div>
           <div class="feedback-col">
-            <h4>💡 Improvement Topics</h4>
-            <p>{{ scorecard.weaknesses }}</p>
+            <h4>💡 Specific Improvement Areas</h4>
+            <p style="white-space: pre-line;">{{ scorecard.weaknesses }}</p>
+          </div>
+        </div>
+
+        @if (scorecard.improvementTopics) {
+          <div class="topics-recommendation-bar" style="margin-top: 14px; padding: 10px 14px; background: rgba(59, 130, 246, 0.08); border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <strong style="color: #1e40af; font-size: 0.85rem;">Key Topics to Revise Before Next Interview:</strong>
+            <span style="color: #1e293b; font-size: 0.85rem; margin-left: 8px;">{{ scorecard.improvementTopics }}</span>
+          </div>
+        }
+
+        <div class="evaluation-summary-box" style="margin-top: 16px; display: flex; align-items: flex-start; gap: 12px; background: rgba(2, 132, 199, 0.06); border: 1px solid rgba(2, 132, 199, 0.2); padding: 14px 16px; border-radius: 10px;">
+          <span class="eval-icon" style="font-size: 22px;">🤖</span>
+          <div class="eval-meta">
+            <strong style="display: block; font-size: 13px; color: #0369a1; margin-bottom: 2px;">Zero-Bias AI Recommendation:</strong>
+            <span style="font-size: 12px; color: #475569; line-height: 1.5;">{{ scorecard.summary || ('Candidate final recommendation: ' + scorecard.recommendation + ' with an overall score of ' + scorecard.overallScore + '%.') }}</span>
           </div>
         </div>
 
@@ -458,7 +491,7 @@
                       <span>{{ currentAnswerFeedback.correctnessClassification || (currentAnswerFeedback.correct ? 'CORRECT' : 'EVALUATED') }}</span>
                     </div>
                     <div class="score-pill">
-                      <span>Score: <strong>{{ currentAnswerFeedback.score !== undefined ? currentAnswerFeedback.score : 80 }}%</strong></span>
+                      <span>Score: <strong>{{ (currentAnswerFeedback.score !== undefined ? currentAnswerFeedback.score : (currentAnswerFeedback.technicalScore !== undefined ? currentAnswerFeedback.technicalScore : (currentAnswerFeedback.overallScore !== undefined ? currentAnswerFeedback.overallScore : 0))) }}%</strong></span>
                     </div>
                     <span class="tts-feedback-badge" [class.active-tts]="isSpeakingFeedback">
                       {{ isSpeakingFeedback ? '🔊 AI Reading Feedback Aloud...' : '✅ Feedback Ready' }}

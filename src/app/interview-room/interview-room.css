@@ -808,8 +808,8 @@
   border: 1px solid #1f2937;
   border-radius: 20px;
   padding: 40px;
-  max-width: 760px;
-  width: 100%;
+  max-width: 960px;
+  width: 95%;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   text-align: center;
 }
@@ -894,15 +894,21 @@
 
 .feedback-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   text-align: left;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
+}
+
+.feedback-col {
+  display: flex;
+  flex-direction: column;
 }
 
 .feedback-col h4 {
   margin: 0 0 10px 0;
   font-size: 0.95rem;
+  font-weight: 700;
   color: #cbd5e1;
 }
 
@@ -910,11 +916,14 @@
   background: #090d16;
   border: 1px solid #1e293b;
   border-radius: 10px;
-  padding: 14px;
+  padding: 16px;
   margin: 0;
-  font-size: 0.9rem;
-  color: #94a3b8;
-  line-height: 1.5;
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  line-height: 1.6;
+  max-height: 280px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .scorecard-footer {
@@ -1246,49 +1255,122 @@
   .scores-grid {
     grid-template-columns: 1fr 1fr;
   }
-  
+}
+
+@media (max-width: 768px) {
   .feedback-section {
     grid-template-columns: 1fr;
   }
 }
 
-/* ================= PART 9: PROCTORING ALERT BANNER ================= */
-.proctor-live-alert-banner {
+/* ================= TOP-RIGHT PROCTORING TOAST NOTIFICATION ================= */
+.proctor-toast-wrapper {
+  position: fixed;
+  top: 76px;
+  right: 28px;
+  z-index: 9999;
+  max-width: 380px;
+  animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.proctor-toast-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid #ef4444;
-  border-radius: 10px;
-  padding: 12px 20px;
-  margin: 12px 28px 0 28px;
-  animation: slideDownFade 0.3s ease-out;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(239, 68, 68, 0.25);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #ffffff;
 }
 
-.proctor-alert-icon {
-  font-size: 1.4rem;
-  line-height: 1;
+.proctor-toast-wrapper[data-toast-type="info"] .proctor-toast-card {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(59, 130, 246, 0.25);
 }
 
-.proctor-alert-body {
+.proctor-toast-icon {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.proctor-toast-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
 }
 
-.proctor-alert-body strong {
-  font-size: 0.95rem;
+.proctor-toast-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: #fca5a5;
+  font-weight: 700;
 }
 
-.proctor-alert-sub {
-  font-size: 0.78rem;
-  color: #f87171;
+.proctor-toast-wrapper[data-toast-type="info"] .proctor-toast-title {
+  color: #93c5fd;
 }
 
-@keyframes slideDownFade {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+.proctor-toast-text {
+  font-size: 0.85rem;
+  color: #f1f5f9;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.proctor-toast-dismiss {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.proctor-toast-dismiss:hover {
+  color: #ffffff;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Recommendation Badges */
+.badge-strong-hire {
+  background: rgba(34, 197, 94, 0.2) !important;
+  color: #4ade80 !important;
+  border: 1px solid rgba(74, 222, 128, 0.4) !important;
+}
+.badge-hire-rec {
+  background: rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+}
+.badge-consider {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.4) !important;
+}
+.badge-do-not-hire {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.4) !important;
 }
 
 /* ================= PART 10 & 11: ANSWER FEEDBACK CARD ================= */

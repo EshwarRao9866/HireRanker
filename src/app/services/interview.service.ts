@@ -71,6 +71,7 @@ export interface LiveAnswerResponse {
   score?: number;
   technicalScore?: number;
   clarityScore?: number;
+  overallScore?: number;
   feedback?: string;
   explanation?: string;
   missingConcepts?: string[];
@@ -94,16 +95,25 @@ export interface LiveInterviewResult {
   recommendation: string;
   strengths: string;
   weaknesses: string;
+  improvementTopics?: string;
+  summary?: string;
   completedAt?: string;
   totalQuestions?: number;
   answeredQuestions?: number;
   skippedQuestions?: number;
   durationMinutes?: number;
+  questionsTarget?: number;
+  questionsAnswered?: number;
+  questionsSkipped?: number;
+  actualDurationSeconds?: number;
   integrityStatus?: string;
   totalIntegrityEvents?: number;
   multiplePersonEvents?: number;
+  faceAbsentEvents?: number;
   tabSwitchEvents?: number;
   attentionAwayEvents?: number;
+  fullscreenExitEvents?: number;
+  disconnectionEvents?: number;
   audioAnomalyEvents?: number;
 }
 
