@@ -1,27 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { DashboardService, AdminDashboardData } from '../services/dashboard.service';
-
-interface FunnelStage {
-  label: string;
-  count: number;
-  percentage: number;
-  color: string;
-}
-
-interface SkillDemand {
-  skill: string;
-  demand: number;
-  applicants: number;
-}
-
-interface SourceItem {
-  source: string;
-  percentage: number;
-  count: number;
-  color: string;
-}
+import { DashboardService, ReportData, FunnelStage, SkillDemand, AcquisitionSource } from '../services/dashboard.service';
 
 @Component({
   selector: 'app-reports',
@@ -43,12 +23,14 @@ export class Reports implements OnInit {
 
   funnelStages: FunnelStage[] = [];
   skillsDemand: SkillDemand[] = [];
-  sources: SourceItem[] = [];
+  sources: AcquisitionSource[] = [];
   isLoading = true;
+  isError = false;
 
   constructor(
     private readonly router: Router,
-    private readonly dashboardService: DashboardService
+    private readonly dashboardService: DashboardService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -57,94 +39,48 @@ export class Reports implements OnInit {
 
   loadReportsData(): void {
     this.isLoading = true;
-    this.dashboardService.getAdminDashboard('All Time').subscribe({
-      next: (data: AdminDashboardData) => {
+    this.isError = false;
+    this.cdr.markForCheck();
+
+    this.dashboardService.getReportsData().subscribe({
+      next: (data: ReportData) => {
         this.isLoading = false;
-        if (!data) return;
+        this.isError = false;
 
-        const totalApps = data.totalApplications || 0;
-        const screened = data.screenedResumes || 0;
-        const shortlisted = data.shortlistedCandidates || 0;
-        const interviews = data.totalInterviews || 0;
-        const avgScore = data.averageMatchScore || 0;
+        if (data) {
+          const totalApps = data.totalApplications || 0;
+          const screened = data.screenedResumes || 0;
+          const shortlisted = data.shortlistedCandidates || 0;
+          const interviews = data.totalInterviews || 0;
+          const offers = data.offersExtended || 0;
+          const rejected = data.rejectedCandidates || 0;
+          const avgScore = data.averageMatchScore || 0;
 
-        // Count rejected if present in applicationStatus
-        const rejectedItem = data.applicationStatus?.find(
-          s => s.status?.toUpperCase() === 'REJECTED'
-        );
-        const rejectedCount = rejectedItem ? rejectedItem.count : 0;
+          this.metrics = {
+            totalApplicants: totalApps,
+            screenedResumes: screened,
+            shortlisted: shortlisted,
+            rejected: rejected,
+            interviewsHeld: interviews,
+            offersExtended: offers,
+            avgMatchScore: Math.round(avgScore)
+          };
 
-        this.metrics = {
-          totalApplicants: totalApps,
-          screenedResumes: screened,
-          shortlisted: shortlisted,
-          rejected: rejectedCount,
-          interviewsHeld: interviews,
-          offersExtended: 0,
-          avgMatchScore: Math.round(avgScore)
-        };
-
-        // Calculate recruitment conversion funnel dynamically without divide-by-zero
-        if (totalApps > 0) {
-          this.funnelStages = [
-            {
-              label: 'Total Applications',
-              count: totalApps,
-              percentage: 100,
-              color: '#4f46e5'
-            },
-            {
-              label: 'AI Screened Resumes',
-              count: screened,
-              percentage: Math.min(100, Math.round((screened / totalApps) * 100)),
-              color: '#0ea5e9'
-            },
-            {
-              label: 'Shortlisted for Interview',
-              count: shortlisted,
-              percentage: Math.min(100, Math.round((shortlisted / totalApps) * 100)),
-              color: '#8b5cf6'
-            },
-            {
-              label: 'Completed Assessments',
-              count: interviews,
-              percentage: Math.min(100, Math.round((interviews / totalApps) * 100)),
-              color: '#f59e0b'
-            },
-            {
-              label: 'Job Offers Made',
-              count: 0,
-              percentage: 0,
-              color: '#10b981'
-            }
-          ];
-        } else {
-          this.funnelStages = [
-            { label: 'Total Applications', count: 0, percentage: 0, color: '#4f46e5' },
-            { label: 'AI Screened Resumes', count: 0, percentage: 0, color: '#0ea5e9' },
-            { label: 'Shortlisted for Interview', count: 0, percentage: 0, color: '#8b5cf6' },
-            { label: 'Completed Assessments', count: 0, percentage: 0, color: '#f59e0b' },
-            { label: 'Job Offers Made', count: 0, percentage: 0, color: '#10b981' }
-          ];
+          this.funnelStages = data.funnelStages || [];
+          this.sources = data.sources || [];
+          this.skillsDemand = data.skillsDemand || [];
         }
 
-        // Skills demand from real topSkills
-        if (data.topSkills && data.topSkills.length > 0) {
-          this.skillsDemand = data.topSkills.map(s => ({
-            skill: s.name,
-            demand: s.percent,
-            applicants: s.count
-          }));
-        } else {
-          this.skillsDemand = [];
-        }
-
-        // Sources list empty if no source data tracked in application model
-        this.sources = [];
+        // Trigger change detection for zoneless runtime
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Failed to load reports data:', err);
         this.isLoading = false;
+        this.isError = true;
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       }
     });
   }

@@ -40,6 +40,11 @@
         <span class="label">Interviews</span>
       </button>
 
+      <button class="menu-item" (click)="openMessages()">
+        <span class="icon">💬</span>
+        <span class="label">Messages</span>
+      </button>
+
       <button class="menu-item" (click)="openProfile()">
         <span class="icon">👤</span>
         <span class="label">My Profile</span>
@@ -173,6 +178,7 @@
                     <td>
                       <div class="action-btns">
                         <button class="btn-action-view" (click)="viewDetails(app)">View Details</button>
+                        <button class="btn-action-view" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;" (click)="contactRecruiter(app)" title="Message Recruiter">💬 Contact</button>
                         <button class="btn-action-withdraw" (click)="withdrawApplication(app)" title="Withdraw application">×</button>
                       </div>
                     </td>
@@ -267,8 +273,9 @@
           </div>
         </div>
 
-        <footer class="modal-footer">
+        <footer class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">Close</button>
+          <button type="button" class="btn btn-primary" style="background: #0284c7; color: #ffffff; padding: 9px 18px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer;" (click)="contactRecruiter(selectedApp); closeDetailsModal()">💬 Contact Recruiter</button>
         </footer>
 
       </div>

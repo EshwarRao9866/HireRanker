@@ -7,6 +7,7 @@ import { NotificationService, AppNotification } from '../services/notification.s
 import { AiChatService } from '../services/ai-chat.service';
 import { AssistantModeService } from '../services/assistant-mode.service';
 import { DashboardService } from '../services/dashboard.service';
+import { MessageService } from '../services/message.service';
 import { cleanJobTitle, formatSalaryToLpa } from '../services/salary-formatter.util';
 
 @Component({
@@ -64,6 +65,7 @@ export class CandidateDashboard implements OnInit {
   showNotificationsDropdown = false;
   notifications: AppNotification[] = [];
   unreadNotificationsCount = 0;
+  unreadMessagesCount = 0;
 
   get backendLive(): boolean {
     return this.authService.backendConnected();
@@ -75,6 +77,7 @@ export class CandidateDashboard implements OnInit {
     private readonly jobService: JobService,
     private readonly notificationService: NotificationService,
     private readonly dashboardService: DashboardService,
+    private readonly messageService: MessageService,
     private readonly cdr: ChangeDetectorRef,
     readonly aiChatService: AiChatService,
     private readonly assistantModeService: AssistantModeService
@@ -101,6 +104,17 @@ export class CandidateDashboard implements OnInit {
 
     this.loadNotifications();
     this.loadDashboardData();
+    this.loadUnreadMessages();
+  }
+
+  loadUnreadMessages(): void {
+    this.messageService.getUnreadCount().subscribe({
+      next: (res) => {
+        this.unreadMessagesCount = res.unreadCount;
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
   }
 
   loadDashboardData(): void {
@@ -301,6 +315,10 @@ export class CandidateDashboard implements OnInit {
 
   openInterviews(): void {
     this.router.navigate(['/interviews']);
+  }
+
+  openMessages(): void {
+    this.router.navigate(['/candidate-messages']);
   }
 
   openProfile(): void {

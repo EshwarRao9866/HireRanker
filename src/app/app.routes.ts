@@ -21,6 +21,7 @@ import { CandidateLogin } from './candidate-login/candidate-login';
 import { CandidateRegister } from './candidate-register/candidate-register';
 import { CandidateDashboard } from './candidate-dashboard/candidate-dashboard';
 import { CandidateProfile } from './candidate-profile/candidate-profile';
+import { CandidateMessages } from './candidate-messages/candidate-messages';
 import { JobList } from './job-list/job-list';
 import { ResumeUpload } from './resume-upload/resume-upload';
 import { MyApplications } from './my-applications/my-applications';
@@ -154,6 +155,15 @@ export const routes: Routes = [
     path: 'my-profile',
     component: CandidateProfile,
     canActivate: [candidateGuard]
+  },
+  {
+    path: 'candidate-messages',
+    component: CandidateMessages,
+    canActivate: [candidateGuard]
+  },
+  {
+    path: 'candidate/messages',
+    redirectTo: 'candidate-messages'
   },
 
   // Legacy/Alternate route aliases redirecting to canonical candidate routes

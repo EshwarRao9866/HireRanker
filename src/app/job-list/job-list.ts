@@ -214,6 +214,25 @@ export class JobList implements OnInit {
     this.router.navigate(['/interviews']);
   }
 
+  openMessages(): void {
+    this.router.navigate(['/candidate-messages']);
+  }
+
+  contactRecruiter(job?: JobItem): void {
+    if (job) {
+      this.router.navigate(['/candidate-messages'], {
+        queryParams: {
+          jobId: job.id,
+          jobTitle: job.title,
+          company: job.company,
+          contactRecruiter: 'true'
+        }
+      });
+    } else {
+      this.router.navigate(['/candidate-messages']);
+    }
+  }
+
   openProfile(): void {
     this.router.navigate(['/my-profile']);
   }

@@ -1,0 +1,389 @@
+<div class="candidate-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="brand" (click)="goDashboard()">
+      <div class="brand-logo-icon">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#38bdf8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <span class="name">HireRanker</span>
+        <span class="sub">Candidate Portal</span>
+      </div>
+    </div>
+
+    <!-- Candidate Profile Pill -->
+    <div class="candidate-info" (click)="openProfile()">
+      <div class="avatar">
+        {{ candidateName.charAt(0) }}
+      </div>
+      <div class="meta">
+        <strong>{{ candidateName }}</strong>
+        <small>Candidate</small>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <button class="menu-item" (click)="goDashboard()">
+        <span class="icon">⌂</span>
+        <span class="label">Dashboard</span>
+      </button>
+
+      <button class="menu-item" (click)="openJobs()">
+        <span class="icon">💼</span>
+        <span class="label">Find Jobs</span>
+      </button>
+
+      <button class="menu-item" (click)="openResume()">
+        <span class="icon">📄</span>
+        <span class="label">My Resume</span>
+      </button>
+
+      <button class="menu-item" (click)="openApplications()">
+        <span class="icon">📋</span>
+        <span class="label">My Applications</span>
+      </button>
+
+      <button class="menu-item" (click)="openInterviews()">
+        <span class="icon">🎤</span>
+        <span class="label">Interviews</span>
+      </button>
+
+      <button class="menu-item active">
+        <span class="icon">💬</span>
+        <span class="label">Messages</span>
+        @if (unreadTotal > 0) {
+          <span class="nav-unread-badge">{{ unreadTotal }}</span>
+        }
+      </button>
+
+      <button class="menu-item" (click)="openProfile()">
+        <span class="icon">👤</span>
+        <span class="label">My Profile</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">↪</span>
+        <span class="label">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="page-title">
+        <h1>Recruiter Messages & Queries</h1>
+        <p>Communicate directly with hiring managers, ask questions about job openings, and track recruitment status.</p>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn btn-inquiry" (click)="openNewInquiryModal()">
+          <span class="btn-icon">✉</span> Ask a Question / Contact Recruiter
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER -->
+    <div class="content-body">
+
+      <!-- LOADING STATE -->
+      @if (isLoading) {
+        <div class="loading-state-card">
+          <div class="spinner"></div>
+          <p>Loading your recruiter conversations...</p>
+        </div>
+      } @else if (conversations.length > 0 && selectedConversation) {
+        <!-- CHAT PLATFORM CONTAINER -->
+        <div class="chat-platform-card">
+
+          <!-- LEFT: CONVERSATION LIST -->
+          <div class="convo-sidebar">
+            <div class="convo-search">
+              <span class="search-icon">🔍</span>
+              <input
+                type="text"
+                [(ngModel)]="searchQuery"
+                placeholder="Search recruiter..."
+              />
+            </div>
+
+            <div class="convo-list">
+              @if (filteredConversations.length === 0) {
+                <div class="no-results-box">
+                  <p>No matching conversations found.</p>
+                </div>
+              } @else {
+                @for (convo of filteredConversations; track convo.partnerId) {
+                  <div
+                    class="convo-item"
+                    [class.active]="selectedConversation?.partnerId === convo.partnerId"
+                    (click)="selectConversation(convo)"
+                  >
+                    <div class="avatar-wrap">
+                      <div class="convo-avatar">{{ getInitials(convo.partnerName) }}</div>
+                      <span class="online-indicator"></span>
+                    </div>
+
+                    <div class="convo-info">
+                      <div class="name-time-row">
+                        <strong class="partner-name">{{ convo.partnerName }}</strong>
+                        <small class="msg-time">{{ formatTime(convo.lastMessageTime) }}</small>
+                      </div>
+                      <div class="role-snip">
+                        Recruiter / HR Team
+                      </div>
+                      @if (convo.appliedRole) {
+                        <div class="context-role-tag">
+                          💼 {{ convo.appliedRole }} @if (convo.company) { &bull; {{ convo.company }} }
+                        </div>
+                      }
+                      <p class="msg-preview">{{ convo.lastMessage || 'Conversation started' }}</p>
+                    </div>
+
+                    @if (convo.unreadCount > 0) {
+                      <span class="unread-pill">{{ convo.unreadCount }}</span>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+
+          <!-- RIGHT: CHAT WINDOW -->
+          <div class="chat-window">
+
+            <!-- Chat Header -->
+            <div class="chat-header">
+              <div class="avatar-wrap">
+                <div class="convo-avatar convo-avatar-large">{{ getInitials(selectedConversation.partnerName) }}</div>
+                <span class="online-indicator"></span>
+              </div>
+
+              <div class="chat-user-meta">
+                <div class="name-badge-row">
+                  <h3>{{ selectedConversation.partnerName }}</h3>
+                  <span class="badge-role">Recruitment Team</span>
+                </div>
+                <div class="sub-meta">
+                  <span class="email-text">{{ selectedConversation.partnerEmail }}</span>
+                  @if (selectedConversation.appliedRole) {
+                    <span class="context-pill">
+                      📌 Regarding: {{ selectedConversation.appliedRole }} @if (selectedConversation.company) { ({{ selectedConversation.company }}) }
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Messages Body -->
+            <div class="chat-messages-body" #messagesContainer>
+              @if (activeMessages.length === 0) {
+                <div class="chat-empty-thread">
+                  <div class="empty-thread-icon">✉</div>
+                  <h4>No messages yet</h4>
+                  <p>Send a message below to connect with {{ selectedConversation.partnerName }}.</p>
+                </div>
+              } @else {
+                @for (msg of activeMessages; track msg.id) {
+                  <div
+                    class="msg-row"
+                    [class.msg-outgoing]="msg.senderId === currentUserId"
+                    [class.msg-incoming]="msg.senderId !== currentUserId"
+                  >
+                    <div class="msg-bubble">
+                      @if (msg.jobTitle) {
+                        <div class="msg-context-tag">
+                          <span class="tag-icon">💼</span> {{ msg.jobTitle }} @if (msg.company) { &bull; {{ msg.company }} }
+                        </div>
+                      }
+                      <p class="bubble-text">{{ msg.message }}</p>
+                      <div class="bubble-footer">
+                        <span class="msg-time">{{ formatTime(msg.sentAt) }}</span>
+                        @if (msg.senderId === currentUserId) {
+                          <span class="read-status" [title]="msg.readStatus === 'READ' ? 'Read by recruiter' : 'Delivered'">
+                            @if (msg.readStatus === 'READ') {
+                              <span class="tick-read">✓✓</span>
+                            } @else {
+                              <span class="tick-sent">✓</span>
+                            }
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+
+            <!-- Chat Feedback Error -->
+            @if (errorFeedback) {
+              <div class="chat-error-bar">
+                <span>⚠️ {{ errorFeedback }}</span>
+                <button class="close-bar-btn" (click)="errorFeedback = null">&times;</button>
+              </div>
+            }
+
+            <!-- Chat Input Footer with Keyboard Shortcuts -->
+            <div class="chat-input-footer">
+              <div class="textarea-wrap">
+                <textarea
+                  id="candidateMessageInput"
+                  name="candidateMessageInput"
+                  [(ngModel)]="newMessageText"
+                  (keydown)="onMessageKeydown($event)"
+                  placeholder="Type your reply to {{ selectedConversation.partnerName }}..."
+                  rows="2"
+                  class="chat-textarea"
+                  [disabled]="isSending"
+                ></textarea>
+              </div>
+              <button
+                type="button"
+                class="btn btn-send"
+                (click)="sendMessage()"
+                [disabled]="isSending || !newMessageText.trim()"
+              >
+                @if (isSending) {
+                  <span class="spinner-small"></span> Sending...
+                } @else {
+                  <span>Send</span> ✈
+                }
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      } @else {
+        <!-- EMPTY STATE WHEN NO CONVERSATIONS EXIST -->
+        <div class="empty-state-card">
+          <div class="empty-icon">💬</div>
+          <h3>No Messages Yet</h3>
+          <p>Have a question about a job opening, company culture, interview schedule, or your application status? Contact a recruiter directly.</p>
+          <button class="btn btn-inquiry" (click)="openNewInquiryModal()">
+            <span class="btn-icon">✉</span> Start New Inquiry
+          </button>
+        </div>
+      }
+
+    </div>
+
+  </main>
+
+  <!-- ================= NEW INQUIRY MODAL ================= -->
+  @if (showNewInquiryModal) {
+    <div class="modal-backdrop" (click)="closeNewInquiryModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Ask a Question / Contact Recruiter</h3>
+          <button class="modal-close-btn" (click)="closeNewInquiryModal()">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          @if (isLoadingAppliedJobs) {
+            <div class="modal-loading">
+              <div class="spinner"></div>
+              <p>Loading your applied jobs and recruiter directory...</p>
+            </div>
+          } @else if (appliedJobs.length === 0) {
+            <!-- Empty state when candidate has no applications -->
+            <div class="empty-applications-state">
+              <div class="empty-modal-icon">📋</div>
+              <h4>No Applied Jobs Found</h4>
+              <p>You have not applied for any jobs yet. To contact a recruiter, explore available positions and submit an application.</p>
+              <button type="button" class="btn btn-browse-jobs" (click)="openJobs(); closeNewInquiryModal()">
+                Browse Jobs in Find Jobs →
+              </button>
+            </div>
+          } @else {
+
+            <!-- Dropdown: Company / Applied Job -->
+            <div class="form-group">
+              <label class="modal-label" for="appliedJobSelect">
+                Company / Applied Job:
+              </label>
+              <select
+                id="appliedJobSelect"
+                [ngModel]="selectedAppliedJob"
+                (ngModelChange)="onAppliedJobChange($event)"
+                class="modal-select"
+              >
+                @for (job of appliedJobs; track job.applicationId) {
+                  <option [ngValue]="job">
+                    {{ job.company }} — {{ job.jobTitle }}
+                  </option>
+                }
+              </select>
+            </div>
+
+            <!-- Recruiter resolution status -->
+            @if (selectedAppliedJob) {
+              @if (selectedAppliedJob.hasRecruiter && selectedAppliedJob.recruiterName) {
+                <div class="recruiter-resolved-card">
+                  <div class="recruiter-avatar-mini">{{ getInitials(selectedAppliedJob.recruiterName) }}</div>
+                  <div class="recruiter-meta-mini">
+                    <span class="recruiter-label-badge">Assigned Recruiter</span>
+                    <strong>{{ selectedAppliedJob.recruiterName }}</strong>
+                    <small>{{ selectedAppliedJob.recruiterEmail }}</small>
+                  </div>
+                </div>
+              } @else {
+                <div class="recruiter-unassigned-warning">
+                  ⚠️ No recruiter is currently assigned to this job opening. Please check back later or explore other openings.
+                </div>
+              }
+            }
+
+            <!-- Compose Message with Keyboard Shortcuts -->
+            <div class="form-group compose-section">
+              <label class="modal-label" for="inquiryText">
+                Your Question or Recruitment Query:
+              </label>
+              <textarea
+                id="inquiryText"
+                name="inquiryText"
+                [(ngModel)]="newInquiryText"
+                (keydown)="onInquiryKeydown($event)"
+                placeholder="Ask about job requirements, interview process, or application status..."
+                rows="4"
+                class="modal-textarea"
+                [disabled]="isSending"
+              ></textarea>
+            </div>
+
+            @if (errorFeedback) {
+              <div class="modal-error-alert">
+                ⚠️ {{ errorFeedback }}
+              </div>
+            }
+
+          }
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeNewInquiryModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="sendNewInquiry()"
+            [disabled]="!selectedAppliedJob || !selectedAppliedJob.hasRecruiter || !newInquiryText.trim() || isSending"
+          >
+            @if (isSending) {
+              <span class="spinner-small"></span> Sending...
+            } @else {
+              <span>Send Inquiry</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

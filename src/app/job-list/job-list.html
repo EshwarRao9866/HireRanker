@@ -40,6 +40,11 @@
         <span class="label">Interviews</span>
       </button>
 
+      <button class="menu-item" (click)="openMessages()">
+        <span class="icon">💬</span>
+        <span class="label">Messages</span>
+      </button>
+
       <button class="menu-item" (click)="openProfile()">
         <span class="icon">👤</span>
         <span class="label">My Profile</span>
@@ -238,8 +243,9 @@
           </div>
         </div>
 
-        <div class="modal-actions" style="margin-top: 24px;">
+        <div class="modal-actions" style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-outline" (click)="closeJobDetails()">Close</button>
+          <button type="button" class="btn btn-outline" style="color: #0284c7; border-color: #0284c7;" (click)="contactRecruiter(selectedJob); closeJobDetails()">💬 Ask Recruiter</button>
           @if (selectedJob.applied) {
             <button type="button" class="btn btn-applied" disabled>✓ Already Applied</button>
           } @else {

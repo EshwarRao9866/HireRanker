@@ -206,6 +206,26 @@ export class MyApplications implements OnInit {
     this.router.navigate(['/interviews']);
   }
 
+  openMessages(): void {
+    this.router.navigate(['/candidate-messages']);
+  }
+
+  contactRecruiter(app?: CandidateApplication): void {
+    if (app) {
+      this.router.navigate(['/candidate-messages'], {
+        queryParams: {
+          jobId: app.jobId,
+          applicationId: app.id,
+          jobTitle: app.jobTitle,
+          company: app.company,
+          contactRecruiter: 'true'
+        }
+      });
+    } else {
+      this.router.navigate(['/candidate-messages']);
+    }
+  }
+
   openProfile(): void {
     this.router.navigate(['/my-profile']);
   }
