@@ -45,71 +45,92 @@
       </button>
     </div>
 
-    <div class="table-wrap">
-      <table class="saas-table">
-        <thead>
-          <tr>
-            <th>Candidate</th>
-            <th>Applied Position</th>
-            <th>Resume</th>
-            <th>AI Match Score</th>
-            <th>Skills Match</th>
-            <th>Experience</th>
-            <th>Education</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (a of filteredApplicants; track (a.id + '_' + $index)) {
+    @if (isLoading) {
+      <div class="state-card">
+        <div class="state-spinner"></div>
+        <h3>Loading Applicant Records...</h3>
+        <p>Fetching candidate applications, resumes, and AI screening scores from database.</p>
+      </div>
+    } @else if (isError) {
+      <div class="state-card state-card-error">
+        <div class="state-icon">⚠️</div>
+        <h3>Error Loading Applications</h3>
+        <p>{{ errorMessage || 'Could not connect to the backend server. Please verify your connection.' }}</p>
+        <button class="btn-retry" (click)="loadApplicants()">Retry</button>
+      </div>
+    } @else if (filteredApplicants.length === 0) {
+      <div class="state-card state-card-empty">
+        <div class="state-icon">📋</div>
+        <h3>No Applicants Found</h3>
+        <p>No candidates match the current filters or search criteria. Try adjusting your filters or check back later.</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table class="saas-table">
+          <thead>
             <tr>
-              <td>
-                <div class="applicant-cell">
-                  <div class="applicant-avatar">{{ a.name.charAt(0) }}</div>
-                  <div>
-                    <strong>{{ a.name }}</strong>
-                    <small>{{ a.email }}</small>
-                  </div>
-                </div>
-              </td>
-              <td>{{ a.job }}</td>
-              <td>
-                <button class="resume-link-btn" (click)="viewResume(a)" title="Click to view candidate resume">
-                  📄 {{ a.resumeFileName }}
-                </button>
-              </td>
-              <td>
-                <div class="match-score-pill" [class.high-score]="a.matchScore >= 85">
-                  <strong>{{ a.matchScore }}%</strong>
-                </div>
-              </td>
-              <td><strong>{{ a.skillsMatch }}%</strong></td>
-              <td>{{ a.experience }}</td>
-              <td>{{ a.educationScore }}%</td>
-              <td>
-                @if (a.status === 'Shortlisted') {
-                  <span class="status-badge badge-emerald">⭐ Shortlisted</span>
-                } @else if (a.status === 'Under Review') {
-                  <span class="status-badge badge-blue">⏳ Under Review</span>
-                } @else if (a.status === 'Interview Scheduled') {
-                  <span class="status-badge badge-purple">🎤 Interview</span>
-                } @else {
-                  <span class="status-badge badge-rose">✕ Rejected</span>
-                }
-              </td>
-              <td>
-                <div class="action-btns">
-                  <button class="btn-shortlist" (click)="shortlistApplicant(a)" title="Shortlist Candidate">⭐</button>
-                  <button class="btn-reject" (click)="rejectApplicant(a)" title="Reject Candidate">✕</button>
-                  <button class="btn-view" (click)="openCandidateProfile(a)" title="View Candidate Profile & Details">👁️</button>
-                  <button class="btn-delete-row" (click)="deleteApplicant(a.id)" title="Delete Application">🗑️</button>
-                </div>
-              </td>
+              <th>Candidate</th>
+              <th>Applied Position</th>
+              <th>Resume</th>
+              <th>AI Match Score</th>
+              <th>Skills Match</th>
+              <th>Experience</th>
+              <th>Education</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            @for (a of filteredApplicants; track (a.id + '_' + $index)) {
+              <tr>
+                <td>
+                  <div class="applicant-cell">
+                    <div class="applicant-avatar">{{ a.name.charAt(0) }}</div>
+                    <div>
+                      <strong>{{ a.name }}</strong>
+                      <small>{{ a.email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ a.job }}</td>
+                <td>
+                  <button class="resume-link-btn" (click)="viewResume(a)" title="Click to view candidate resume">
+                    📄 {{ a.resumeFileName }}
+                  </button>
+                </td>
+                <td>
+                  <div class="match-score-pill" [class.high-score]="a.matchScore >= 85">
+                    <strong>{{ a.matchScore }}%</strong>
+                  </div>
+                </td>
+                <td><strong>{{ a.skillsMatch }}%</strong></td>
+                <td>{{ a.experience }}</td>
+                <td>{{ a.educationScore }}%</td>
+                <td>
+                  @if (a.status === 'Shortlisted') {
+                    <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                  } @else if (a.status === 'Under Review') {
+                    <span class="status-badge badge-blue">⏳ Under Review</span>
+                  } @else if (a.status === 'Interview Scheduled') {
+                    <span class="status-badge badge-purple">🎤 Interview</span>
+                  } @else {
+                    <span class="status-badge badge-rose">✕ Rejected</span>
+                  }
+                </td>
+                <td>
+                  <div class="action-btns">
+                    <button class="btn-shortlist" (click)="shortlistApplicant(a)" title="Shortlist Candidate">⭐</button>
+                    <button class="btn-reject" (click)="rejectApplicant(a)" title="Reject Candidate">✕</button>
+                    <button class="btn-view" (click)="openCandidateProfile(a)" title="View Candidate Profile & Details">👁️</button>
+                    <button class="btn-delete-row" (click)="deleteApplicant(a.id)" title="Delete Application">🗑️</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </div>
 
   <!-- ================= RESUME PREVIEW MODAL (Column 3) ================= -->

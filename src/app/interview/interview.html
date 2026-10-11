@@ -141,7 +141,9 @@
 
                 <div class="meta-block">
                   <span class="label">Status</span>
-                  @if (interview.status === 'Upcoming') {
+                  @if (interview.rawStatus === 'IN_PROGRESS' || interview.rawStatus === 'PENDING_HR_REVIEW' || interview.rawStatus === 'DISCONNECTED') {
+                    <span class="status-upcoming" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">⚡ In Progress (Resume)</span>
+                  } @else if (interview.status === 'Upcoming') {
                     <span class="status-upcoming">● Ready to Join</span>
                   } @else if (interview.status === 'Completed') {
                     <span class="status-completed">✓ Finished</span>
@@ -154,7 +156,7 @@
               <div class="card-footer-actions">
                 @if (interview.status === 'Upcoming') {
                   <button class="btn btn-join-interview" (click)="joinInterview(interview)">
-                    🚀 Join Assessment Room
+                    {{ (interview.rawStatus === 'IN_PROGRESS' || interview.rawStatus === 'PENDING_HR_REVIEW' || interview.rawStatus === 'DISCONNECTED') ? '🔄 Resume Assessment' : '🚀 Join Assessment Room' }}
                   </button>
                 } @else if (interview.status === 'Completed') {
                   <button class="btn btn-view-feedback" (click)="viewResults(interview)">

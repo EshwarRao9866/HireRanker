@@ -61,82 +61,128 @@
         <h1>My Applications</h1>
         <p>Track the real-time status of your job submissions and recruiter responses.</p>
       </div>
+      <div class="topbar-actions">
+        <button class="btn-refresh" (click)="loadApplications()" title="Refresh live application records">
+          ↻ Refresh
+        </button>
+      </div>
     </header>
 
     <div class="content-scrollable">
 
-      <!-- FILTER TABS -->
+
+
+      <!-- FILTER TABS WITH LIVE DYNAMIC COUNTS -->
       <div class="tabs-row">
         <button class="tab-btn" [class.active]="activeFilter === 'ALL'" (click)="setFilter('ALL')">
-          All ({{ applications.length }})
+          All ({{ totalApplied }})
         </button>
         <button class="tab-btn" [class.active]="activeFilter === 'SHORTLISTED'" (click)="setFilter('SHORTLISTED')">
-          ⭐ Shortlisted (1)
+          ⭐ Shortlisted ({{ shortlistedCount }})
         </button>
         <button class="tab-btn" [class.active]="activeFilter === 'INTERVIEW'" (click)="setFilter('INTERVIEW')">
-          🎤 Interview (1)
+          🎤 Interview ({{ interviewsCount }})
         </button>
         <button class="tab-btn" [class.active]="activeFilter === 'REVIEW'" (click)="setFilter('REVIEW')">
-          ⏳ In Review (3)
+          ⏳ In Review ({{ inReviewCount }})
         </button>
       </div>
 
-      <!-- APPLICATIONS TABLE CARD -->
-      <div class="content-card">
-        <div class="table-responsive">
-          <table class="saas-table">
-            <thead>
-              <tr>
-                <th>Job Title & Company</th>
-                <th>Location</th>
-                <th>Applied Date</th>
-                <th>AI Match</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (app of filteredApplications; track (app.id + '_' + $index)) {
-                <tr>
-                  <td>
-                    <div class="job-col">
-                      <div class="app-badge">{{ app.company.charAt(0) }}</div>
-                      <div>
-                        <strong>{{ app.jobTitle }}</strong>
-                        <small>{{ app.company }}</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td>📍 {{ app.location }}</td>
-                  <td>{{ app.appliedDate }}</td>
-                  <td>
-                    <span class="match-tag" [class.high-match]="app.matchScore >= 85">
-                      {{ app.matchScore }}% Match
-                    </span>
-                  </td>
-                  <td>
-                    @if (app.status === 'Shortlisted') {
-                      <span class="status-badge badge-emerald">⭐ Shortlisted</span>
-                    } @else if (app.status === 'Interview Scheduled') {
-                      <span class="status-badge badge-purple">🎤 Interview Scheduled</span>
-                    } @else if (app.status === 'Under Review') {
-                      <span class="status-badge badge-blue">⏳ Under Review</span>
-                    } @else {
-                      <span class="status-badge badge-amber">📨 Sent</span>
-                    }
-                  </td>
-                  <td>
-                    <div class="action-btns">
-                      <button class="btn-action-view" (click)="viewDetails(app)">View</button>
-                      <button class="btn-action-withdraw" (click)="withdrawApplication(app)" title="Withdraw">×</button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      <!-- LOADING STATE -->
+      @if (isLoading) {
+        <div class="state-card loading-state">
+          <div class="state-spinner"></div>
+          <h4>Loading applications...</h4>
+          <p>Retrieving your verified submissions and screening scores from database.</p>
         </div>
-      </div>
+      }
+
+      <!-- ERROR STATE -->
+      @else if (isError) {
+        <div class="state-card error-state">
+          <span class="state-icon">⚠️</span>
+          <h4>Unable to load applications</h4>
+          <p>{{ errorMessage }}</p>
+          <button class="btn-state-action" (click)="loadApplications()">↻ Retry Connection</button>
+        </div>
+      }
+
+      <!-- EMPTY STATE -->
+      @else if (filteredApplications.length === 0) {
+        <div class="state-card empty-state">
+          <span class="state-icon">📋</span>
+          <h4>{{ applications.length === 0 ? 'No job applications submitted yet' : 'No applications found in this category' }}</h4>
+          <p>
+            {{ applications.length === 0
+                ? 'Explore available openings and submit your application to start your hiring process.'
+                : 'There are currently no applications matching the selected filter.' }}
+          </p>
+          @if (applications.length === 0) {
+            <button class="btn-state-action" (click)="openJobs()">+ Explore Open Roles</button>
+          } @else {
+            <button class="btn-state-action" (click)="setFilter('ALL')">View All Applications</button>
+          }
+        </div>
+      }
+
+      <!-- APPLICATIONS TABLE CARD -->
+      @else {
+        <div class="content-card">
+          <div class="table-responsive">
+            <table class="saas-table">
+              <thead>
+                <tr>
+                  <th>Job Title & Company</th>
+                  <th>Location</th>
+                  <th>Applied Date</th>
+                  <th>AI Match</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (app of filteredApplications; track (app.id + '_' + $index)) {
+                  <tr>
+                    <td>
+                      <div class="job-col">
+                        <div class="app-badge">{{ app.company ? app.company.charAt(0) : 'J' }}</div>
+                        <div>
+                          <strong>{{ app.jobTitle }}</strong>
+                          <small>{{ app.company }}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>📍 {{ app.location }}</td>
+                    <td>{{ app.appliedDate }}</td>
+                    <td>
+                      <span class="match-tag" [class.high-match]="app.matchScore >= 80">
+                        {{ app.matchScore }}% Match
+                      </span>
+                    </td>
+                    <td>
+                      @if (app.status === 'Shortlisted') {
+                        <span class="status-badge badge-emerald">⭐ Shortlisted</span>
+                      } @else if (app.status === 'Interview Scheduled') {
+                        <span class="status-badge badge-purple">🎤 Interview Scheduled</span>
+                      } @else if (app.status === 'Under Review') {
+                        <span class="status-badge badge-blue">⏳ Under Review</span>
+                      } @else {
+                        <span class="status-badge badge-amber">📨 Sent</span>
+                      }
+                    </td>
+                    <td>
+                      <div class="action-btns">
+                        <button class="btn-action-view" (click)="viewDetails(app)">View Details</button>
+                        <button class="btn-action-withdraw" (click)="withdrawApplication(app)" title="Withdraw application">×</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
 
     </div>
   </main>
@@ -206,13 +252,13 @@
           <div class="detail-section">
             <h4>Job Description</h4>
             <p class="description-text">
-              {{ selectedJob?.description || 'This position involves developing and scaling enterprise web applications within an agile engineering team. The engineer will collaborate closely with product management, architects, and DevOps to deliver robust, high-performance services.' }}
+              {{ selectedJob?.description || 'This position involves developing and scaling enterprise applications within an agile engineering team. The engineer will collaborate closely with product management, architects, and DevOps to deliver robust, high-performance services.' }}
             </p>
           </div>
 
           <!-- REQUIRED SKILLS -->
           <div class="detail-section">
-            <h4>Required Skills & Competencies</h4>
+            <h4>Required Skills &amp; Competencies</h4>
             <div class="skills-chips-row">
               @for (skill of (selectedJob?.tags || ['Java', 'Spring Boot', 'MySQL', 'REST APIs', 'Git']); track skill) {
                 <span class="skill-pill">{{ skill }}</span>

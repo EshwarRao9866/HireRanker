@@ -34,6 +34,9 @@ export interface ApplicationResponse {
   github?: string;
   linkedin?: string;
   matchScore?: number;
+  company?: string;
+  jobLocation?: string;
+  salary?: string;
 }
 
 export interface ShortlistedCandidateResponse {
@@ -64,8 +67,11 @@ export class ApplicationService {
   /**
    * Submit an application for a job (POST /api/applications)
    */
-  applyForJob(candidateId: number, jobId: number, resumeId: number): Observable<ApplicationResponse> {
-    return this.http.post<ApplicationResponse>(this.apiUrl, { candidateId, jobId, resumeId });
+  applyForJob(candidateId: number, jobId: number, resumeId?: number): Observable<ApplicationResponse> {
+    const payload: any = { jobId };
+    if (candidateId && candidateId > 0) payload.candidateId = candidateId;
+    if (resumeId && resumeId > 0) payload.resumeId = resumeId;
+    return this.http.post<ApplicationResponse>(this.apiUrl, payload);
   }
 
   /**
@@ -80,6 +86,13 @@ export class ApplicationService {
    */
   getApplicationsByCandidate(candidateId: number): Observable<ApplicationResponse[]> {
     return this.http.get<ApplicationResponse[]>(`${this.apiUrl}/candidate/${candidateId}`);
+  }
+
+  /**
+   * Get all applications submitted by authenticated candidate (GET /api/applications/me)
+   */
+  getMyApplications(): Observable<ApplicationResponse[]> {
+    return this.http.get<ApplicationResponse[]>(`${this.apiUrl}/me`);
   }
 
   /**

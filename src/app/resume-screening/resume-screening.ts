@@ -6,7 +6,7 @@ import { Subscription, finalize, catchError, of, timeout } from 'rxjs';
 import { ScreeningService, ScreeningResultResponse } from '../services/screening.service';
 import { JobService } from '../services/job.service';
 import { ApplicationService, ApplicationResponse } from '../services/application.service';
-import { ResumeService } from '../services/resume.service';
+import { ResumeService, ResumeResponse } from '../services/resume.service';
 import { cleanJobTitle, cleanCandidateName, cleanCandidateEmail } from '../services/salary-formatter.util';
 
 export interface ApplicantOption {
@@ -45,6 +45,9 @@ export class ResumeScreening implements OnInit, OnDestroy {
   selectedApplicantId: number | null = null;
   screenedApplicants: ScreeningResultResponse[] = [];
   isLoadingScreenings = false;
+  uploadedResumes: ResumeResponse[] = [];
+  isLoadingUploadedResumes = false;
+  activeListTab: 'uploaded' | 'screened' = 'uploaded';
 
   matchData = {
     overallScore: 0,
@@ -97,7 +100,7 @@ export class ResumeScreening implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // 1. Fetch available jobs from backend
+    // 1. Fetch available jobs from backend & smartly select job with active applicants
     this.jobService.fetchJobsFromBackend().subscribe({
       next: (backendJobs) => {
         if (backendJobs && backendJobs.length > 0) {
@@ -106,9 +109,32 @@ export class ResumeScreening implements OnInit, OnDestroy {
             title: j.title,
             displayTitle: this.cleanJobTitle(j.title) || j.title
           }));
-          this.selectedJobId = this.jobs[0].id;
-          this.selectedJob = this.jobs[0].title;
-          this.loadApplicantsForJob(this.selectedJobId);
+
+          // Pick the first job that has applications, or default to first
+          this.applicationService.getAllApplications().subscribe({
+            next: (allApps: ApplicationResponse[]) => {
+              if (allApps && allApps.length > 0) {
+                const foundApp = allApps.find((a: ApplicationResponse) => a.jobId && this.jobs.some(j => j.id === a.jobId));
+                if (foundApp && foundApp.jobId) {
+                  const job = this.jobs.find(j => j.id === foundApp.jobId);
+                  if (job) {
+                    this.selectedJobId = job.id;
+                    this.selectedJob = job.title;
+                  }
+                }
+              }
+              if (!this.selectedJobId && this.jobs.length > 0) {
+                this.selectedJobId = this.jobs[0].id;
+                this.selectedJob = this.jobs[0].title;
+              }
+              this.loadApplicantsForJob(this.selectedJobId);
+            },
+            error: () => {
+              this.selectedJobId = this.jobs[0].id;
+              this.selectedJob = this.jobs[0].title;
+              this.loadApplicantsForJob(this.selectedJobId);
+            }
+          });
         }
       },
       error: () => {
@@ -125,6 +151,25 @@ export class ResumeScreening implements OnInit, OnDestroy {
 
     // 2. Fetch all completed screenings from MySQL
     this.loadScreenedApplicants();
+
+    // 3. Fetch all uploaded candidate resumes in storage
+    this.loadUploadedResumes();
+  }
+
+  loadUploadedResumes(): void {
+    this.isLoadingUploadedResumes = true;
+    this.resumeService.getAllResumes().subscribe({
+      next: (list) => {
+        this.isLoadingUploadedResumes = false;
+        this.uploadedResumes = list || [];
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isLoadingUploadedResumes = false;
+        this.uploadedResumes = [];
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -285,6 +330,13 @@ export class ResumeScreening implements OnInit, OnDestroy {
     }
   }
 
+  formatFileSize(bytes?: number): string {
+    if (!bytes || bytes <= 0) return 'N/A';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
   onFileSelected(event: any): void {
     if (this.isScreening) return;
 
@@ -311,7 +363,77 @@ export class ResumeScreening implements OnInit, OnDestroy {
 
     this.uploadedFileName = file.name;
     this.errorMessage = null;
-    this.triggerScreening();
+    this.isScreening = true;
+    this.screeningComplete = false;
+    this.screeningProgress = 15;
+    this.screeningStageText = 'Uploading candidate resume to server storage (uploads/resumes/)...';
+
+    this.progressInterval = setInterval(() => {
+      if (this.screeningProgress < 85) {
+        this.screeningProgress += 15;
+        if (this.screeningProgress >= 30 && this.screeningProgress < 50) {
+          this.screeningStageText = 'PDF saved in uploads/resumes/. Extracting candidate skills and text...';
+        } else if (this.screeningProgress >= 50 && this.screeningProgress < 70) {
+          this.screeningStageText = 'Computing semantic similarity against role requirements...';
+        } else if (this.screeningProgress >= 70) {
+          this.screeningStageText = 'Calculating weighted 8-factor ATS score...';
+        }
+        this.cdr.detectChanges();
+      }
+    }, 500);
+
+    // Upload the file to backend storage
+    this.resumeService.uploadResumeForCandidate(
+      file,
+      this.selectedJobId,
+      this.selectedApplicantId || undefined
+    ).pipe(
+      finalize(() => {
+        if (this.progressInterval) {
+          clearInterval(this.progressInterval);
+        }
+        this.screeningProgress = 100;
+        this.isScreening = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (res: ResumeResponse) => {
+        this.uploadedFileName = res.originalFileName || res.fileName || file.name;
+        this.applyScreeningResult(res);
+        this.screeningComplete = true;
+        this.errorMessage = null;
+
+        // If an applicant application is currently active, also run application screening
+        if (this.currentApplicationId && this.currentApplicationId > 0) {
+          this.screeningService.screenResume(this.currentApplicationId, true).subscribe({
+            next: (screenRes) => {
+              if (screenRes && screenRes.overallScore !== undefined) {
+                this.applyScreeningResult(screenRes);
+              }
+              this.loadScreenedApplicants();
+            },
+            error: () => {
+              this.loadScreenedApplicants();
+            }
+          });
+        }
+
+        // Always reload uploaded resumes and job applicants so both sections update immediately
+        this.loadUploadedResumes();
+        if (this.selectedJobId) {
+          this.loadApplicantsForJob(this.selectedJobId);
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        console.error('Resume upload failed:', err);
+        const msg = err?.error?.message || (typeof err?.error === 'string' ? err.error : null) || err?.message;
+        this.errorMessage = msg || 'Resume upload failed. Please verify the PDF file.';
+        this.screeningComplete = false;
+        this.loadUploadedResumes();
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   triggerScreening(): void {
@@ -375,9 +497,84 @@ export class ResumeScreening implements OnInit, OnDestroy {
     });
   }
 
+  viewUploadedResume(resume: ResumeResponse): void {
+    if (!resume || !resume.id) return;
+    this.resumeService.getResumePdfBlob(resume.id).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          this.errorMessage = 'Resume PDF is empty or unavailable on server.';
+          return;
+        }
+        const fileUrl = window.URL.createObjectURL(blob);
+        window.open(fileUrl, '_blank');
+      },
+      error: () => {
+        this.errorMessage = 'Unable to open resume PDF from storage.';
+      }
+    });
+  }
+
+  screenUploadedResume(resume: ResumeResponse): void {
+    if (!resume || !resume.id) return;
+    this.uploadedFileName = resume.originalFileName || resume.fileName || 'Resume.pdf';
+    this.errorMessage = null;
+
+    // Check if an application corresponds to this candidate
+    const app = this.applicants.find(a =>
+      (resume.candidateName && a.candidateName.toLowerCase().includes(resume.candidateName.toLowerCase())) ||
+      (resume.candidateEmail && a.candidateEmail.toLowerCase() === resume.candidateEmail.toLowerCase())
+    );
+
+    if (app) {
+      this.selectedApplicantId = app.id;
+      this.currentApplicationId = app.id;
+      this.triggerScreening();
+      return;
+    }
+
+    // Direct screening by resume ID
+    this.isScreening = true;
+    this.screeningComplete = false;
+    this.screeningProgress = 25;
+    this.screeningStageText = 'Screening resume against target role: ' + (this.selectedJob || 'Target Job') + '...';
+
+    this.progressInterval = setInterval(() => {
+      if (this.screeningProgress < 85) {
+        this.screeningProgress += 15;
+        this.cdr.detectChanges();
+      }
+    }, 500);
+
+    this.resumeService.screenResumeById(resume.id, this.selectedJob, this.selectedJobId).pipe(
+      finalize(() => {
+        if (this.progressInterval) clearInterval(this.progressInterval);
+        this.screeningProgress = 100;
+        this.isScreening = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (res) => {
+        this.applyScreeningResult(res);
+        this.screeningComplete = true;
+        this.loadUploadedResumes();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Failed to screen resume by ID:', err);
+        this.applyScreeningResult(resume);
+        this.screeningComplete = true;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   viewSelectedResume(): void {
+    if (!this.selectedApplicantId && this.uploadedResumes.length > 0) {
+      this.viewUploadedResume(this.uploadedResumes[0]);
+      return;
+    }
     if (!this.selectedApplicantId) {
-      this.errorMessage = 'Please select a candidate first.';
+      this.errorMessage = 'Please select a candidate or an uploaded resume first.';
       return;
     }
     this.viewResumeForApp(this.selectedApplicantId, this.uploadedFileName);
@@ -389,16 +586,35 @@ export class ResumeScreening implements OnInit, OnDestroy {
     ).subscribe({
       next: (blob) => {
         if (!blob || blob.size === 0) {
-          this.errorMessage = 'Resume file is empty or unavailable on server.';
+          this.fallbackToUploadedResumePdf(applicationId);
           return;
         }
         const fileUrl = window.URL.createObjectURL(blob);
         window.open(fileUrl, '_blank');
       },
       error: () => {
-        this.errorMessage = 'Unable to open resume PDF. Please ensure candidate has uploaded a resume.';
+        this.fallbackToUploadedResumePdf(applicationId);
       }
     });
+  }
+
+  private fallbackToUploadedResumePdf(applicationId: number): void {
+    const app = this.applicants.find(a => a.id === applicationId);
+    const candidateName = app ? app.candidateName.toLowerCase() : '';
+    const candidateEmail = app ? app.candidateEmail.toLowerCase() : '';
+
+    const match = this.uploadedResumes.find(r =>
+      (candidateEmail && r.candidateEmail && r.candidateEmail.toLowerCase() === candidateEmail) ||
+      (candidateName && r.candidateName && r.candidateName.toLowerCase().includes(candidateName))
+    );
+
+    if (match && match.id) {
+      this.viewUploadedResume(match);
+    } else if (this.uploadedResumes.length > 0) {
+      this.viewUploadedResume(this.uploadedResumes[0]);
+    } else {
+      this.errorMessage = 'Unable to open resume PDF. Please ensure candidate has uploaded a resume.';
+    }
   }
 
   private applyScreeningResult(res: any): void {

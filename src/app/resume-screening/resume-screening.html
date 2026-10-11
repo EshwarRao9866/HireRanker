@@ -87,111 +87,235 @@
     }
   </div>
 
-  <!-- SCREENED APPLICANTS TABLE CARD -->
+  <!-- RESUMES REPOSITORY & SCREENING HISTORY CARD -->
   <div class="content-card" style="margin-top: 4px;">
-    <div class="card-head">
-      <div>
-        <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin: 0;">Completed Resume Screenings</h3>
-        <small style="color: #64748b;">Candidates whose resumes have been screened by AI and verified in MySQL ({{ screenedApplicants.length }} total)</small>
+    <div class="card-head" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button type="button"
+                (click)="activeListTab = 'uploaded'"
+                style="padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1.5px solid; transition: all 0.2s;"
+                [style.background]="activeListTab === 'uploaded' ? '#4f46e5' : '#f8fafc'"
+                [style.color]="activeListTab === 'uploaded' ? '#ffffff' : '#475569'"
+                [style.borderColor]="activeListTab === 'uploaded' ? '#4338ca' : '#e2e8f0'">
+          📁 Uploaded Resumes ({{ uploadedResumes.length }})
+        </button>
+        <button type="button"
+                (click)="activeListTab = 'screened'"
+                style="padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1.5px solid; transition: all 0.2s;"
+                [style.background]="activeListTab === 'screened' ? '#4f46e5' : '#f8fafc'"
+                [style.color]="activeListTab === 'screened' ? '#ffffff' : '#475569'"
+                [style.borderColor]="activeListTab === 'screened' ? '#4338ca' : '#e2e8f0'">
+          📊 Completed Screenings ({{ screenedApplicants.length }})
+        </button>
       </div>
-      <button class="btn btn-upload" (click)="loadScreenedApplicants()" style="padding: 6px 14px; font-size: 12.5px;">
-        🔄 Refresh Screenings
-      </button>
+
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn btn-upload" (click)="activeListTab === 'uploaded' ? loadUploadedResumes() : loadScreenedApplicants()" style="padding: 6px 14px; font-size: 12.5px;">
+          🔄 Refresh
+        </button>
+      </div>
     </div>
 
-    @if (isLoadingScreenings) {
-      <div style="text-align: center; padding: 36px 20px;">
-        <div style="font-size: 28px; margin-bottom: 8px;">⏳</div>
-        <p style="color: #64748b; margin: 0; font-size: 13.5px;">Loading screened candidates from MySQL...</p>
+    @if (activeListTab === 'uploaded') {
+      <div style="margin-bottom: 12px;">
+        <small style="color: #64748b; font-size: 12.5px;">
+          All physical candidate resume PDFs stored in backend storage (<code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #0f172a;">uploads/resumes/</code>) and verified in MySQL ({{ uploadedResumes.length }} total files).
+        </small>
       </div>
-    } @else if (screenedApplicants.length === 0) {
-      <div style="text-align: center; padding: 40px 20px;">
-        <div style="font-size: 36px; margin-bottom: 8px;">📑</div>
-        <h4 style="margin: 0 0 6px 0; color: #1e293b;">No resumes screened yet</h4>
-        <p style="margin: 0; color: #64748b; font-size: 13.5px;">Select an applicant above and click <strong>"⚡ Run AI Screening"</strong> to generate the first verified screening report.</p>
-      </div>
-    } @else {
-      <div class="table-wrap" style="overflow-x: auto;">
-        <table class="saas-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
-          <thead>
-            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left; color: #475569;">
-              <th style="padding: 12px 14px;">Candidate</th>
-              <th style="padding: 12px 14px;">Applied Job</th>
-              <th style="padding: 12px 14px;">Resume File</th>
-              <th style="padding: 12px 14px;">ATS Match</th>
-              <th style="padding: 12px 14px;">Matched Skills</th>
-              <th style="padding: 12px 14px;">Missing Skills</th>
-              <th style="padding: 12px 14px;">Status</th>
-              <th style="padding: 12px 14px;">Screened Date</th>
-              <th style="padding: 12px 14px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (s of screenedApplicants; track (s.applicationId + '_' + $index)) {
-              <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" [style.background]="selectedApplicantId === s.applicationId ? '#f8fafc' : 'transparent'">
-                <td style="padding: 12px 14px;">
-                  <strong>{{ s.candidateName }}</strong>
-                  @if (s.candidateEmail) {
-                    <small style="display: block; color: #64748b; font-size: 11.5px;">{{ s.candidateEmail }}</small>
-                  }
-                </td>
-                <td style="padding: 12px 14px; font-weight: 500; color: #334155;">{{ s.jobTitle || 'N/A' }}</td>
-                <td style="padding: 12px 14px; color: #64748b;">
-                  <span style="display: inline-flex; align-items: center; gap: 4px;">
-                    📄 {{ s.resumeFileName || 'resume.pdf' }}
-                  </span>
-                </td>
-                <td style="padding: 12px 14px;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <strong style="font-size: 14px; color: #166534;">{{ s.overallScore }}%</strong>
-                    <div style="width: 60px; height: 6px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
-                      <div style="height: 100%; background: #10b981; border-radius: 9999px;" [style.width.%]="s.overallScore"></div>
-                    </div>
-                  </div>
-                </td>
-                <td style="padding: 12px 14px; max-width: 220px;">
-                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                    @for (skill of parseSkillsList(s.matchingSkills).slice(0, 3); track skill) {
-                      <span style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px;">{{ skill }}</span>
-                    }
-                    @if (parseSkillsList(s.matchingSkills).length > 3) {
-                      <small style="color: #64748b; font-size: 10.5px;">+{{ parseSkillsList(s.matchingSkills).length - 3 }} more</small>
-                    }
-                  </div>
-                </td>
-                <td style="padding: 12px 14px; max-width: 200px;">
-                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                    @for (mskill of parseSkillsList(s.missingSkills).slice(0, 2); track mskill) {
-                      <span style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px;">{{ mskill }}</span>
-                    }
-                    @if (parseSkillsList(s.missingSkills).length === 0) {
-                      <span style="color: #10b981; font-size: 11px; font-weight: 600;">None ✓</span>
-                    }
-                  </div>
-                </td>
-                <td style="padding: 12px 14px;">
-                  <span style="font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 9999px;"
-                        [style.background]="s.overallScore >= 80 ? '#dcfce7' : (s.overallScore >= 60 ? '#fef3c7' : '#fee2e2')"
-                        [style.color]="s.overallScore >= 80 ? '#166534' : (s.overallScore >= 60 ? '#92400e' : '#991b1b')">
-                    {{ s.overallScore >= 80 ? 'Strong Match' : (s.overallScore >= 60 ? 'Moderate Match' : 'Weak Match') }}
-                  </span>
-                </td>
-                <td style="padding: 12px 14px; color: #64748b; font-size: 12px;">{{ formatDate(s.screenedAt) }}</td>
-                <td style="padding: 12px 14px;">
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <button class="btn-sm" (click)="selectScreenedApplicant(s)" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; padding: 4px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                      👁️ View Analysis
-                    </button>
-                    <button class="btn-sm" (click)="viewResumeForApp(s.applicationId, s.resumeFileName)" style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; padding: 4px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                      📄 Resume
-                    </button>
-                  </div>
-                </td>
+
+      @if (isLoadingUploadedResumes) {
+        <div style="text-align: center; padding: 36px 20px;">
+          <div style="font-size: 28px; margin-bottom: 8px;">⏳</div>
+          <p style="color: #64748b; margin: 0; font-size: 13.5px;">Loading uploaded resumes from storage...</p>
+        </div>
+      } @else if (uploadedResumes.length === 0) {
+        <div style="text-align: center; padding: 40px 20px;">
+          <div style="font-size: 36px; margin-bottom: 8px;">📁</div>
+          <h4 style="margin: 0 0 6px 0; color: #1e293b;">No uploaded resumes found</h4>
+          <p style="margin: 0; color: #64748b; font-size: 13.5px;">Click <strong>"📄 Upload Candidate Resume"</strong> above to upload a candidate resume PDF.</p>
+        </div>
+      } @else {
+        <div class="table-wrap" style="overflow-x: auto;">
+          <table class="saas-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="border-bottom: 2px solid #e2e8f0; text-align: left; color: #475569;">
+                <th style="padding: 12px 14px;">Resume File</th>
+                <th style="padding: 12px 14px;">Candidate Name</th>
+                <th style="padding: 12px 14px;">Candidate Email</th>
+                <th style="padding: 12px 14px;">File Size</th>
+                <th style="padding: 12px 14px;">Uploaded Date</th>
+                <th style="padding: 12px 14px;">AI Status / Score</th>
+                <th style="padding: 12px 14px;">Detected Skills</th>
+                <th style="padding: 12px 14px;">Actions</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (r of uploadedResumes; track (r.id + '_' + $index)) {
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" [style.background]="uploadedFileName === (r.originalFileName || r.fileName) ? '#f8fafc' : 'transparent'">
+                  <td style="padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 18px;">📄</span>
+                      <div>
+                        <strong style="color: #0f172a;">{{ r.originalFileName || r.fileName }}</strong>
+                        <small style="display: block; color: #94a3b8; font-size: 11px;">ID: #{{ r.id }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="padding: 12px 14px; font-weight: 600; color: #1e293b;">
+                    {{ cleanCandidateName(r.candidateName || 'Candidate') }}
+                  </td>
+                  <td style="padding: 12px 14px; color: #64748b;">
+                    {{ cleanCandidateEmail(r.candidateEmail || 'N/A') }}
+                  </td>
+                  <td style="padding: 12px 14px; color: #64748b;">
+                    {{ formatFileSize(r.fileSize) }}
+                  </td>
+                  <td style="padding: 12px 14px; color: #64748b; font-size: 12px;">
+                    {{ formatDate(r.uploadedAt) }}
+                  </td>
+                  <td style="padding: 12px 14px;">
+                    @if (r.screeningScore !== undefined && r.screeningScore !== null && r.screeningScore > 0) {
+                      <span style="font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 9999px;"
+                            [style.background]="r.screeningScore >= 80 ? '#dcfce7' : (r.screeningScore >= 60 ? '#fef3c7' : '#fee2e2')"
+                            [style.color]="r.screeningScore >= 80 ? '#166534' : (r.screeningScore >= 60 ? '#92400e' : '#991b1b')">
+                        {{ r.screeningScore }}% ATS Match
+                      </span>
+                    } @else {
+                      <span style="background: #f1f5f9; color: #475569; font-size: 11.5px; font-weight: 600; padding: 3px 8px; border-radius: 9999px;">
+                        Uploaded ✓
+                      </span>
+                    }
+                  </td>
+                  <td style="padding: 12px 14px; max-width: 200px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                      @for (sk of (r.detectedSkills || []).slice(0, 3); track sk) {
+                        <span style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px;">{{ sk }}</span>
+                      }
+                      @if ((r.detectedSkills || []).length > 3) {
+                        <small style="color: #64748b; font-size: 10.5px;">+{{ (r.detectedSkills || []).length - 3 }}</small>
+                      }
+                      @if (!(r.detectedSkills && r.detectedSkills.length > 0)) {
+                        <small style="color: #94a3b8; font-size: 11px;">Pending parsing</small>
+                      }
+                    </div>
+                  </td>
+                  <td style="padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button class="btn-sm" (click)="viewUploadedResume(r)" title="View stored PDF file" style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        👁️ View PDF
+                      </button>
+                      <button class="btn-sm" (click)="screenUploadedResume(r)" title="Run AI screening on this resume" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        ⚡ Screen
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    @if (activeListTab === 'screened') {
+      <div style="margin-bottom: 12px;">
+        <small style="color: #64748b; font-size: 12.5px;">Candidates whose resumes have been screened by AI and verified in MySQL ({{ screenedApplicants.length }} total)</small>
       </div>
+
+      @if (isLoadingScreenings) {
+        <div style="text-align: center; padding: 36px 20px;">
+          <div style="font-size: 28px; margin-bottom: 8px;">⏳</div>
+          <p style="color: #64748b; margin: 0; font-size: 13.5px;">Loading screened candidates from MySQL...</p>
+        </div>
+      } @else if (screenedApplicants.length === 0) {
+        <div style="text-align: center; padding: 40px 20px;">
+          <div style="font-size: 36px; margin-bottom: 8px;">📑</div>
+          <h4 style="margin: 0 0 6px 0; color: #1e293b;">No resumes screened yet</h4>
+          <p style="margin: 0; color: #64748b; font-size: 13.5px;">Select an applicant above and click <strong>"⚡ Run AI Screening"</strong> to generate the first verified screening report.</p>
+        </div>
+      } @else {
+        <div class="table-wrap" style="overflow-x: auto;">
+          <table class="saas-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="border-bottom: 2px solid #e2e8f0; text-align: left; color: #475569;">
+                <th style="padding: 12px 14px;">Candidate</th>
+                <th style="padding: 12px 14px;">Applied Job</th>
+                <th style="padding: 12px 14px;">Resume File</th>
+                <th style="padding: 12px 14px;">ATS Match</th>
+                <th style="padding: 12px 14px;">Matched Skills</th>
+                <th style="padding: 12px 14px;">Missing Skills</th>
+                <th style="padding: 12px 14px;">Status</th>
+                <th style="padding: 12px 14px;">Screened Date</th>
+                <th style="padding: 12px 14px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of screenedApplicants; track (s.applicationId + '_' + $index)) {
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" [style.background]="selectedApplicantId === s.applicationId ? '#f8fafc' : 'transparent'">
+                  <td style="padding: 12px 14px;">
+                    <strong>{{ s.candidateName }}</strong>
+                    @if (s.candidateEmail) {
+                      <small style="display: block; color: #64748b; font-size: 11.5px;">{{ s.candidateEmail }}</small>
+                    }
+                  </td>
+                  <td style="padding: 12px 14px; font-weight: 500; color: #334155;">{{ s.jobTitle || 'N/A' }}</td>
+                  <td style="padding: 12px 14px; color: #64748b;">
+                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                      📄 {{ s.resumeFileName || 'resume.pdf' }}
+                    </span>
+                  </td>
+                  <td style="padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <strong style="font-size: 14px; color: #166534;">{{ s.overallScore }}%</strong>
+                      <div style="width: 60px; height: 6px; background: #e2e8f0; border-radius: 9999px; overflow: hidden;">
+                        <div style="height: 100%; background: #10b981; border-radius: 9999px;" [style.width.%]="s.overallScore"></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="padding: 12px 14px; max-width: 220px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                      @for (skill of parseSkillsList(s.matchingSkills).slice(0, 3); track skill) {
+                        <span style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px;">{{ skill }}</span>
+                      }
+                      @if (parseSkillsList(s.matchingSkills).length > 3) {
+                        <small style="color: #64748b; font-size: 10.5px;">+{{ parseSkillsList(s.matchingSkills).length - 3 }} more</small>
+                      }
+                    </div>
+                  </td>
+                  <td style="padding: 12px 14px; max-width: 200px;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                      @for (mskill of parseSkillsList(s.missingSkills).slice(0, 2); track mskill) {
+                        <span style="background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 9999px;">{{ mskill }}</span>
+                      }
+                      @if (parseSkillsList(s.missingSkills).length === 0) {
+                        <span style="color: #10b981; font-size: 11px; font-weight: 600;">None ✓</span>
+                      }
+                    </div>
+                  </td>
+                  <td style="padding: 12px 14px;">
+                    <span style="font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 9999px;"
+                          [style.background]="s.overallScore >= 80 ? '#dcfce7' : (s.overallScore >= 60 ? '#fef3c7' : '#fee2e2')"
+                          [style.color]="s.overallScore >= 80 ? '#166534' : (s.overallScore >= 60 ? '#92400e' : '#991b1b')">
+                      {{ s.overallScore >= 80 ? 'Strong Match' : (s.overallScore >= 60 ? 'Moderate Match' : 'Weak Match') }}
+                    </span>
+                  </td>
+                  <td style="padding: 12px 14px; color: #64748b; font-size: 12px;">{{ formatDate(s.screenedAt) }}</td>
+                  <td style="padding: 12px 14px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button class="btn-sm" (click)="selectScreenedApplicant(s)" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; padding: 4px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                        👁️ View Analysis
+                      </button>
+                      <button class="btn-sm" (click)="viewResumeForApp(s.applicationId, s.resumeFileName)" style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; padding: 4px 9px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                        📄 Resume
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     }
   </div>
 

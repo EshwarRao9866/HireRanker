@@ -1,12 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { forkJoin, of, catchError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { JobService, JobItem } from '../services/job.service';
 import { CandidateService } from '../services/candidate.service';
 import { ResumeService } from '../services/resume.service';
-import { ApplicationService } from '../services/application.service';
+import { ApplicationService, ApplicationResponse } from '../services/application.service';
 
 @Component({
   selector: 'app-job-list',
@@ -26,6 +27,11 @@ export class JobList implements OnInit {
   jobTypes = ['All', 'Full Time', 'Contract', 'Remote', 'Hybrid'];
 
   jobs: JobItem[] = [];
+  appliedJobIds = new Set<number>();
+  applyingJobId: number | null = null;
+  isLoading = false;
+  isError = false;
+  errorMessage = '';
 
   constructor(
     private readonly router: Router,
@@ -33,7 +39,8 @@ export class JobList implements OnInit {
     private readonly jobService: JobService,
     private readonly candidateService: CandidateService,
     private readonly resumeService: ResumeService,
-    private readonly applicationService: ApplicationService
+    private readonly applicationService: ApplicationService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -41,14 +48,56 @@ export class JobList implements OnInit {
   }
 
   loadJobs(): void {
-    this.jobs = this.jobService.getActiveJobs();
-    this.jobService.fetchJobsFromBackend().subscribe({
-      next: (backendJobs) => {
-        if (backendJobs && backendJobs.length > 0) {
-          this.jobs = backendJobs.filter(j => j.status === 'Active');
-        }
+    this.isLoading = true;
+    this.isError = false;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+
+    forkJoin({
+      backendJobs: this.jobService.fetchJobsFromBackend().pipe(
+        catchError((err) => {
+          console.warn('Could not fetch active jobs from backend, using cached:', err);
+          return of(this.jobService.getActiveJobs());
+        })
+      ),
+      myApps: this.applicationService.getMyApplications().pipe(
+        catchError((err) => {
+          console.warn('Could not fetch candidate applications from backend:', err);
+          return of([] as ApplicationResponse[]);
+        })
+      )
+    }).subscribe({
+      next: ({ backendJobs, myApps }) => {
+        this.isLoading = false;
+
+        // Build set of real job IDs applied by this candidate in MySQL
+        this.appliedJobIds = new Set<number>((myApps || []).map(a => a.jobId));
+
+        const baseJobs = (backendJobs && backendJobs.length > 0)
+          ? backendJobs.filter(j => j.status === 'Active')
+          : this.jobService.getActiveJobs();
+
+        // Get saved job IDs
+        const savedIds = this.jobService.getSavedJobIds();
+
+        this.jobs = baseJobs.map(job => ({
+          ...job,
+          applied: this.appliedJobIds.has(job.id),
+          saved: savedIds.includes(job.id)
+        }));
+
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
-      error: () => {}
+      error: (err) => {
+        console.error('Failed to load jobs or applications:', err);
+        this.isLoading = false;
+        this.isError = true;
+        this.errorMessage = 'Unable to load jobs. Please verify your connection.';
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -68,59 +117,75 @@ export class JobList implements OnInit {
   }
 
   applyToJob(job: JobItem): void {
-    this.candidateService.getMyProfile().subscribe({
-      next: (profile) => {
-        const candidateId = profile?.id;
-        if (!candidateId) {
-          alert('Candidate profile not found. Please log in again.');
-          return;
-        }
+    if (this.appliedJobIds.has(job.id) || job.applied) {
+      alert(`You have already applied for "${job.title}".`);
+      return;
+    }
 
-        this.resumeService.getMyResume().subscribe({
+    this.applyingJobId = job.id;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+
+    // 1. Resolve candidate profile
+    this.candidateService.getMyProfile().pipe(
+      catchError(() => of(null))
+    ).subscribe({
+      next: (profile) => {
+        const candidateId = profile?.id || 0;
+
+        // 2. Resolve resume (optional, backend falls back to latest candidate resume)
+        this.resumeService.getMyResume().pipe(
+          catchError(() => of(null))
+        ).subscribe({
           next: (resume) => {
             const resumeId = resume?.id;
-            if (!resumeId) {
-              alert('Please upload your resume in the My Resume tab before applying.');
-              this.router.navigate(['/my-resume']);
-              return;
-            }
 
             this.applicationService.applyForJob(candidateId, job.id, resumeId).subscribe({
               next: () => {
+                this.applyingJobId = null;
+                this.appliedJobIds.add(job.id);
+                job.applied = true;
+                if (this.selectedJob && this.selectedJob.id === job.id) {
+                  this.selectedJob.applied = true;
+                }
                 this.jobService.applyToJob(job.id);
-                this.loadJobs();
-                alert(`🎉 Successfully applied for "${job.title}" at ${job.company}! Your application and resume have been submitted to the recruiter.`);
+
+                this.cdr.markForCheck();
+                this.cdr.detectChanges();
+                alert(`🎉 Successfully applied for "${job.title}" at ${job.company}! Your application has been submitted to the recruiter.`);
               },
               error: (err) => {
+                this.applyingJobId = null;
                 if (err?.status === 409 || err?.error?.message?.includes('already applied')) {
+                  this.appliedJobIds.add(job.id);
+                  job.applied = true;
+                  if (this.selectedJob && this.selectedJob.id === job.id) {
+                    this.selectedJob.applied = true;
+                  }
                   this.jobService.applyToJob(job.id);
-                  this.loadJobs();
+                  this.cdr.markForCheck();
+                  this.cdr.detectChanges();
                   alert(`You have already applied for "${job.title}".`);
                 } else {
-                  this.jobService.applyToJob(job.id);
-                  this.loadJobs();
-                  alert(`🎉 Application for "${job.title}" recorded!`);
+                  console.error('Error applying to job on backend:', err);
+                  const msg = err?.error?.message || 'Failed to submit application. Please verify your connection.';
+                  alert(`⚠️ ${msg}`);
+                  this.cdr.markForCheck();
+                  this.cdr.detectChanges();
                 }
               }
             });
-          },
-          error: () => {
-            alert('Please upload your resume in the My Resume tab before applying.');
-            this.router.navigate(['/my-resume']);
           }
         });
-      },
-      error: () => {
-        this.jobService.applyToJob(job.id);
-        this.loadJobs();
-        alert(`🎉 Application for "${job.title}" recorded!`);
       }
     });
   }
 
   toggleSave(job: JobItem): void {
-    this.jobService.toggleSaveJob(job.id);
-    this.loadJobs();
+    const isSaved = this.jobService.toggleSaveJob(job.id);
+    job.saved = isSaved;
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
   }
 
   selectedJob: JobItem | null = null;

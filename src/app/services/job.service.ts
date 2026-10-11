@@ -968,7 +968,7 @@ export class JobService {
     localStorage.setItem('hireRankerApplicantStatuses', JSON.stringify(statusMap));
   }
 
-  private getSavedJobIds(): number[] {
+  getSavedJobIds(): number[] {
     if (!this.isBrowser()) return [];
     const raw = localStorage.getItem(this.STORAGE_SAVED_JOBS);
     if (raw) {

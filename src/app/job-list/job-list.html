@@ -164,8 +164,8 @@
                   ✓ Applied
                 </button>
               } @else {
-                <button class="btn-apply" (click)="applyToJob(job)">
-                  Apply Now ⚡
+                <button class="btn-apply" (click)="applyToJob(job)" [disabled]="applyingJobId === job.id">
+                  {{ applyingJobId === job.id ? 'Applying...' : 'Apply Now ⚡' }}
                 </button>
               }
             </div>
@@ -243,7 +243,9 @@
           @if (selectedJob.applied) {
             <button type="button" class="btn btn-applied" disabled>✓ Already Applied</button>
           } @else {
-            <button type="button" class="btn btn-apply" (click)="applyToJob(selectedJob)">Apply for this Role ⚡</button>
+            <button type="button" class="btn btn-apply" (click)="applyToJob(selectedJob)" [disabled]="applyingJobId === selectedJob.id">
+              {{ applyingJobId === selectedJob.id ? 'Applying...' : 'Apply for this Role ⚡' }}
+            </button>
           }
         </div>
       </div>

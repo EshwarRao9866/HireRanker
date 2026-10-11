@@ -24,6 +24,10 @@ export class JobApplicants implements OnInit, OnDestroy {
   selectedResumeApplicant: ApplicantRecord | null = null;
   selectedProfileApplicant: ApplicantRecord | null = null;
 
+  isLoading = true;
+  isError = false;
+  errorMessage = '';
+
   isPdfLoading = false;
   pdfError = false;
   pdfErrorMessage = '';
@@ -72,8 +76,16 @@ export class JobApplicants implements OnInit, OnDestroy {
   }
 
   loadApplicants(): void {
+    this.isLoading = true;
+    this.isError = false;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+    this.cdr.detectChanges();
+
     this.applicationService.getAllApplications().subscribe({
       next: (backendApps) => {
+        this.isLoading = false;
+        this.isError = false;
         if (!backendApps || backendApps.length === 0) {
           this.applicants = [];
           this.cdr.markForCheck();
@@ -131,6 +143,9 @@ export class JobApplicants implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Failed to load applications from backend:', err);
+        this.isLoading = false;
+        this.isError = true;
+        this.errorMessage = err?.error?.message || 'Failed to load applications from backend. Please verify your connection.';
         this.applicants = [];
         this.cdr.markForCheck();
         this.cdr.detectChanges();

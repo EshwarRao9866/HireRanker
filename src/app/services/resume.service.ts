@@ -8,7 +8,10 @@ import { AuthService } from './auth.service';
 export interface ResumeResponse {
   id: number;
   candidateId: number;
+  candidateName?: string;
+  candidateEmail?: string;
   fileName: string;
+  originalFileName?: string;
   fileType: string;
   fileSize: number;
   uploadedAt: string;
@@ -388,6 +391,33 @@ export class ResumeService {
    */
   getResumeById(id: number): Observable<ResumeResponse> {
     return this.http.get<ResumeResponse>(`${this.apiUrl}/${id}`);
+  }
+
+  /**
+   * Retrieves all uploaded resumes in the system (GET /api/resumes)
+   */
+  getAllResumes(): Observable<ResumeResponse[]> {
+    return this.http.get<ResumeResponse[]>(`${this.apiUrl}`).pipe(
+      catchError((err) => {
+        console.warn('[ResumeService] Could not fetch all resumes:', err);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Admin/Recruiter upload of candidate resume with target job/application linkage
+   */
+  uploadResumeForCandidate(file: File, jobId?: number, applicationId?: number, candidateId?: number): Observable<ResumeResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const params: string[] = [];
+    if (jobId) params.push(`jobId=${jobId}`);
+    if (applicationId) params.push(`applicationId=${applicationId}`);
+    if (candidateId) params.push(`candidateId=${candidateId}`);
+    const url = params.length > 0 ? `${this.apiUrl}/upload?${params.join('&')}` : `${this.apiUrl}/upload`;
+
+    return this.http.post<ResumeResponse>(url, formData);
   }
 
   /**
